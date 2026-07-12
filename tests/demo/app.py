@@ -17,8 +17,21 @@ No ``.streamlit/secrets.toml`` or Snowflake credentials are required.
 
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
+
+# ---------------------------------------------------------------------------
+# Logging — configure once at app entry point, before any library imports.
+# Emits to stdout so Snowflake's container runtime captures logs in the event
+# table and shows them in the Snowsight live-log pane.
+# See https://docs.snowflake.com/en/developer-guide/streamlit/features/logging-tracing
+# ---------------------------------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    stream=sys.stdout,
+)
 
 # Ensure the project root is on sys.path so the library is importable when
 # running the app directly with `streamlit run tests/demo/app.py`.

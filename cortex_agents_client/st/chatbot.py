@@ -13,10 +13,13 @@ complete chat UI in two modes:
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 from typing import Any, Literal
 
 from cortex_agents_client.models.thread import StoredMessage
+
+logger = logging.getLogger(__name__)
 
 
 class StreamlitChatbot:
@@ -302,6 +305,8 @@ class StreamlitChatbot:
             audio = getattr(raw, "audio", None)
             attachments = files + ([audio] if audio is not None else [])
 
+        logger.info("Processing prompt for agent %s (attachments: %d)", self._agent_path, len(attachments))
+
         with st.chat_message("user"):
             for att in attachments:
                 att_type = getattr(att, "type", "") or ""
@@ -347,12 +352,24 @@ class StreamlitChatbot:
             # Permission was required — save state and rerun to show approval UI.
             # The partial assistant message is NOT appended to history; the full
             # response will be appended after the user confirms or denies.
+            logger.info(
+                "Permission required for tool %s; pausing conversation",
+                stored.pending_permission.name,
+            )
             st.session_state[self._pending_permission_key] = {
                 "tool_use_event": stored.pending_permission,
                 "original_message": prompt_text,
             }
             st.rerun()
             return
+        if stored.error:
+            logger.error("Agent returned error %s: %s", stored.error.code, stored.error.message)
+        else:
+            logger.info(
+                "Response complete: status=%s message_id=%s",
+                getattr(stored, 'status', None) or 'success',
+                stored.message_id,
+            )
         append_message_fn(stored, key=self._messages_key)
 
     def _render_permission_ui(self, thread, append_message_fn) -> None:
@@ -374,6 +391,7 @@ class StreamlitChatbot:
         perm_data = st.session_state[self._pending_permission_key]
         perm_event = perm_data["tool_use_event"]
         original_message = perm_data["original_message"]
+        logger.debug("Rendering permission UI for tool %s", perm_event.name)
 
         st.warning(
             f"**{perm_event.name}** is requesting permission before executing.",
@@ -391,6 +409,7 @@ class StreamlitChatbot:
             type="primary",
             icon=":material/check:",
         ):
+            logger.info("Permission decision '%s' confirmed for tool %s", decision, perm_event.name)
             del st.session_state[self._pending_permission_key]
             permission_item = {
                 "type": "permission_decision",
@@ -436,6 +455,7 @@ class StreamlitChatbot:
                     use_container_width=True,
                 ):
                     st.session_state.pop(self._pending_permission_key, None)
+                    logger.info("New conversation started (agent: %s)", self._agent_path)
                     reset_thread(
                         client_key=self._client_key,
                         thread_key=self._thread_key,
@@ -491,6 +511,7 @@ class StreamlitChatbot:
                 use_container_width=True,
             ):
                 st.session_state.pop(self._pending_permission_key, None)
+                logger.info("New conversation started (agent: %s)", self._agent_path)
                 reset_thread(
                     client_key=self._client_key,
                     thread_key=self._thread_key,
