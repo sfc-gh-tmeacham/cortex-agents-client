@@ -371,6 +371,45 @@ def page_code() -> None:
 
     st.subheader(":material/cloud: Streamlit-in-Snowflake (container runtime)")
     st.caption("No ``secrets.toml`` needed — Snowflake injects credentials automatically.")
+    st.info(
+        "**Prerequisite: External Access Integration (EAI)**  \n"
+        "Container runtime apps must have an EAI that allows outbound HTTPS to the "
+        "Snowflake REST API. An ``ACCOUNTADMIN`` must create the EAI and grant it to "
+        "the role that owns the Streamlit app.",
+        icon=":material/lock:",
+    )
+    st.code(
+        """
+-- Run as ACCOUNTADMIN.
+
+-- Find your account identifier first:
+SELECT LOWER(CURRENT_ORGANIZATION_NAME() || '-' || CURRENT_ACCOUNT_NAME() || '.snowflakecomputing.com:443');
+-- e.g. returns 'myorg-myaccount.snowflakecomputing.com:443'
+
+-- 1. Network rule: allow outbound HTTPS to the Snowflake REST API.
+CREATE OR REPLACE NETWORK RULE snowflake_rest_api_network_rule
+  MODE       = EGRESS
+  TYPE       = HOST_PORT
+  VALUE_LIST = ('myorg-myaccount.snowflakecomputing.com:443');
+
+-- 2. External Access Integration referencing the rule.
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION snowflake_rest_api_eai
+  ALLOWED_NETWORK_RULES = (snowflake_rest_api_network_rule)
+  ENABLED = TRUE;
+
+-- 3. Grant usage to the role that owns the Streamlit app.
+GRANT USAGE ON INTEGRATION snowflake_rest_api_eai TO ROLE my_app_role;
+
+-- 4. Attach the EAI to the app.
+--    Option A — Workspaces UI: in the Deploy dialog choose the Network section
+--               and add snowflake_rest_api_eai, or go to App settings »
+--               External network access after deploying.
+--    Option B — SQL (run as the app-owner role):
+ALTER STREAMLIT my_db.my_schema.my_agent_app
+  SET EXTERNAL_ACCESS_INTEGRATIONS = (snowflake_rest_api_eai);
+""".strip(),
+        language="sql",
+    )
     st.code(
         """
 import os
@@ -387,6 +426,8 @@ StreamlitChatbot(
     account_url=account_url_from_env(),  # reads SNOWFLAKE_HOST env var
     auth=SiSContainerAuth(),             # reads /snowflake/session/token
     agent_path=AGENT_PATH,
+    show_thinking=True,      # set False to hide agent reasoning steps
+    show_tool_status=True,   # set False to hide tool-execution spinners
 ).render()
 """.strip(),
         language="python",
@@ -411,6 +452,8 @@ StreamlitChatbot(
     account_url=SNOWFLAKE_ACCOUNT_URL,
     auth=SNOWFLAKE_PAT,
     agent_path=AGENT_PATH,
+    show_thinking=True,      # set False to hide agent reasoning steps
+    show_tool_status=True,   # set False to hide tool-execution spinners
 ).render()
 """.strip(),
         language="python",
@@ -446,6 +489,8 @@ with chat_col:
         mode="embedded",
         height=500,
         session_key_prefix="_ca_dash",
+        show_thinking=True,      # set False to hide agent reasoning steps
+        show_tool_status=True,   # set False to hide tool-execution spinners
     ).render()
 """.strip(),
         language="python",
@@ -478,6 +523,8 @@ if st.button("Ask the agent", icon=":material/chat:", type="primary"):
             mode="embedded",
             height=450,
             session_key_prefix="_ca_dlg",
+            show_thinking=True,      # set False to hide agent reasoning steps
+            show_tool_status=True,   # set False to hide tool-execution spinners
         ).render()
     _chat()
 """.strip(),

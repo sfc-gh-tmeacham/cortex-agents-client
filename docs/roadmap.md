@@ -73,6 +73,51 @@ items. Only the upload + wiring step is missing.
 
 ---
 
+## Cancel in-progress streaming request
+
+### Current state
+
+Once a user submits a prompt, the streaming response runs to completion with no way to
+interrupt it. `render_streaming_response` loops synchronously on the main Streamlit
+thread. There is no stop button, no cancellation token, and no running-state flag in
+session state.
+
+### Why it's non-trivial
+
+Streamlit is not thread-safe — all `st.*` / `container.*` calls must remain on the
+main thread. The `render_streaming_response` loop makes UI calls on every event, so
+it cannot simply be moved to a background thread.
+
+### Proposed approach
+
+Split streaming into two responsibilities separated by a `queue.Queue`:
+
+1. **Background thread** — drains the raw SSE iterator (`thread.chat(...)`) and puts
+   events onto the queue. Checks a `threading.Event` stop flag on each iteration;
+   calls `events_iter.close()` when set to synchronously abort the underlying `httpx`
+   TCP connection (leaving this to GC is not guaranteed to be immediate).
+
+2. **Main Streamlit thread** — reads from the queue and performs all `st.*` UI calls.
+   Renders a "Stop" button that sets the stop flag.
+
+To make the Stop button interactive *during* streaming (Streamlit only processes clicks
+on a full rerun), wrap the streaming UI in `@st.fragment` so the fragment can rerun
+independently while the background thread drains the HTTP connection.
+
+### Key constraints
+
+- All `st.*` / `container.*` calls must stay on the main thread.
+- `events_iter.close()` must be called explicitly — not left to GC.
+- `render_streaming_response` would need to be refactored into a pure-IO drainer and a
+  pure-UI renderer with a queue between them.
+- `st.fragment` is needed to make the Stop button interactive during streaming.
+
+### Files to modify
+
+`cortex_agents_client/st/render.py`, `cortex_agents_client/st/chatbot.py`
+
+---
+
 ## Potential future items
 
 - **Image pasting** — CoWork supports pasting images directly from the clipboard; this

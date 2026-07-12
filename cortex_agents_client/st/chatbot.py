@@ -125,7 +125,7 @@ class StreamlitChatbot:
         *,
         mode: Literal["fullpage", "embedded"] = "fullpage",
         height: int = 450,
-        show_thinking: bool = False,
+        show_thinking: bool = True,
         show_tool_status: bool = True,
         new_conversation_button: bool = True,
         origin_application: str | None = None,
@@ -453,6 +453,7 @@ class StreamlitChatbot:
                     "New conversation",
                     icon=":material/add_comment:",
                     width="stretch",
+                    type="primary",
                 ):
                     st.session_state.pop(self._pending_permission_key, None)
                     logger.info("New conversation started (agent: %s)", self._agent_path)
@@ -509,6 +510,7 @@ class StreamlitChatbot:
                 "New conversation",
                 icon=":material/add_comment:",
                 width="stretch",
+                type="primary",
             ):
                 st.session_state.pop(self._pending_permission_key, None)
                 logger.info("New conversation started (agent: %s)", self._agent_path)
