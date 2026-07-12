@@ -93,6 +93,76 @@ auth = OAuthAuth("my_oauth_token")
 client = CortexAgentsClient("https://myorg.snowflakecomputing.com", auth)
 ```
 
+## Configuration reference
+
+### `CortexAgentsClient`
+
+| Parameter | Required | Default | Description |
+|---|---|---|---|
+| `account_url` | Yes | — | `https://myorg-myaccount.snowflakecomputing.com` |
+| `auth` | Yes | — | `AuthProvider` instance or PAT string (auto-wrapped as `PATAuth`) |
+| `timeout` | No | `900.0` | HTTP timeout in seconds (15 min = API max) |
+| `default_database` | No | `None` | Default database — avoids repeating it in every `thread.chat()` call |
+| `default_schema` | No | `None` | Default schema |
+| `origin_application` | No | `None` | Label attached to threads for monitoring (max 16 bytes) |
+
+### `StreamlitChatbot`
+
+`account_url`, `auth`, and `agent_path` are always required. `agent_path` can come from anywhere — hardcoded, `st.secrets`, a `st.selectbox`, etc.
+
+| Parameter | Required | Default | Description |
+|---|---|---|---|
+| `account_url` | Yes | — | Snowflake account URL |
+| `auth` | Yes | — | Auth provider or PAT string |
+| `agent_path` | Yes | — | `DB.SCHEMA.AGENT` |
+| `mode` | No | `"fullpage"` | `"fullpage"` or `"embedded"` |
+| `height` | No | `450` | Message area height in px — `embedded` mode only |
+| `show_thinking` | No | `False` | Show agent reasoning in an expander |
+| `show_tool_status` | No | `True` | Show tool execution spinners |
+| `new_conversation_button` | No | `True` | Show "New conversation" button |
+| `origin_application` | No | `None` | Thread label for monitoring (max 16 bytes) |
+| `input_placeholder` | No | `"Ask a question..."` | Chat input placeholder |
+| `session_key_prefix` | No | `"_ca"` | `st.session_state` key prefix — change when running multiple bots on one page |
+| `default_database` | No | `None` | Default database |
+| `default_schema` | No | `None` | Default schema |
+| `accept_file` | No | `False` | `True`, `"multiple"`, `"directory"`, or `False` |
+| `accept_audio` | No | `False` | Enable microphone input |
+| `file_type` | No | `None` | Allowed extensions, e.g. `["pdf","csv"]` — only applies when `accept_file` is set; `None` = all types |
+| `tool_executor` | No | `None` | Callable for client-side tool execution |
+
+### Secrets and environment variables
+
+What you need to supply depends on both your auth method and where the app runs.
+
+#### Streamlit app — `.streamlit/secrets.toml`
+
+| Auth method | Key | Description |
+|---|---|---|
+| PAT *(recommended)* | `SNOWFLAKE_ACCOUNT_URL` | `https://myorg-myaccount.snowflakecomputing.com` |
+| PAT | `SNOWFLAKE_PAT` | Programmatic Access Token (`v2:...`) |
+| JWT | `SNOWFLAKE_ACCOUNT_URL` | Account URL — the key file path is passed in code, not stored in secrets |
+| OAuth | `SNOWFLAKE_ACCOUNT_URL` | Account URL |
+| OAuth | `SNOWFLAKE_OAUTH_TOKEN` | OAuth bearer token |
+
+#### Streamlit-in-Snowflake (container runtime)
+
+No `.streamlit/secrets.toml` needed. Snowflake injects credentials automatically:
+
+| Variable / path | Injected by | Read by |
+|---|---|---|
+| `SNOWFLAKE_HOST` env var | Snowflake | `account_url_from_env()` |
+| `/snowflake/session/token` file | Snowflake (auto-refreshed) | `SiSContainerAuth()` |
+
+Do not set these manually — use `SiSContainerAuth()` and `account_url_from_env()`.
+
+#### Plain Python scripts and live tests — environment variables
+
+| Variable | Auth method | Description |
+|---|---|---|
+| `SNOWFLAKE_ACCOUNT_URL` | All | Account URL with `https://` scheme |
+| `SNOWFLAKE_PAT` | PAT | Programmatic Access Token |
+| `SNOWFLAKE_AGENT_PATH` | All | `DB.SCHEMA.AGENT` |
+
 ## Multi-turn conversations
 
 The `Thread` class tracks `parent_message_id` automatically so you never have to manage it:
@@ -119,12 +189,18 @@ from cortex_agents_client.models.events import (
     ChartEvent,
     ErrorEvent,
     MetadataEvent,
+    ResponseEvent,
+    StatusEvent,
     TableEvent,
+    TextAnnotationEvent,
     TextDeltaEvent,
     TextEvent,
+    ThinkingDeltaEvent,
     ThinkingEvent,
     ToolResultEvent,
+    ToolResultStatusEvent,
     ToolUseEvent,
+    UnknownEvent,
     WarningEvent,
 )
 
@@ -159,6 +235,31 @@ for event in thread.chat("MY_AGENT", "Show me the top 5 customers by revenue"):
 
     elif isinstance(event, MetadataEvent):
         print(f"\n[{event.role} message saved: id={event.message_id}]")
+
+    elif isinstance(event, TextAnnotationEvent):
+        # Citation annotation — corresponds to a [^N] marker in the text
+        print(f"\n[Citation {event.index}: {event.doc_title} (doc_id={event.doc_id})]")
+
+    elif isinstance(event, ThinkingDeltaEvent):
+        # Streaming thinking token — accumulate like TextDeltaEvent
+        print(event.text, end="", flush=True)
+
+    elif isinstance(event, ToolResultStatusEvent):
+        # In-progress status while a tool is running (e.g. SQL executing)
+        print(f"\n[Tool {event.tool_use_id} status: {event.status} — {event.message}]")
+
+    elif isinstance(event, StatusEvent):
+        # High-level execution status, not tied to a specific tool
+        print(f"\n[Status: {event.status} — {event.message}]")
+
+    elif isinstance(event, ResponseEvent):
+        # Always the last event — contains token usage, run_id, final status
+        for usage in event.usage:
+            print(f"\n[Tokens — {usage.model_name}: {usage.input_tokens.total} in / {usage.output_tokens.total} out]")
+
+    elif isinstance(event, UnknownEvent):
+        # Forward-compatible catch-all — never raises
+        print(f"\n[Unknown event type: {event.event_type}]")
 ```
 
 ## Non-streaming run
@@ -250,7 +351,7 @@ st.title("Revenue Assistant")
 bot = StreamlitChatbot(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
     auth=st.secrets["SNOWFLAKE_PAT"],
-    agent_path=st.secrets["AGENT_PATH"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",  # or from st.secrets, a selectbox, etc.
     show_thinking=True,
     origin_application="revenue_app",
 )
@@ -261,7 +362,6 @@ bot.render()
 ```toml
 SNOWFLAKE_ACCOUNT_URL = "https://myorg-myaccount.snowflakecomputing.com"
 SNOWFLAKE_PAT = "v2:..."
-AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"
 ```
 
 ### Manual integration
@@ -295,13 +395,85 @@ if prompt := st.chat_input("Ask a question..."):
 
     with st.chat_message("assistant"):
         stored = render_streaming_response(
-            thread.chat(st.secrets["AGENT_PATH"], prompt),
+            thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt),
             container=st,
             show_thinking=False,
             show_tool_status=True,
         )
     append_message(stored)
 ```
+
+### Embedded mode
+
+The `"embedded"` mode renders the chat inside a fixed-height scrollable container — useful for dashboards where the chat sits alongside other components. Requires Streamlit ≥ 1.59.
+
+```python
+bot = StreamlitChatbot(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    mode="embedded",
+    height=600,  # pixel height of the message area
+)
+bot.render()
+```
+
+### File and audio attachments
+
+Set `accept_file` and/or `accept_audio` to add attachment buttons to the chat input. Files and audio are displayed in the user's chat bubble and stored for replay across reruns, but are **not forwarded to the agent** — only the text prompt is sent.
+
+```python
+bot = StreamlitChatbot(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    accept_file="multiple",           # True (single file), "multiple", "directory", or False
+    file_type=["pdf", "csv", "txt"],  # None = all types
+    accept_audio=True,
+)
+bot.render()
+```
+
+### Client-side tool execution
+
+Pass a `tool_executor` callable to handle tools the agent marks with `client_side_execute=True`. It receives a `ToolUseEvent` and must return a list of result content dicts:
+
+```python
+from cortex_agents_client.models.events import ToolUseEvent
+
+def my_tool_executor(event: ToolUseEvent) -> list[dict]:
+    if event.name == "get_current_user":
+        return [{"type": "json", "json": {"user": st.experimental_user.email}}]
+    return [{"type": "text", "text": "unknown tool"}]
+
+bot = StreamlitChatbot(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    tool_executor=my_tool_executor,
+)
+bot.render()
+```
+
+Tools that require user consent (`ToolUseEvent.permission_options` is non-empty) automatically show a permission approval UI — a warning banner, a radio button with the available options, and a confirm button — before the tool executes.
+
+### Working with table results
+
+`result_set_to_dataframe` converts a `TableEvent` result set to a pandas DataFrame with correct column types. Use it in manual integration when you want to process or transform table data beyond what `render_streaming_response` displays:
+
+```python
+from cortex_agents_client.st.render import render_streaming_response, result_set_to_dataframe
+from cortex_agents_client.models.events import TableEvent
+
+for event in thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt):
+    if isinstance(event, TableEvent):
+        df = result_set_to_dataframe(event)
+        st.dataframe(df.style.highlight_max(axis=0))
+```
+
+### Elicitation
+
+When the agent needs clarification before it can answer, it emits a `TextEvent` with `is_elicitation=True`. Both `render_streaming_response` and `render_stored_message` handle this automatically — the message is rendered with `st.info()` and a "Clarification needed" label instead of plain markdown. No special handling is required if you use those helpers. In manual integration, check `msg.is_elicitation` on a `StoredMessage` to apply custom styling.
 
 ### Streamlit-in-Snowflake (container runtime)
 
@@ -476,9 +648,17 @@ uv run pytest tests/unit/ tests/integration/ --cov=cortex_agents_client --cov-re
 # Live tests (requires real Snowflake credentials)
 SNOWFLAKE_ACCOUNT_URL="https://..." SNOWFLAKE_PAT="v2:..." SNOWFLAKE_AGENT_PATH="DB.SC.AGENT" \
   uv run pytest tests/live/ -m live -v
+```
 
-# Run the demo app locally (no Snowflake account needed)
-uv run streamlit run tests/demo/app.py
+## Demo app
+
+A fully interactive demo app is included at `streamlit_demo/`. It exercises all
+event types and layout modes without a Snowflake account — responses come from
+pre-canned event streams in `streamlit_demo/mock_thread.py`.
+
+```bash
+# No credentials needed
+uv run streamlit run streamlit_demo/app.py
 ```
 
 ## Architecture
@@ -493,7 +673,7 @@ cortex_agents_client/
 ├── models/
 │   ├── agent.py      Agent, Tool, ToolSpec, etc.
 │   ├── thread.py     ThreadMetadata, ThreadMessage, StoredMessage
-│   └── events.py     All 15 SSE event dataclasses + UnknownEvent
+│   └── events.py     All 16 SSE event dataclasses + UnknownEvent
 ├── resources/
 │   ├── agents.py     AgentsResource (CRUD + feedback)
 │   ├── threads.py    ThreadsResource (CRUD + pagination + compaction)

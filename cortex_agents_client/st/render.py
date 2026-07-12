@@ -338,6 +338,7 @@ def render_streaming_response(
                     container.caption(event.title)
                 container.dataframe(
                     df,
+                    hide_index=True,
                     use_container_width=True,
                     column_config=_markdown_column_config(df),
                 )
@@ -516,6 +517,7 @@ def render_stored_message(msg: StoredMessage, container: Any) -> None:
                 container.caption(table_event.title)
             container.dataframe(
                 df,
+                hide_index=True,
                 use_container_width=True,
                 column_config=_markdown_column_config(df),
             )

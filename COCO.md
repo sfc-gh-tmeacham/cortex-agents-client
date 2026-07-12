@@ -101,7 +101,7 @@ uv sync --extra dev --extra streamlit --extra jwt
 uv run pytest tests/ -m "not live" -v
 
 # Run the interactive demo (no Snowflake account needed)
-uv run streamlit run tests/demo/app.py
+uv run streamlit run streamlit_demo/app.py
 ```
 
 Tests: 163 passing, 1 skipped (`tests/` tree below):
@@ -110,10 +110,15 @@ tests/
 ├── unit/          # core client, auth, SSE parsing, event models
 ├── streamlit/     # StreamlitChatbot, render functions (mocked st)
 ├── integration/   # round-trip tests against a real Snowflake account (mark: live)
-├── fixtures/      # shared SSE event payloads
-└── demo/
-    ├── app.py         # interactive Streamlit demo (no credentials needed)
-    └── mock_thread.py # pre-canned SSE streams for all scenarios
+└── fixtures/      # shared SSE event payloads
+```
+
+`streamlit_demo/` at the project root contains the interactive demo app
+(not part of the pytest suite):
+```
+streamlit_demo/
+├── app.py         # interactive Streamlit demo (no credentials needed)
+└── mock_thread.py # pre-canned SSE streams for all scenarios
 ```
 
 The demo app has a scenario selector covering: Simple text, Thinking,

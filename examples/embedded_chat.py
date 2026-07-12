@@ -6,11 +6,12 @@ Run with:
 Requires .streamlit/secrets.toml with:
     SNOWFLAKE_ACCOUNT_URL = "https://myorg-myaccount.snowflakecomputing.com"
     SNOWFLAKE_PAT = "v2:my_pat_token"
-    AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"
 """
 
 import streamlit as st
 from cortex_agents_client.st import StreamlitChatbot
+
+AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"
 
 st.set_page_config(
     page_title="Dashboard + Chat",
@@ -46,7 +47,7 @@ def _make_bot(prefix: str) -> StreamlitChatbot:
     return StreamlitChatbot(
         account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
         auth=st.secrets["SNOWFLAKE_PAT"],
-        agent_path=st.secrets["AGENT_PATH"],
+        agent_path=AGENT_PATH,
         mode="embedded",
         height=450,
         show_thinking=False,

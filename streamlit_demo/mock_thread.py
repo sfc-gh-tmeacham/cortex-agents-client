@@ -11,7 +11,7 @@ Each *scenario* is a generator function that yields
 Usage::
 
     import streamlit as st
-    from tests.demo.mock_thread import MockClient, MockThread, SCENARIO_NAMES
+    from streamlit_demo.mock_thread import MockClient, MockThread, SCENARIO_NAMES
 
     # Pre-seed session state before the chatbot reads it.
     PREFIX = "_demo"
@@ -183,7 +183,7 @@ _TREND_CHART = ChartEvent(
                     {"month": "Sep", "revenue": 152000},
                 ]
             },
-            "mark": {"type": "line", "point": True, "color": "#29b5e8"},
+            "mark": {"type": "line", "point": True, "color": "#3B82F6"},
             "encoding": {
                 "x": {"field": "month", "type": "nominal", "sort": None, "title": "Month"},
                 "y": {
@@ -192,6 +192,234 @@ _TREND_CHART = ChartEvent(
                     "title": "Revenue ($)",
                     "axis": {"format": "$,.0f"},
                 },
+            },
+            "width": "container",
+        }
+    ),
+)
+
+_BAR_CHART = ChartEvent(
+    event_type="response.chart",
+    tool_use_id="tool_003",
+    chart_spec=json.dumps(
+        {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "description": "Revenue by region — horizontal bar",
+            "data": {
+                "values": [
+                    {"region": "North America", "revenue": 452000},
+                    {"region": "Europe", "revenue": 381000},
+                    {"region": "Asia Pacific", "revenue": 294000},
+                    {"region": "Latin America", "revenue": 183000},
+                    {"region": "ME & Africa", "revenue": 97000},
+                ]
+            },
+            "mark": {"type": "bar", "color": "#3B82F6", "cornerRadiusEnd": 4},
+            "encoding": {
+                "y": {
+                    "field": "region",
+                    "type": "nominal",
+                    "sort": "-x",
+                    "title": None,
+                },
+                "x": {
+                    "field": "revenue",
+                    "type": "quantitative",
+                    "title": "Revenue ($)",
+                    "axis": {"format": "$,.0f"},
+                },
+                "tooltip": [
+                    {"field": "region", "type": "nominal", "title": "Region"},
+                    {"field": "revenue", "type": "quantitative", "title": "Revenue", "format": "$,.0f"},
+                ],
+            },
+            "width": "container",
+        }
+    ),
+)
+
+_AREA_CHART = ChartEvent(
+    event_type="response.chart",
+    tool_use_id="tool_004",
+    chart_spec=json.dumps(
+        {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "description": "Cumulative revenue — area chart",
+            "data": {
+                "values": [
+                    {"month": "Jan", "revenue": 95000},
+                    {"month": "Feb", "revenue": 110000},
+                    {"month": "Mar", "revenue": 102000},
+                    {"month": "Apr", "revenue": 118000},
+                    {"month": "May", "revenue": 130000},
+                    {"month": "Jun", "revenue": 125000},
+                    {"month": "Jul", "revenue": 141000},
+                    {"month": "Aug", "revenue": 138000},
+                    {"month": "Sep", "revenue": 152000},
+                ]
+            },
+            "mark": {"type": "area", "color": "#3B82F6", "fillOpacity": 0.15, "line": {"color": "#3B82F6"}},
+            "encoding": {
+                "x": {"field": "month", "type": "nominal", "sort": None, "title": "Month"},
+                "y": {
+                    "field": "revenue",
+                    "type": "quantitative",
+                    "title": "Revenue ($)",
+                    "axis": {"format": "$,.0f"},
+                },
+                "tooltip": [
+                    {"field": "month", "type": "nominal", "title": "Month"},
+                    {"field": "revenue", "type": "quantitative", "title": "Revenue", "format": "$,.0f"},
+                ],
+            },
+            "width": "container",
+        }
+    ),
+)
+
+_STACKED_BAR_CHART = ChartEvent(
+    event_type="response.chart",
+    tool_use_id="tool_005",
+    chart_spec=json.dumps(
+        {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "description": "Product mix by region — stacked bar",
+            "data": {
+                "values": [
+                    {"region": "North America", "product": "Widget A", "revenue": 198000},
+                    {"region": "North America", "product": "Widget B", "revenue": 145000},
+                    {"region": "North America", "product": "Widget C", "revenue": 109000},
+                    {"region": "Europe", "product": "Widget A", "revenue": 152000},
+                    {"region": "Europe", "product": "Widget B", "revenue": 134000},
+                    {"region": "Europe", "product": "Widget C", "revenue": 95000},
+                    {"region": "Asia Pacific", "product": "Widget A", "revenue": 118000},
+                    {"region": "Asia Pacific", "product": "Widget B", "revenue": 102000},
+                    {"region": "Asia Pacific", "product": "Widget C", "revenue": 74000},
+                    {"region": "Latin America", "product": "Widget A", "revenue": 79000},
+                    {"region": "Latin America", "product": "Widget B", "revenue": 64000},
+                    {"region": "Latin America", "product": "Widget C", "revenue": 40000},
+                    {"region": "ME & Africa", "product": "Widget A", "revenue": 41000},
+                    {"region": "ME & Africa", "product": "Widget B", "revenue": 34000},
+                    {"region": "ME & Africa", "product": "Widget C", "revenue": 22000},
+                ]
+            },
+            "mark": "bar",
+            "encoding": {
+                "x": {"field": "region", "type": "nominal", "title": None},
+                "y": {
+                    "field": "revenue",
+                    "type": "quantitative",
+                    "title": "Revenue ($)",
+                    "axis": {"format": "$,.0f"},
+                },
+                "color": {
+                    "field": "product",
+                    "type": "nominal",
+                    "scale": {"range": ["#3B82F6", "#EA580C", "#16A34A"]},
+                    "legend": {"title": "Product"},
+                },
+                "tooltip": [
+                    {"field": "region", "type": "nominal", "title": "Region"},
+                    {"field": "product", "type": "nominal", "title": "Product"},
+                    {"field": "revenue", "type": "quantitative", "title": "Revenue", "format": "$,.0f"},
+                ],
+            },
+            "width": "container",
+        }
+    ),
+)
+
+_SCATTER_CHART = ChartEvent(
+    event_type="response.chart",
+    tool_use_id="tool_006",
+    chart_spec=json.dumps(
+        {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "description": "Orders vs revenue by region — scatter",
+            "data": {
+                "values": [
+                    {"region": "North America", "orders": 1850, "revenue": 452000, "avg_order": 244},
+                    {"region": "Europe", "orders": 1423, "revenue": 381000, "avg_order": 267},
+                    {"region": "Asia Pacific", "orders": 1108, "revenue": 294000, "avg_order": 265},
+                    {"region": "Latin America", "orders": 722, "revenue": 183000, "avg_order": 253},
+                    {"region": "ME & Africa", "orders": 389, "revenue": 97000, "avg_order": 249},
+                ]
+            },
+            "mark": {"type": "point", "filled": True, "size": 120},
+            "encoding": {
+                "x": {"field": "orders", "type": "quantitative", "title": "Orders"},
+                "y": {
+                    "field": "revenue",
+                    "type": "quantitative",
+                    "title": "Revenue ($)",
+                    "axis": {"format": "$,.0f"},
+                },
+                "color": {
+                    "field": "region",
+                    "type": "nominal",
+                    "scale": {"range": ["#3B82F6", "#EA580C", "#16A34A", "#8B5CF6", "#EF4444"]},
+                    "legend": {"title": "Region"},
+                },
+                "size": {"field": "avg_order", "type": "quantitative", "legend": {"title": "Avg order ($)"}},
+                "tooltip": [
+                    {"field": "region", "type": "nominal", "title": "Region"},
+                    {"field": "orders", "type": "quantitative", "title": "Orders"},
+                    {"field": "revenue", "type": "quantitative", "title": "Revenue", "format": "$,.0f"},
+                    {"field": "avg_order", "type": "quantitative", "title": "Avg Order ($)"},
+                ],
+            },
+            "width": "container",
+        }
+    ),
+)
+
+_HEATMAP_CHART = ChartEvent(
+    event_type="response.chart",
+    tool_use_id="tool_007",
+    chart_spec=json.dumps(
+        {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "description": "Orders by day of week and hour — heatmap",
+            "data": {
+                "values": [
+                    {"day": d, "hour": h, "orders": v}
+                    for d, hours in [
+                        ("Mon", [12, 18, 24, 31, 38, 42, 45, 43, 39, 34, 28, 21, 15, 10, 7, 5]),
+                        ("Tue", [10, 15, 22, 30, 40, 48, 52, 50, 44, 37, 30, 22, 16, 11, 8, 5]),
+                        ("Wed", [11, 17, 25, 33, 42, 51, 55, 53, 47, 40, 32, 24, 17, 12, 8, 6]),
+                        ("Thu", [13, 19, 27, 35, 44, 53, 57, 55, 49, 41, 33, 25, 18, 13, 9, 6]),
+                        ("Fri", [15, 22, 30, 38, 47, 55, 58, 56, 50, 43, 35, 27, 20, 14, 10, 7]),
+                        ("Sat", [8, 12, 18, 25, 32, 38, 40, 39, 35, 30, 24, 18, 13, 9, 6, 4]),
+                        ("Sun", [6, 9, 14, 20, 26, 31, 33, 32, 29, 25, 20, 15, 11, 7, 5, 3]),
+                    ]
+                    for h, v in zip(range(6, 22), hours)
+                ]
+            },
+            "mark": "rect",
+            "encoding": {
+                "x": {
+                    "field": "hour",
+                    "type": "ordinal",
+                    "title": "Hour of day",
+                    "axis": {"labelExpr": "datum.value + ':00'"},
+                },
+                "y": {
+                    "field": "day",
+                    "type": "ordinal",
+                    "sort": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+                    "title": None,
+                },
+                "color": {
+                    "field": "orders",
+                    "type": "quantitative",
+                    "title": "Orders",
+                    "scale": {"scheme": "blues"},
+                },
+                "tooltip": [
+                    {"field": "day", "type": "ordinal", "title": "Day"},
+                    {"field": "hour", "type": "ordinal", "title": "Hour"},
+                    {"field": "orders", "type": "quantitative", "title": "Orders"},
+                ],
             },
             "width": "container",
         }
@@ -365,11 +593,14 @@ def _scenario_cortex_search(prompt: str) -> Iterator[SSEEvent]:
     yield _metadata(3)
 
 
-def _scenario_cortex_analyst(prompt: str) -> Iterator[SSEEvent]:
+def _scenario_cortex_analyst(prompt: str, *, verified: bool = False) -> Iterator[SSEEvent]:
     """Simulates Cortex Analyst — SQL generation, execution, table result.
 
     Args:
         prompt: The user's input text.
+        verified: If ``True``, sets ``verified_query_used=True`` on the
+            :class:`~cortex_agents_client.models.events.AnalystDeltaEvent`
+            to trigger the :material/verified: icon in the status expander.
 
     Yields:
         :class:`~cortex_agents_client.models.events.SSEEvent` objects.
@@ -397,6 +628,7 @@ def _scenario_cortex_analyst(prompt: str) -> Iterator[SSEEvent]:
         tool_type="cortex_analyst_text_to_sql",
         sql=_ANALYST_SQL,
         sql_explanation="Aggregates revenue and order metrics by region, filtered to Q1 2026.",
+        verified_query_used=verified,
     )
     time.sleep(0.05)
     yield ToolResultStatusEvent(
@@ -427,6 +659,16 @@ def _scenario_cortex_analyst(prompt: str) -> Iterator[SSEEvent]:
     yield _metadata(4)
 
 
+def _scenario_cortex_analyst_verified(prompt: str) -> Iterator[SSEEvent]:
+    """Cortex Analyst with ``verified_query_used=True``.
+
+    Identical to :func:`_scenario_cortex_analyst` but emits a verified delta,
+    so the status expander shows :material/verified: instead of
+    :material/check_circle:.
+    """
+    yield from _scenario_cortex_analyst(prompt, verified=True)
+
+
 def _scenario_table(prompt: str) -> Iterator[SSEEvent]:
     """Returns a standalone table without tool use framing.
 
@@ -449,7 +691,10 @@ def _scenario_table(prompt: str) -> Iterator[SSEEvent]:
 
 
 def _scenario_chart(prompt: str) -> Iterator[SSEEvent]:
-    """Returns a chart followed by a text interpretation.
+    """Returns multiple chart types followed by text interpretations.
+
+    Exercises line, bar, area, stacked bar, scatter, and heatmap Vega-Lite
+    specs to demonstrate the full range of chart rendering in the UI.
 
     Args:
         prompt: The user's input text.
@@ -457,15 +702,34 @@ def _scenario_chart(prompt: str) -> Iterator[SSEEvent]:
     Yields:
         :class:`~cortex_agents_client.models.events.SSEEvent` objects.
     """
-    intro = "Here is the monthly revenue trend for 2026:"
-    yield from _stream_text(intro, delay=0.02)
+    yield from _stream_text("**Line chart** — monthly revenue trend:", delay=0.02)
     time.sleep(0.1)
     yield _TREND_CHART
+
+    yield from _stream_text("\n\n**Bar chart** — Q1 2026 revenue by region:", delay=0.02)
+    time.sleep(0.1)
+    yield _BAR_CHART
+
+    yield from _stream_text("\n\n**Area chart** — same trend data with filled area:", delay=0.02)
+    time.sleep(0.1)
+    yield _AREA_CHART
+
+    yield from _stream_text("\n\n**Stacked bar chart** — product mix breakdown by region:", delay=0.02)
+    time.sleep(0.1)
+    yield _STACKED_BAR_CHART
+
+    yield from _stream_text("\n\n**Scatter plot** — orders vs revenue (bubble size = avg order value):", delay=0.02)
+    time.sleep(0.1)
+    yield _SCATTER_CHART
+
+    yield from _stream_text("\n\n**Heatmap** — order volume by day of week and hour:", delay=0.02)
+    time.sleep(0.1)
+    yield _HEATMAP_CHART
+
     insight = (
-        "\n\nRevenue shows a consistent upward trend, growing from **$95K** in "
-        "January to **$152K** in September — a **60% increase** over the period. "
-        "The slight dip in March and August aligns with historically slower "
-        "quarters for this product category."
+        "\n\nAll six standard chart types rendered via Vega-Lite `ChartEvent`. "
+        "Revenue grows **+60% YTD** Jan–Sep. Friday afternoons (14:00–17:00) are "
+        "the peak ordering window across all regions."
     )
     yield from _stream_text(insight, delay=0.02)
     yield _metadata(6)
@@ -643,6 +907,7 @@ SCENARIO_NAMES: list[str] = [
     "Thinking",
     "Cortex Search",
     "Cortex Analyst",
+    "Cortex Analyst (Verified)",
     "Table",
     "Chart",
     "Clarification",
@@ -657,6 +922,7 @@ SCENARIOS: dict[str, Any] = {
     "Thinking": _scenario_thinking,
     "Cortex Search": _scenario_cortex_search,
     "Cortex Analyst": _scenario_cortex_analyst,
+    "Cortex Analyst (Verified)": _scenario_cortex_analyst_verified,
     "Table": _scenario_table,
     "Chart": _scenario_chart,
     "Clarification": _scenario_clarification,
@@ -670,9 +936,10 @@ SCENARIO_HINTS: dict[str, str] = {
     "Simple text": "Streaming text deltas → final TextEvent. Tests the shimmer cursor and basic history replay.",
     "Thinking": "ThinkingDeltaEvent blocks before the answer. Toggle 'Show reasoning' in the sidebar to show/hide the expander.",
     "Cortex Search": "ToolUse + ToolResultStatus + ToolResult. Tests the compact status spinner and success state.",
-    "Cortex Analyst": "Text-to-SQL tool with AnalystDelta (SQL capture), ToolResult, and a TableEvent result.",
+    "Cortex Analyst": "Text-to-SQL tool with AnalystDelta (SQL capture), ToolResult, and a TableEvent result. verified_query_used=False → check_circle icon.",
+    "Cortex Analyst (Verified)": "Same as Cortex Analyst but verified_query_used=True → status expander shows the verified icon instead of check_circle.",
     "Table": "A standalone TableEvent rendered as a DataFrame — no tool framing.",
-    "Chart": "A ChartEvent with a Vega-Lite line chart spec rendered via st.vega_lite_chart.",
+    "Chart": "Six ChartEvent types: line, bar, area, stacked bar, scatter, and heatmap — all rendered via st.vega_lite_chart.",
     "Clarification": "is_elicitation=True response. Renders as st.info() with a contact_support icon instead of plain markdown.",
     "Warning": "WarningEvent (non-fatal) + text response. Tests st.warning() with title and continuation of the stream.",
     "Error": "Fatal ErrorEvent that terminates the stream. Tests st.error() rendering.",

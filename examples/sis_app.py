@@ -11,13 +11,15 @@ The library's SiSContainerAuth reads the token file on every request so
 tokens are always current even in long-running sessions.
 
 To create the SiS app, run in Snowflake:
-    CREATE STREAMLIT my_agent_app
-      ROOT_LOCATION = '@my_db.my_schema.my_stage'
-      MAIN_FILE = 'sis_app.py'
-      QUERY_WAREHOUSE = 'MY_WH'
-      RUNTIME_NAME = 'SYSTEM$CONTAINER_RUNTIME';
+    CREATE OR REPLACE STREAMLIT my_db.my_schema.my_agent_app
+      FROM '@my_db.my_schema.my_stage/app'
+      MAIN_FILE                    = 'sis_app.py'
+      RUNTIME_NAME                 = 'SYSTEM$ST_CONTAINER_RUNTIME_PY3_11'
+      COMPUTE_POOL                 = my_compute_pool
+      QUERY_WAREHOUSE              = 'MY_WH'
+      EXTERNAL_ACCESS_INTEGRATIONS = (cortex_agents_api_eai);
 
-Then upload this file and a packages.txt listing your dependencies to the stage.
+Upload this file and your cortex_agents_client/ directory to the stage path above.
 """
 
 import os
@@ -27,9 +29,8 @@ from cortex_agents_client.st import StreamlitChatbot
 from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
 
 # Agent path — set as a constant or read from an environment variable.
-# In a real app you might inject this via an environment variable set on
-# the STREAMLIT object:
-#   ALTER STREAMLIT my_agent_app SET EXTERNAL_ACCESS_INTEGRATIONS = (...)
+# Set it in snowflake.yml under `environment:` when deploying via Workspaces,
+# or hardcode it directly if you only target one agent.
 AGENT_PATH = os.environ.get("AGENT_PATH", "MY_DB.MY_SCHEMA.MY_AGENT")
 
 st.set_page_config(page_title="Cortex Agent Chat", page_icon=":material/smart_toy:", layout="wide")
