@@ -452,7 +452,7 @@ class StreamlitChatbot:
                 if st.button(
                     "New conversation",
                     icon=":material/add_comment:",
-                    use_container_width=True,
+                    width="stretch",
                 ):
                     st.session_state.pop(self._pending_permission_key, None)
                     logger.info("New conversation started (agent: %s)", self._agent_path)
@@ -508,7 +508,7 @@ class StreamlitChatbot:
             if st.button(
                 "New conversation",
                 icon=":material/add_comment:",
-                use_container_width=True,
+                width="stretch",
             ):
                 st.session_state.pop(self._pending_permission_key, None)
                 logger.info("New conversation started (agent: %s)", self._agent_path)

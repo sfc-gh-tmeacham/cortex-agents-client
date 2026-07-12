@@ -193,9 +193,8 @@ def render_streaming_response(
 
     stored = StoredMessage(role="assistant")
 
-    # Text accumulation — show a skeleton loading bar while waiting for the first token
+    # Text accumulation
     text_placeholder = container.empty()
-    text_placeholder.skeleton(height=40)
     accumulated_text = ""
 
     # Thinking accumulation
@@ -339,7 +338,7 @@ def render_streaming_response(
                 container.dataframe(
                     df,
                     hide_index=True,
-                    use_container_width=True,
+                    width="stretch",
                     column_config=_markdown_column_config(df),
                 )
             except Exception:
@@ -370,7 +369,7 @@ def render_streaming_response(
             if event.role == "assistant":
                 stored.message_id = event.message_id
 
-    # Clear the skeleton placeholder if no text was ever accumulated
+    # Clear the placeholder if no text was ever accumulated
     # (e.g. tool-only or error-only responses).
     if not accumulated_text:
         text_placeholder.empty()
@@ -518,7 +517,7 @@ def render_stored_message(msg: StoredMessage, container: Any) -> None:
             container.dataframe(
                 df,
                 hide_index=True,
-                use_container_width=True,
+                width="stretch",
                 column_config=_markdown_column_config(df),
             )
         except Exception:

@@ -346,6 +346,9 @@ requires-dist = [
 ]
 provides-extras = ["jwt", "streamlit", "dev"]
 
+[package.metadata.requires-dev]
+dev = []
+
 [[package]]
 name = "coverage"
 version = "7.15.0"

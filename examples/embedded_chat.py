@@ -78,7 +78,7 @@ if layout == "Column (side by side)":
                 "Revenue": ["$248k", "$196k", "$130k"],
             },
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
         )
 
     with chat_col:

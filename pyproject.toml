@@ -51,3 +51,6 @@ addopts = "--tb=short"
 [tool.coverage.run]
 source = ["cortex_agents_client"]
 omit = ["tests/*", "examples/*"]
+
+[dependency-groups]
+dev = []
