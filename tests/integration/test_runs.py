@@ -1,0 +1,301 @@
+"""Integration tests for RunsResource and Thread class using pytest-httpx."""
+from __future__ import annotations
+
+import json
+
+import httpx
+import pytest
+from pytest_httpx import HTTPXMock
+
+from cortex_agents_client.exceptions import AuthError, RunError
+from cortex_agents_client.models.events import (
+    AnalystDeltaEvent,
+    ChartEvent,
+    ErrorEvent,
+    MetadataEvent,
+    TableEvent,
+    TextDeltaEvent,
+    TextEvent,
+    ThinkingEvent,
+    ToolResultEvent,
+    ToolUseEvent,
+    UnknownEvent,
+    WarningEvent,
+)
+from tests.fixtures.api_responses import NON_STREAMING_RUN_RESPONSE
+from tests.fixtures.sse_streams import (
+    ALL_EVENT_TYPES,
+    ANALYST_DELTA_PAYLOAD,
+    CHART_PAYLOAD,
+    ERROR_PAYLOAD,
+    METADATA_ASSISTANT_PAYLOAD,
+    METADATA_USER_PAYLOAD,
+    TABLE_PAYLOAD,
+    TEXT_DELTA_PAYLOAD,
+    TEXT_PAYLOAD,
+    TOOL_RESULT_PAYLOAD,
+    TOOL_USE_PAYLOAD,
+    WARNING_PAYLOAD,
+    stream_of,
+)
+from tests.integration.conftest import ACCOUNT_URL
+
+
+def sse_response(events: list[tuple[str, dict]]) -> httpx.Response:
+    """Builds an httpx Response with SSE content.
+
+    Each event is followed by a double newline as required by the SSE spec.
+    """
+    body = "".join(
+        f"event: {et}\ndata: {json.dumps(p)}\n\n"
+        for et, p in events
+    )
+    return httpx.Response(
+        status_code=200,
+        headers={"Content-Type": "text/event-stream"},
+        text=body,
+    )
+
+
+class TestStreamAllEventTypes:
+    """Tests that all 16 SSE event types are yielded correctly."""
+
+    def test_stream_yields_all_16_event_types(self, ca_client, httpx_mock: HTTPXMock):
+        """stream() yields one event of each of the 16 types."""
+        httpx_mock.add_response(content=sse_response(ALL_EVENT_TYPES).content)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hello"}]}]
+        events = list(ca_client.runs.stream(messages, agent_path="DB.SC.AGENT"))
+        assert len(events) == 16
+
+    def test_stream_text_delta_type(self, ca_client, httpx_mock: HTTPXMock):
+        """TextDeltaEvent is yielded for response.text.delta."""
+        httpx_mock.add_response(content=sse_response([("response.text.delta", TEXT_DELTA_PAYLOAD)]).content)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        events = list(ca_client.runs.stream(messages, agent_path="DB.SC.AGENT"))
+        assert len(events) == 1
+        assert isinstance(events[0], TextDeltaEvent)
+        assert events[0].text == "Hello "      # primary field
+        assert events[0].delta == "Hello "     # backward-compat alias
+
+
+class TestStreamMetadataTracking:
+    """Tests that MetadataEvent updates parent_message_id correctly."""
+
+    def test_metadata_events_both_yielded(self, ca_client, httpx_mock: HTTPXMock):
+        """Both user and assistant metadata events are yielded."""
+        events_data = [
+            ("metadata", METADATA_USER_PAYLOAD),
+            ("metadata", METADATA_ASSISTANT_PAYLOAD),
+        ]
+        httpx_mock.add_response(content=sse_response(events_data).content)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        events = list(ca_client.runs.stream(messages, agent_path="DB.SC.AGENT"))
+        metadata_events = [e for e in events if isinstance(e, MetadataEvent)]
+        assert len(metadata_events) == 2
+        assert metadata_events[0].role == "user"
+        assert metadata_events[0].message_id == 123
+        assert metadata_events[1].role == "assistant"
+        assert metadata_events[1].message_id == 456
+
+
+class TestWarningEvent:
+    """Tests that WarningEvent does not stop the stream."""
+
+    def test_warning_followed_by_text_both_yielded(self, ca_client, httpx_mock: HTTPXMock):
+        """Warning event followed by text event — both are yielded."""
+        events_data = [
+            ("response.warning", WARNING_PAYLOAD),
+            ("response.text", TEXT_PAYLOAD),
+        ]
+        httpx_mock.add_response(content=sse_response(events_data).content)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        events = list(ca_client.runs.stream(messages, agent_path="DB.SC.AGENT"))
+        assert len(events) == 2
+        assert isinstance(events[0], WarningEvent)
+        assert isinstance(events[1], TextEvent)
+
+
+class TestErrorEvent:
+    """Tests for fatal error event handling."""
+
+    def test_stream_and_collect_raises_run_error(self, ca_client, httpx_mock: HTTPXMock):
+        """stream_and_collect() raises RunError on error event."""
+        httpx_mock.add_response(content=sse_response([("error", ERROR_PAYLOAD)]).content)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        with pytest.raises(RunError) as exc_info:
+            ca_client.runs.stream_and_collect(messages, agent_path="DB.SC.AGENT")
+        assert exc_info.value.code == "399504"
+
+    def test_stream_yields_error_event_before_raising(self, ca_client, httpx_mock: HTTPXMock):
+        """stream() yields ErrorEvent (consumer can inspect it)."""
+        httpx_mock.add_response(content=sse_response([("error", ERROR_PAYLOAD)]).content)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        events = list(ca_client.runs.stream(messages, agent_path="DB.SC.AGENT"))
+        assert len(events) == 1
+        assert isinstance(events[0], ErrorEvent)
+
+
+class TestUnknownEventType:
+    """Tests that unknown event types are forwarded as UnknownEvent."""
+
+    def test_unknown_type_yields_unknown_event(self, ca_client, httpx_mock: HTTPXMock):
+        """Unrecognised event type → UnknownEvent yielded, no exception."""
+        events_data = [("response.new_future_event", {"data": "something"})]
+        httpx_mock.add_response(content=sse_response(events_data).content)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        events = list(ca_client.runs.stream(messages, agent_path="DB.SC.AGENT"))
+        assert len(events) == 1
+        assert isinstance(events[0], UnknownEvent)
+
+
+class TestNonStreamingRun:
+    """Tests for run() with stream=False."""
+
+    def test_run_returns_run_result(self, ca_client, httpx_mock: HTTPXMock):
+        """run() with stream=False returns assembled RunResult."""
+        httpx_mock.add_response(json=NON_STREAMING_RUN_RESPONSE)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        result = ca_client.runs.run(messages, agent_path="DB.SC.AGENT")
+        assert result.text == "The revenue was $4.2B."
+        assert len(result.tables) == 1
+
+    def test_run_non_streaming_error_raises(self, ca_client, httpx_mock: HTTPXMock):
+        """Non-streaming response with error → RunError raised."""
+        error_response = {
+            "role": "assistant",
+            "content": [],
+            "status": "error",
+            "error": {"code": "399504", "message": "Failed", "request_id": "r1"},
+        }
+        httpx_mock.add_response(json=error_response)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        with pytest.raises(RunError):
+            ca_client.runs.run(messages, agent_path="DB.SC.AGENT")
+
+
+class TestRunURLs:
+    """Tests that the correct API URLs are used."""
+
+    def test_agent_object_run_uses_agent_url(self, ca_client, httpx_mock: HTTPXMock):
+        """Agent-object run hits /databases/{db}/schemas/{sc}/agents/{name}:run."""
+        captured_url: list[str] = []
+
+        def responder(request):
+            captured_url.append(str(request.url))
+            return sse_response([("response.text", TEXT_PAYLOAD)])
+
+        httpx_mock.add_callback(responder)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        list(ca_client.runs.stream(messages, agent_path="MY_DB.MY_SC.MY_AGENT"))
+        assert "/databases/MY_DB/schemas/MY_SC/agents/MY_AGENT:run" in captured_url[0]
+
+    def test_lite_run_uses_cortex_agent_run_url(self, ca_client, httpx_mock: HTTPXMock):
+        """Lite run (no agent) hits /api/v2/cortex/agent:run."""
+        captured_url: list[str] = []
+
+        def responder(request):
+            captured_url.append(str(request.url))
+            return sse_response([("response.text", TEXT_PAYLOAD)])
+
+        httpx_mock.add_callback(responder)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        list(ca_client.runs.stream(messages, tools=[]))
+        assert "/cortex/agent:run" in captured_url[0]
+
+
+class TestHttpErrors:
+    """Tests for HTTP error code → exception mapping."""
+
+    def test_http_401_raises_auth_error(self, ca_client, httpx_mock: HTTPXMock):
+        """HTTP 401 raises AuthError."""
+        httpx_mock.add_response(
+            status_code=401,
+            headers={"Content-Type": "application/json"},
+            json={"message": "Unauthorized"},
+        )
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        with pytest.raises(AuthError):
+            list(ca_client.runs.stream(messages, agent_path="DB.SC.A"))
+
+    def test_http_403_raises_permission_error(self, ca_client, httpx_mock: HTTPXMock):
+        """HTTP 403 raises PermissionError."""
+        from cortex_agents_client.exceptions import PermissionError
+        httpx_mock.add_response(
+            status_code=403,
+            headers={"Content-Type": "application/json"},
+            json={"message": "Forbidden"},
+        )
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        with pytest.raises(PermissionError):
+            list(ca_client.runs.stream(messages, agent_path="DB.SC.A"))
+
+
+class TestThreadClass:
+    """Integration tests for the Thread convenience class."""
+
+    def test_first_turn_uses_parent_message_id_zero(self, ca_client, httpx_mock: HTTPXMock):
+        """Thread starts with parent_message_id=0."""
+        captured: dict = {}
+
+        def responder(request):
+            captured["body"] = json.loads(request.content)
+            return sse_response([
+                ("metadata", METADATA_USER_PAYLOAD),
+                ("metadata", METADATA_ASSISTANT_PAYLOAD),
+            ])
+
+        httpx_mock.add_response(method="POST", json={"thread_id": 999, "thread_name": "", "origin_application": "", "created_on": 0, "updated_on": 0})
+        httpx_mock.add_callback(responder)
+
+        thread = ca_client.create_thread()
+        list(thread.chat("DB.SC.MY_AGENT", "Hello"))
+
+        assert captured["body"]["parent_message_id"] == 0
+        assert captured["body"]["thread_id"] == 999
+
+    def test_second_turn_uses_assistant_message_id(self, ca_client, httpx_mock: HTTPXMock):
+        """After first turn, parent_message_id is the assistant message_id."""
+        request_bodies: list[dict] = []
+
+        def responder(request):
+            request_bodies.append(json.loads(request.content))
+            return sse_response([
+                ("metadata", METADATA_USER_PAYLOAD),
+                ("metadata", METADATA_ASSISTANT_PAYLOAD),
+            ])
+
+        thread_resp = httpx.Response(
+            200, json={"thread_id": 777, "thread_name": "", "origin_application": "", "created_on": 0, "updated_on": 0}
+        )
+        httpx_mock.add_response(json=thread_resp.json())
+        httpx_mock.add_callback(responder)
+        httpx_mock.add_callback(responder)
+
+        thread = ca_client.create_thread()
+        list(thread.chat("DB.SC.AGENT", "First question"))
+        list(thread.chat("DB.SC.AGENT", "Follow-up question"))
+
+        assert request_bodies[0]["parent_message_id"] == 0
+        assert request_bodies[1]["parent_message_id"] == 456  # assistant message_id
+
+    def test_fork_creates_new_thread_at_message_id(self, ca_client, httpx_mock: HTTPXMock):
+        """fork() creates a Thread with the correct parent_message_id."""
+        httpx_mock.add_response(json={"thread_id": 555, "thread_name": "", "origin_application": "", "created_on": 0, "updated_on": 0})
+
+        thread = ca_client.create_thread()
+        fork = thread.fork(at_message_id=42)
+
+        assert fork.thread_id == thread.thread_id
+        assert fork.parent_message_id == 42
+        assert thread.parent_message_id == 0  # unchanged
+
+    def test_missing_assistant_metadata_preserves_id(self, ca_client, httpx_mock: HTTPXMock):
+        """If assistant metadata is missing, parent_message_id stays unchanged."""
+        httpx_mock.add_response(json={"thread_id": 888, "thread_name": "", "origin_application": "", "created_on": 0, "updated_on": 0})
+        # Only user metadata, no assistant metadata
+        httpx_mock.add_response(content=sse_response([("metadata", METADATA_USER_PAYLOAD)]).content)
+
+        thread = ca_client.create_thread()
+        assert thread.parent_message_id == 0
+        list(thread.chat("DB.SC.AGENT", "Hello"))
+        assert thread.parent_message_id == 0  # unchanged

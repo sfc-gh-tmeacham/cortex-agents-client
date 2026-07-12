@@ -1,0 +1,63 @@
+"""Cortex Agents Python client library.
+
+A Python client for the Snowflake Cortex Agents REST API, with first-class
+support for Streamlit applications.
+
+Basic usage::
+
+    from cortex_agents_client import CortexAgentsClient
+
+    client = CortexAgentsClient(
+        account_url="https://myorg-myaccount.snowflakecomputing.com",
+        auth="my_pat_token",
+    )
+
+    thread = client.create_thread()
+    for event in thread.chat("DB.SCHEMA.MY_AGENT", "What is total revenue?"):
+        print(event)
+
+Streamlit usage::
+
+    from cortex_agents_client.st import StreamlitChatbot
+
+    bot = StreamlitChatbot(
+        account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+        auth=st.secrets["SNOWFLAKE_PAT"],
+        agent_path=st.secrets["AGENT_PATH"],
+    )
+    bot.render()
+"""
+
+from cortex_agents_client.auth import JWTAuth, OAuthAuth, PATAuth, SiSContainerAuth
+from cortex_agents_client.auth import account_url_from_env
+from cortex_agents_client.client import CortexAgentsClient, Thread
+from cortex_agents_client.exceptions import (
+    AgentNotFoundError,
+    AuthError,
+    CortexAgentError,
+    PermissionError,
+    RateLimitError,
+    RunError,
+    ServerError,
+    ThreadNotFoundError,
+    TimeoutError,
+)
+
+__all__ = [
+    "CortexAgentsClient",
+    "Thread",
+    "PATAuth",
+    "JWTAuth",
+    "OAuthAuth",
+    "SiSContainerAuth",
+    "account_url_from_env",
+    "CortexAgentError",
+    "AuthError",
+    "PermissionError",
+    "RateLimitError",
+    "RunError",
+    "ServerError",
+    "TimeoutError",
+    "AgentNotFoundError",
+    "ThreadNotFoundError",
+]
