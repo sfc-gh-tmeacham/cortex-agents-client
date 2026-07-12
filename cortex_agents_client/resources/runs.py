@@ -101,6 +101,9 @@ def _parse_non_streaming_response(data: dict[str, Any]) -> RunResult:
                     "title": table_data.get("title"),
                 })
             )
+        elif item_type == "thinking":
+            thinking_data = item.get("thinking") or {}
+            result.thinking += thinking_data.get("text", "")
         elif item_type == "chart":
             chart_data = item.get("chart") or {}
             result.charts.append(
@@ -276,7 +279,7 @@ class RunsResource:
     ) -> Iterator[SSEEvent]:
         """Sends a streaming request to the agent:run endpoint.
 
-        Yields typed SSEEvent objects as they arrive from the server. All 15
+        Yields typed SSEEvent objects as they arrive from the server. All 16
         event types are possible; unknown types are yielded as
         :class:`~cortex_agents_client.models.events.UnknownEvent`.
 

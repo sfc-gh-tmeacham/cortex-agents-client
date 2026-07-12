@@ -193,3 +193,17 @@ class StoredMessage:
     analyst_sql: dict[str, str] = field(default_factory=dict)
     message_id: int | None = None
     attachments: list[Any] = field(default_factory=list)
+    tool_result_text: dict[str, str] = field(default_factory=dict)
+    """Maps tool_use_id to concatenated text from ToolResultContent.text items.
+
+    Populated when a ToolResultEvent contains content items with type "text"
+    (e.g. results from generic or web_search tools). Used by render_stored_message
+    to replay text results on Streamlit reruns.
+    """
+    pending_permission: ToolUseEvent | None = None
+    """Set when the stream was interrupted by a tool requiring user permission.
+
+    Contains the ToolUseEvent with non-empty permission_options. The Streamlit
+    chatbot component uses this to show an approval UI on the next rerun, then
+    clears it once the user submits a decision.
+    """

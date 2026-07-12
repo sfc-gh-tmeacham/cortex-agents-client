@@ -30,6 +30,7 @@ from cortex_agents_client.models.events import (
     ChartEvent,
     ErrorEvent,
     MetadataEvent,
+    ResponseEvent,
     SSEEvent,
     StatusEvent,
     TableEvent,
@@ -265,6 +266,16 @@ def render_streaming_response(
 
         elif isinstance(event, ToolUseEvent):
             pending_tool_uses[event.tool_use_id] = event
+            if event.permission_options:
+                # Tool requires user approval — stop consuming the stream.
+                # The Streamlit chatbot will show the approval UI on the next
+                # rerun and send the permission_decision in a follow-up request.
+                stored.pending_permission = event
+                container.warning(
+                    f"**{event.name}** is requesting permission before executing.",
+                    icon=":material/security:",
+                )
+                break
             # Paired with result event later
             if show_tool_status:
                 status_ctx = container.status(
@@ -284,6 +295,18 @@ def render_streaming_response(
             use_event = pending_tool_uses.pop(event.tool_use_id, None)
             if use_event is not None:
                 stored.tool_executions.append((use_event, event))
+            # Extract and render text content items (e.g. from generic/web_search tools)
+            text_parts = [
+                item["text"]
+                for item in event.content
+                if isinstance(item, dict)
+                and item.get("type") == "text"
+                and item.get("text")
+            ]
+            if text_parts:
+                result_text = "\n\n".join(text_parts)
+                stored.tool_result_text[event.tool_use_id] = result_text
+                container.markdown(result_text)
             if show_tool_status and event.tool_use_id in tool_status_contexts:
                 ctx = tool_status_contexts.pop(event.tool_use_id)
                 if event.status == "success":
@@ -424,6 +447,12 @@ def render_stored_message(msg: StoredMessage, container: Any) -> None:
         ):
             container.markdown(msg.thinking)
 
+    # Tool result text appears before the main answer (tools execute first).
+    for tool_use, _tool_result in msg.tool_executions:
+        text = msg.tool_result_text.get(tool_use.tool_use_id)
+        if text:
+            container.markdown(text)
+
     if msg.text:
         if msg.is_elicitation:
             # Agent was asking the user a question — render as info box
@@ -456,3 +485,9 @@ def render_stored_message(msg: StoredMessage, container: Any) -> None:
 
     if msg.error:
         container.error(msg.error.message, icon=":material/error:", title=f"Error {msg.error.code}")
+
+    if msg.pending_permission:
+        container.info(
+            f"Permission for **{msg.pending_permission.name}** was required during this turn.",
+            icon=":material/security:",
+        )

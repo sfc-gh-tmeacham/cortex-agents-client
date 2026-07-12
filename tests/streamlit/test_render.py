@@ -176,6 +176,74 @@ class TestRenderStreamingResponse:
         assert stored_result is not None
         assert stored_result.status == "success"
 
+    def test_tool_result_text_content_stored_and_rendered(self):
+        """ToolResultEvent with type='text' content → stored and rendered."""
+        container = make_container()
+        use = ToolUseEvent._from_payload(TOOL_USE_PAYLOAD)
+        result = ToolResultEvent._from_payload({
+            **TOOL_RESULT_PAYLOAD,
+            "content": [{"type": "text", "text": "Top result: Snowflake Q4 report"}],
+        })
+
+        stored = render_streaming_response(event_stream(use, result), container)
+
+        assert stored.tool_result_text == {"toolu_01": "Top result: Snowflake Q4 report"}
+        container.markdown.assert_any_call("Top result: Snowflake Q4 report")
+
+    def test_tool_result_json_content_not_rendered_as_markdown(self):
+        """ToolResultEvent with only type='json' content → no markdown call for it."""
+        container = make_container()
+        use = ToolUseEvent._from_payload(TOOL_USE_PAYLOAD)
+        result = ToolResultEvent._from_payload(TOOL_RESULT_PAYLOAD)  # json type
+
+        stored = render_streaming_response(event_stream(use, result), container)
+
+        assert stored.tool_result_text == {}
+
+    def test_permission_required_stops_stream_and_sets_pending(self):
+        """ToolUseEvent with permission_options → stream stops, pending_permission set."""
+        container = make_container()
+        perm_use = ToolUseEvent._from_payload({
+            **TOOL_USE_PAYLOAD,
+            "permission": {"options": ["Allow Once", "Deny"]},
+        })
+        # This event should never be yielded — stream breaks on permission
+        later_event = ToolResultEvent._from_payload(TOOL_RESULT_PAYLOAD)
+
+        events_consumed = []
+        def counting_stream():
+            for ev in [perm_use, later_event]:
+                events_consumed.append(ev)
+                yield ev
+
+        stored = render_streaming_response(counting_stream(), container)
+
+        assert stored.pending_permission is not None
+        assert stored.pending_permission.tool_use_id == "toolu_01"
+        assert stored.pending_permission.permission_options == ["Allow Once", "Deny"]
+        # later_event should NOT have been consumed (stream broke after perm_use)
+        assert len(events_consumed) == 1
+        container.warning.assert_called_once()
+
+    def test_permission_required_no_spinner_created(self):
+        """ToolUseEvent with permission_options → no st.status spinner created."""
+        container = make_container()
+        perm_use = ToolUseEvent._from_payload({
+            **TOOL_USE_PAYLOAD,
+            "permission": {"options": ["Allow Once", "Deny"]},
+        })
+
+        render_streaming_response(event_stream(perm_use), container, show_tool_status=True)
+        container.status.assert_not_called()
+
+    def test_tool_use_without_permission_still_creates_spinner(self):
+        """ToolUseEvent without permission_options → spinner created as normal."""
+        container = make_container()
+        use = ToolUseEvent._from_payload(TOOL_USE_PAYLOAD)  # empty permission options
+
+        render_streaming_response(event_stream(use), container, show_tool_status=True)
+        container.status.assert_called_once()
+
     def test_analyst_delta_sql_captured(self):
         """AnalystDeltaEvent with sql → stored in analyst_sql dict."""
         container = make_container()
@@ -274,3 +342,31 @@ class TestRenderStoredMessage:
         render_stored_message(msg, container)
         container.markdown.assert_not_called()
         container.dataframe.assert_not_called()
+
+    def test_tool_result_text_replayed(self):
+        """StoredMessage with tool_result_text → markdown called for text."""
+        container = make_container()
+        use = ToolUseEvent._from_payload(TOOL_USE_PAYLOAD)
+        result = ToolResultEvent._from_payload(TOOL_RESULT_PAYLOAD)
+        msg = StoredMessage(
+            role="assistant",
+            tool_executions=[(use, result)],
+            tool_result_text={"toolu_01": "Top result: Snowflake Q4 report"},
+        )
+
+        render_stored_message(msg, container)
+        container.markdown.assert_any_call("Top result: Snowflake Q4 report")
+
+    def test_pending_permission_renders_info(self):
+        """StoredMessage with pending_permission → container.info called."""
+        container = make_container()
+        perm_use = ToolUseEvent._from_payload({
+            **TOOL_USE_PAYLOAD,
+            "permission": {"options": ["Allow Once", "Deny"]},
+        })
+        msg = StoredMessage(role="assistant", pending_permission=perm_use)
+
+        render_stored_message(msg, container)
+        container.info.assert_called_once()
+        call_kwargs = container.info.call_args
+        assert "Analyst1" in str(call_kwargs)

@@ -12,13 +12,13 @@ This module provides the two primary entry points for the library:
 from __future__ import annotations
 
 import logging
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from typing import Any
 
 from cortex_agents_client.auth import AuthProvider, PATAuth
 from cortex_agents_client.exceptions import CortexAgentError
 from cortex_agents_client.http import HttpClient
-from cortex_agents_client.models.events import MetadataEvent, SSEEvent
+from cortex_agents_client.models.events import MetadataEvent, SSEEvent, ToolResultEvent, ToolUseEvent
 from cortex_agents_client.models.thread import StoredMessage, ThreadMessage, ThreadMetadata
 from cortex_agents_client.resources.agents import AgentsResource
 from cortex_agents_client.resources.runs import RunResult, RunsResource
@@ -120,6 +120,7 @@ class Thread:
         tool_choice: dict[str, Any] | None = None,
         permission_decisions: list[dict[str, Any]] | None = None,
         extra_content: list[dict[str, Any]] | None = None,
+        tool_executor: Callable[[ToolUseEvent], list[dict[str, Any]]] | None = None,
     ) -> Iterator[SSEEvent]:
         """Streams a conversation turn, auto-advancing ``parent_message_id``.
 
@@ -143,6 +144,16 @@ class Thread:
                 ``permission_options`` populated.
             extra_content: Additional content items to append to the user
                 message content array.
+            tool_executor: Optional callable invoked when the agent emits a
+                :class:`~cortex_agents_client.models.events.ToolUseEvent` with
+                ``client_side_execute=True``. Receives the event and must
+                return a list of
+                :class:`~cortex_agents_client.models.events.ToolResultContent`
+                dicts (e.g. ``[{"type": "json", "json": {...}}]``).
+                The library executes the tool, yields a synthetic
+                :class:`~cortex_agents_client.models.events.ToolResultEvent` so
+                renderers can close any status spinners, then automatically
+                sends a follow-up request with the result.
 
         Yields:
             All :class:`~cortex_agents_client.models.events.SSEEvent` subclass
@@ -168,6 +179,7 @@ class Thread:
 
         messages = [{"role": "user", "content": content}]
         new_assistant_message_id: int | None = None
+        client_tool_result: dict[str, Any] | None = None
 
         event_stream = self._client.runs.stream(
             messages,
@@ -180,7 +192,55 @@ class Thread:
         for event in event_stream:
             if isinstance(event, MetadataEvent) and event.role == "assistant":
                 new_assistant_message_id = event.message_id
+
+            if (
+                isinstance(event, ToolUseEvent)
+                and event.client_side_execute
+                and tool_executor is not None
+            ):
+                yield event
+                # Execute the tool client-side.
+                try:
+                    result_content = tool_executor(event)
+                    status = "success"
+                except Exception as exc:
+                    logger.warning(
+                        "tool_executor raised for tool '%s': %s", event.name, exc
+                    )
+                    result_content = [{"type": "text", "text": str(exc)}]
+                    status = "error"
+                # Yield a synthetic ToolResultEvent so renderers close spinners.
+                yield ToolResultEvent._from_payload({
+                    "content_index": event.content_index,
+                    "tool_use_id": event.tool_use_id,
+                    "type": event.type,
+                    "name": event.name,
+                    "content": result_content,
+                    "status": status,
+                })
+                client_tool_result = {
+                    "type": "tool_result",
+                    "tool_result": {
+                        "tool_use_id": event.tool_use_id,
+                        "content": result_content,
+                        "status": status,
+                    },
+                }
+                break  # Stream ends; restart with the tool result.
+
             yield event
+
+        if client_tool_result is not None:
+            # Restart the run with the tool result embedded in the user message.
+            # Recursion handles any further client-side tools in the same turn.
+            yield from self.chat(
+                agent_path,
+                message,
+                tool_choice=tool_choice,
+                extra_content=[client_tool_result],
+                tool_executor=tool_executor,
+            )
+            return  # parent_message_id is updated by the recursive call.
 
         if new_assistant_message_id is not None:
             self._parent_message_id = new_assistant_message_id

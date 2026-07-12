@@ -1,6 +1,8 @@
 """Unit tests for utility functions (agent path parsing, DataFrame conversion)."""
 from __future__ import annotations
 
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from cortex_agents_client.resources.runs import RunsResource
@@ -176,3 +178,135 @@ class TestResultSetToDataframe:
         event = TableEvent._from_payload(payload)
         df = result_set_to_dataframe(event)
         assert len(df) == 0
+
+
+class TestToolExecutor:
+    """Tests for Thread.chat() tool_executor callback (Gap 3 — client-side tools)."""
+
+    def _make_thread(self):
+        """Creates a Thread with a mocked HTTP client."""
+        from cortex_agents_client.client import CortexAgentsClient, Thread
+
+        client = MagicMock(spec=CortexAgentsClient)
+        client.runs = MagicMock()
+        thread = Thread(client, thread_id=1, parent_message_id=0)
+        return thread, client
+
+    def test_tool_executor_called_for_client_side_tool(self):
+        """tool_executor is called when ToolUseEvent has client_side_execute=True."""
+        from cortex_agents_client.models.events import (
+            MetadataEvent,
+            TextEvent,
+            ToolResultEvent,
+            ToolUseEvent,
+        )
+
+        thread, client = self._make_thread()
+        executor = MagicMock(return_value=[{"type": "json", "json": {"result": 42}}])
+
+        client_tool_event = ToolUseEvent._from_payload({
+            "content_index": 0,
+            "tool_use_id": "toolu_client",
+            "type": "generic",
+            "name": "MyUDF",
+            "input": {"x": 1},
+            "client_side_execute": True,
+            "permission": {"options": []},
+        })
+        meta = MetadataEvent._from_payload(
+            {"metadata": {"role": "assistant", "message_id": 99, "run_id": "r1"}}
+        )
+        text = TextEvent._from_payload({"content_index": 0, "text": "Done."})
+
+        # First stream: client-side tool event only
+        # Second stream (follow-up): text + metadata
+        call_count = 0
+        def side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return iter([client_tool_event])
+            return iter([text, meta])
+
+        client.runs.stream.side_effect = side_effect
+
+        events = list(thread.chat("DB.SC.AGENT", "Hello", tool_executor=executor))
+
+        executor.assert_called_once_with(client_tool_event)
+        assert client.runs.stream.call_count == 2
+
+        # ToolUseEvent and synthetic ToolResultEvent yielded from first stream
+        event_types = [type(e).__name__ for e in events]
+        assert "ToolUseEvent" in event_types
+        assert "ToolResultEvent" in event_types
+        assert "TextEvent" in event_types
+
+    def test_tool_executor_exception_yields_error_result(self):
+        """If tool_executor raises, a 'error' status ToolResultEvent is yielded."""
+        from cortex_agents_client.models.events import (
+            MetadataEvent,
+            TextEvent,
+            ToolResultEvent,
+            ToolUseEvent,
+        )
+
+        thread, client = self._make_thread()
+        executor = MagicMock(side_effect=RuntimeError("Tool failed"))
+
+        client_tool_event = ToolUseEvent._from_payload({
+            "content_index": 0,
+            "tool_use_id": "toolu_err",
+            "type": "generic",
+            "name": "BrokenUDF",
+            "input": {},
+            "client_side_execute": True,
+            "permission": {"options": []},
+        })
+        meta = MetadataEvent._from_payload(
+            {"metadata": {"role": "assistant", "message_id": 10, "run_id": "r1"}}
+        )
+
+        call_count = 0
+        def side_effect(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return iter([client_tool_event])
+            return iter([meta])
+
+        client.runs.stream.side_effect = side_effect
+
+        events = list(thread.chat("DB.SC.AGENT", "Hello", tool_executor=executor))
+
+        # Synthetic ToolResultEvent should have status="error"
+        tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
+        assert len(tool_results) == 1
+        assert tool_results[0].status == "error"
+        assert tool_results[0].tool_use_id == "toolu_err"
+
+    def test_no_tool_executor_client_side_event_yields_normally(self):
+        """client_side_execute=True without tool_executor → event yielded unchanged."""
+        from cortex_agents_client.models.events import MetadataEvent, ToolUseEvent
+
+        thread, client = self._make_thread()
+
+        client_tool_event = ToolUseEvent._from_payload({
+            "content_index": 0,
+            "tool_use_id": "toolu_pass",
+            "type": "generic",
+            "name": "MyUDF",
+            "input": {},
+            "client_side_execute": True,
+            "permission": {"options": []},
+        })
+        meta = MetadataEvent._from_payload(
+            {"metadata": {"role": "assistant", "message_id": 5, "run_id": "r1"}}
+        )
+
+        client.runs.stream.return_value = iter([client_tool_event, meta])
+
+        events = list(thread.chat("DB.SC.AGENT", "Hello"))  # No tool_executor
+
+        # Event should pass through unmodified (no follow-up request)
+        assert client.runs.stream.call_count == 1
+        assert any(isinstance(e, ToolUseEvent) for e in events)

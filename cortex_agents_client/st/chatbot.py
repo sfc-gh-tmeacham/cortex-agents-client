@@ -13,6 +13,7 @@ complete chat UI in two modes:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, Literal
 
 from cortex_agents_client.models.thread import StoredMessage
@@ -106,6 +107,11 @@ class StreamlitChatbot:
         file_type: List of accepted file extensions or MIME types when
             ``accept_file`` is enabled (e.g. ``["pdf", "csv"]``).
             ``None`` accepts all file types.
+        tool_executor: Optional callable for ``client_side_execute=True`` tools.
+            Receives a :class:`~cortex_agents_client.models.events.ToolUseEvent`
+            and returns a list of ``ToolResultContent`` dicts (e.g.
+            ``[{"type": "json", "json": {...}}]``). Passed to
+            :meth:`~cortex_agents_client.client.Thread.chat` on every run.
     """
 
     def __init__(
@@ -127,6 +133,7 @@ class StreamlitChatbot:
         accept_file: bool | Literal["multiple", "directory"] = False,
         accept_audio: bool = False,
         file_type: list[str] | str | None = None,
+        tool_executor: Callable | None = None,
     ) -> None:
         """Initialises the chatbot component.
 
@@ -168,6 +175,8 @@ class StreamlitChatbot:
         self._accept_file = accept_file
         self._accept_audio = accept_audio
         self._file_type = file_type
+        self._tool_executor = tool_executor
+        self._pending_permission_key = f"{session_key_prefix}_pending_perm"
 
     def render(self) -> None:
         """Renders the complete chat UI in the configured mode.
@@ -325,12 +334,85 @@ class StreamlitChatbot:
             # When the API adds multimodal user-message support, wire attachments
             # through the extra_content parameter on thread.chat().
             stored = render_streaming_response(
-                thread.chat(self._agent_path, prompt_text),
+                thread.chat(
+                    self._agent_path,
+                    prompt_text,
+                    tool_executor=self._tool_executor,
+                ),
                 container=st,
                 show_thinking=self._show_thinking,
                 show_tool_status=self._show_tool_status,
             )
+        if stored.pending_permission:
+            # Permission was required — save state and rerun to show approval UI.
+            # The partial assistant message is NOT appended to history; the full
+            # response will be appended after the user confirms or denies.
+            st.session_state[self._pending_permission_key] = {
+                "tool_use_event": stored.pending_permission,
+                "original_message": prompt_text,
+            }
+            st.rerun()
+            return
         append_message_fn(stored, key=self._messages_key)
+
+    def _render_permission_ui(self, thread, append_message_fn) -> None:
+        """Shows the permission approval UI when a tool requires user consent.
+
+        Replaces the chat input until the user confirms or denies. On
+        confirmation, sends a follow-up run request with the
+        ``permission_decision`` content item and appends the resulting
+        assistant message to history.
+
+        Args:
+            thread: Active :class:`~cortex_agents_client.client.Thread`.
+            append_message_fn: The ``append_message`` helper from session module.
+        """
+        import streamlit as st
+
+        from cortex_agents_client.st.render import render_streaming_response
+
+        perm_data = st.session_state[self._pending_permission_key]
+        perm_event = perm_data["tool_use_event"]
+        original_message = perm_data["original_message"]
+
+        st.warning(
+            f"**{perm_event.name}** is requesting permission before executing.",
+            icon=":material/security:",
+        )
+        decision = st.radio(
+            "Grant permission?",
+            perm_event.permission_options,
+            key=f"{self._pending_permission_key}_radio",
+            horizontal=True,
+        )
+        if st.button(
+            "Confirm",
+            key=f"{self._pending_permission_key}_confirm",
+            type="primary",
+            icon=":material/check:",
+        ):
+            del st.session_state[self._pending_permission_key]
+            permission_item = {
+                "type": "permission_decision",
+                "permission_decision": {
+                    "tool_use_id": perm_event.tool_use_id,
+                    "decision": decision,
+                },
+            }
+            with st.chat_message("assistant"):
+                stored = render_streaming_response(
+                    thread.chat(
+                        self._agent_path,
+                        original_message,
+                        permission_decisions=[permission_item],
+                        tool_executor=self._tool_executor,
+                    ),
+                    container=st,
+                    show_thinking=self._show_thinking,
+                    show_tool_status=self._show_tool_status,
+                )
+            append_message_fn(stored, key=self._messages_key)
+            st.rerun()
 
     # ------------------------------------------------------------------
     # Full-page mode
@@ -353,6 +435,7 @@ class StreamlitChatbot:
                     icon=":material/add_comment:",
                     use_container_width=True,
                 ):
+                    st.session_state.pop(self._pending_permission_key, None)
                     reset_thread(
                         client_key=self._client_key,
                         thread_key=self._thread_key,
@@ -363,7 +446,9 @@ class StreamlitChatbot:
 
         self._render_message_history(get_messages)
 
-        if prompt := st.chat_input(
+        if self._pending_permission_key in st.session_state:
+            self._render_permission_ui(thread, append_message)
+        elif prompt := st.chat_input(
             self._input_placeholder,
             accept_file=self._accept_file,
             accept_audio=self._accept_audio,
@@ -405,6 +490,7 @@ class StreamlitChatbot:
                 icon=":material/add_comment:",
                 use_container_width=True,
             ):
+                st.session_state.pop(self._pending_permission_key, None)
                 reset_thread(
                     client_key=self._client_key,
                     thread_key=self._thread_key,
@@ -421,7 +507,9 @@ class StreamlitChatbot:
         # st.chat_input works inline in any container (Streamlit ≥ 1.59).
         # The explicit key keeps it stable across reruns when the widget
         # is rendered inside a container or dialog.
-        if prompt := st.chat_input(
+        if self._pending_permission_key in st.session_state:
+            self._render_permission_ui(thread, append_message)
+        elif prompt := st.chat_input(
             self._input_placeholder,
             key=self._input_key,
             accept_file=self._accept_file,
