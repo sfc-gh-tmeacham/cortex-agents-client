@@ -310,11 +310,13 @@ def render_streaming_response(
             if show_tool_status and event.tool_use_id in tool_status_contexts:
                 ctx = tool_status_contexts.pop(event.tool_use_id)
                 if event.status == "success":
-                    ctx.update(
-                        label=f":material/check_circle: {event.name} complete",
-                        state="complete",
-                        expanded=False,
-                    )
+                    if event.tool_use_id in stored.verified_tool_uses:
+                        icon = ":material/verified:"
+                        label = f"{icon} {event.name} (verified query)"
+                    else:
+                        icon = ":material/check_circle:"
+                        label = f"{icon} {event.name} complete"
+                    ctx.update(label=label, state="complete", expanded=False)
                 else:
                     ctx.update(
                         label=f":material/error: {event.name} failed",
@@ -325,6 +327,8 @@ def render_streaming_response(
         elif isinstance(event, AnalystDeltaEvent):
             if event.sql:
                 stored.analyst_sql[event.tool_use_id] = event.sql
+            if event.verified_query_used:
+                stored.verified_tool_uses.add(event.tool_use_id)
 
         elif isinstance(event, TableEvent):
             stored.tables.append(event)

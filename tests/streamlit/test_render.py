@@ -284,6 +284,79 @@ class TestRenderStreamingResponse:
         stored = render_streaming_response(event_stream(d1, d2), container)
         assert stored.text == "Hi there"
 
+    def test_verified_query_used_sets_flag(self):
+        """AnalystDeltaEvent with verified_query_used=True → tool_use_id in verified_tool_uses."""
+        container = make_container()
+        delta = AnalystDeltaEvent._from_payload({
+            **ANALYST_DELTA_PAYLOAD,
+            "delta": {**ANALYST_DELTA_PAYLOAD["delta"], "verified_query_used": True},
+        })
+
+        stored = render_streaming_response(event_stream(delta), container)
+
+        assert delta.tool_use_id in stored.verified_tool_uses
+
+    def test_verified_query_status_label_uses_verified_icon(self):
+        """When verified_query_used=True, completed status shows :material/verified: icon."""
+        container = make_container()
+        use = ToolUseEvent(
+            event_type="response.tool_use",
+            tool_use_id="tid",
+            type="cortex_analyst_text_to_sql",
+            name="MY_ANALYST",
+            input={},
+        )
+        delta = AnalystDeltaEvent._from_payload({
+            "content_index": 0,
+            "tool_use_id": "tid",
+            "tool_type": "cortex_analyst_text_to_sql",
+            "tool_name": "MY_ANALYST",
+            "delta": {"sql": "SELECT 1", "verified_query_used": True},
+        })
+        result = ToolResultEvent(
+            event_type="response.tool_result",
+            tool_use_id="tid",
+            type="cortex_analyst_text_to_sql",
+            name="MY_ANALYST",
+            status="success",
+            content=[],
+        )
+
+        render_streaming_response(event_stream(use, delta, result), container)
+
+        status_ctx = container.status.return_value
+        final_call = status_ctx.update.call_args_list[-1]
+        label = final_call.kwargs.get("label") or final_call.args[0]
+        assert ":material/verified:" in label
+        assert ":material/check_circle:" not in label
+
+    def test_non_verified_query_status_label_uses_check_circle_icon(self):
+        """When verified_query_used=False, completed status shows :material/check_circle: icon."""
+        container = make_container()
+        use = ToolUseEvent(
+            event_type="response.tool_use",
+            tool_use_id="tid2",
+            type="cortex_analyst_text_to_sql",
+            name="MY_ANALYST",
+            input={},
+        )
+        result = ToolResultEvent(
+            event_type="response.tool_result",
+            tool_use_id="tid2",
+            type="cortex_analyst_text_to_sql",
+            name="MY_ANALYST",
+            status="success",
+            content=[],
+        )
+
+        render_streaming_response(event_stream(use, result), container)
+
+        status_ctx = container.status.return_value
+        final_call = status_ctx.update.call_args_list[-1]
+        label = final_call.kwargs.get("label") or final_call.args[0]
+        assert ":material/check_circle:" in label
+        assert ":material/verified:" not in label
+
 
 class TestRenderStoredMessage:
     """Tests for render_stored_message()."""

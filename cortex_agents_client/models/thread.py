@@ -169,6 +169,10 @@ class StoredMessage:
         analyst_sql: Maps ``tool_use_id`` to SQL string from
             ``response.tool_result.analyst.delta`` events.
             Useful for displaying generated SQL.
+        verified_tool_uses: Set of ``tool_use_id`` values for Analyst tool
+            calls where ``verified_query_used=True`` was returned in the
+            delta. Used to render a distinct "verified" icon on the status
+            expander instead of the default completion icon.
         message_id: Thread message ID from the ``metadata`` event for the
             assistant message. ``None`` for user messages or if the server
             did not persist the message.
@@ -191,6 +195,7 @@ class StoredMessage:
     warnings: list[WarningEvent] = field(default_factory=list)
     error: ErrorEvent | None = None
     analyst_sql: dict[str, str] = field(default_factory=dict)
+    verified_tool_uses: set[str] = field(default_factory=set)
     message_id: int | None = None
     attachments: list[Any] = field(default_factory=list)
     tool_result_text: dict[str, str] = field(default_factory=dict)
