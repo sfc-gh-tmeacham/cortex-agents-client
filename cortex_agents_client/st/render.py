@@ -391,6 +391,9 @@ def render_streaming_response(
         except Exception:
             pass
 
+    if stored.annotations:
+        _render_annotations_expander(stored.annotations, container)
+
     return stored
 
 
@@ -414,6 +417,45 @@ def _markdown_column_config(df: pd.DataFrame) -> dict[str, Any] | None:
         for col in df.select_dtypes(include="object").columns
     }
     return cfg or None
+
+
+def _render_annotations_expander(
+    annotations: list[TextAnnotationEvent],
+    container: Any,
+) -> None:
+    """Renders citation annotations in a collapsible 'Sources' expander.
+
+    Each citation shows its title (or doc_id) and the relevant text excerpt.
+    If ``doc_id`` is an http/https URL it is rendered as a hyperlink that
+    opens in a new browser tab.
+
+    Args:
+        annotations: List of :class:`~cortex_agents_client.models.events.TextAnnotationEvent`
+            objects collected during the response.
+        container: Streamlit container to render into.
+    """
+    if not annotations:
+        return
+
+    with container.expander(
+        f"Sources ({len(annotations)})",
+        icon=":material/library_books:",
+        expanded=False,
+    ):
+        for ann in annotations:
+            is_url = ann.doc_id.startswith("http://") or ann.doc_id.startswith("https://")
+            label = ann.doc_title or ann.doc_id or f"Source {ann.index}"
+            if is_url:
+                container.markdown(
+                    f"**[{ann.index}]** "
+                    f'<a href="{ann.doc_id}" target="_blank" rel="noopener noreferrer">'
+                    f"{label}</a>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                container.markdown(f"**[{ann.index}]** {label}")
+            if ann.text:
+                container.caption(f'"{ann.text}"')
 
 
 def render_stored_message(msg: StoredMessage, container: Any) -> None:
@@ -459,6 +501,9 @@ def render_stored_message(msg: StoredMessage, container: Any) -> None:
             container.info(msg.text, icon=":material/contact_support:", title="Clarification needed")
         else:
             container.markdown(_escape_dollars(msg.text))
+
+    if msg.annotations:
+        _render_annotations_expander(msg.annotations, container)
 
     for table_event in msg.tables:
         try:

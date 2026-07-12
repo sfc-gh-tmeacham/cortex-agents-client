@@ -162,6 +162,17 @@ class TestRenderStreamingResponse:
         assert len(stored.annotations) == 1
         assert stored.annotations[0].doc_title == "Annual Report 2025"
 
+    def test_annotations_render_sources_expander(self):
+        """Annotations present → Sources expander created after streaming."""
+        container = make_container()
+        annotation = TextAnnotationEvent._from_payload(TEXT_ANNOTATION_PAYLOAD)
+
+        render_streaming_response(event_stream(annotation), container)
+
+        container.expander.assert_called_once()
+        label = container.expander.call_args[0][0]
+        assert "Sources" in label
+
     def test_tool_execution_stored_as_pair(self):
         """ToolUseEvent + ToolResultEvent → stored as (use, result) pair."""
         container = make_container()
@@ -370,3 +381,70 @@ class TestRenderStoredMessage:
         container.info.assert_called_once()
         call_kwargs = container.info.call_args
         assert "Analyst1" in str(call_kwargs)
+
+    def test_annotations_render_sources_expander_in_stored_message(self):
+        """render_stored_message with annotations → Sources expander created."""
+        from cortex_agents_client.models.events import TextAnnotationEvent
+        from tests.fixtures.sse_streams import TEXT_ANNOTATION_PAYLOAD
+
+        container = make_container()
+        annotation = TextAnnotationEvent._from_payload(TEXT_ANNOTATION_PAYLOAD)
+        msg = StoredMessage(role="assistant", text="See [^1].", annotations=[annotation])
+
+        render_stored_message(msg, container)
+
+        container.expander.assert_called_once()
+        label = container.expander.call_args[0][0]
+        assert "Sources" in label
+
+    def test_url_doc_id_rendered_with_unsafe_html(self):
+        """Annotation with http doc_id → unsafe_allow_html=True markdown call."""
+        from cortex_agents_client.models.events import TextAnnotationEvent
+        from cortex_agents_client.st.render import _render_annotations_expander
+
+        ann = TextAnnotationEvent._from_payload({
+            "content_index": 0,
+            "annotation_index": 0,
+            "annotation": {
+                "type": "cortex_search_citation",
+                "index": 1,
+                "search_result_id": "sr1",
+                "doc_id": "https://example.com/report",
+                "doc_title": "Q4 Report",
+                "text": "Revenue grew 12%.",
+            },
+        })
+        container = make_container()
+        _render_annotations_expander([ann], container)
+
+        # The markdown call with a URL must use unsafe_allow_html=True
+        calls = container.markdown.call_args_list
+        html_calls = [c for c in calls if c.kwargs.get("unsafe_allow_html")]
+        assert len(html_calls) == 1
+        html_content = html_calls[0].args[0]
+        assert "https://example.com/report" in html_content
+        assert 'target="_blank"' in html_content
+
+    def test_non_url_doc_id_no_html(self):
+        """Annotation with non-URL doc_id → plain markdown, no unsafe_allow_html."""
+        from cortex_agents_client.models.events import TextAnnotationEvent
+        from cortex_agents_client.st.render import _render_annotations_expander
+
+        ann = TextAnnotationEvent._from_payload({
+            "content_index": 0,
+            "annotation_index": 0,
+            "annotation": {
+                "type": "cortex_search_citation",
+                "index": 1,
+                "search_result_id": "sr1",
+                "doc_id": "internal_doc_456",
+                "doc_title": "Internal Policy Doc",
+                "text": "Excerpt.",
+            },
+        })
+        container = make_container()
+        _render_annotations_expander([ann], container)
+
+        calls = container.markdown.call_args_list
+        html_calls = [c for c in calls if c.kwargs.get("unsafe_allow_html")]
+        assert len(html_calls) == 0
