@@ -398,7 +398,7 @@ class TestRenderStoredMessage:
         assert "Sources" in label
 
     def test_url_doc_id_rendered_with_unsafe_html(self):
-        """Annotation with http doc_id → unsafe_allow_html=True markdown call."""
+        """Annotation with http doc_id → unsafe_allow_html=True on the expander."""
         from cortex_agents_client.models.events import TextAnnotationEvent
         from cortex_agents_client.st.render import _render_annotations_expander
 
@@ -415,18 +415,21 @@ class TestRenderStoredMessage:
             },
         })
         container = make_container()
+        exp = container.expander.return_value
         _render_annotations_expander([ann], container)
 
-        # The markdown call with a URL must use unsafe_allow_html=True
-        calls = container.markdown.call_args_list
-        html_calls = [c for c in calls if c.kwargs.get("unsafe_allow_html")]
+        # Markdown with unsafe_allow_html is called on the expander, not container
+        html_calls = [
+            c for c in exp.markdown.call_args_list
+            if c.kwargs.get("unsafe_allow_html")
+        ]
         assert len(html_calls) == 1
         html_content = html_calls[0].args[0]
         assert "https://example.com/report" in html_content
         assert 'target="_blank"' in html_content
 
     def test_non_url_doc_id_no_html(self):
-        """Annotation with non-URL doc_id → plain markdown, no unsafe_allow_html."""
+        """Annotation with non-URL doc_id → plain markdown on expander, no unsafe_allow_html."""
         from cortex_agents_client.models.events import TextAnnotationEvent
         from cortex_agents_client.st.render import _render_annotations_expander
 
@@ -443,8 +446,11 @@ class TestRenderStoredMessage:
             },
         })
         container = make_container()
+        exp = container.expander.return_value
         _render_annotations_expander([ann], container)
 
-        calls = container.markdown.call_args_list
-        html_calls = [c for c in calls if c.kwargs.get("unsafe_allow_html")]
+        html_calls = [
+            c for c in exp.markdown.call_args_list
+            if c.kwargs.get("unsafe_allow_html")
+        ]
         assert len(html_calls) == 0

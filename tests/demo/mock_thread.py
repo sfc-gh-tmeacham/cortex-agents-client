@@ -37,6 +37,7 @@ from cortex_agents_client.models.events import (
     MetadataEvent,
     SSEEvent,
     TableEvent,
+    TextAnnotationEvent,
     TextDeltaEvent,
     TextEvent,
     ThinkingDeltaEvent,
@@ -327,6 +328,40 @@ def _scenario_cortex_search(prompt: str) -> Iterator[SSEEvent]:
         "while maintaining comparable performance specs."
     )
     yield from _stream_text(response)
+    # Citation annotations — emitted after the text block, one per [^N] marker
+    yield TextAnnotationEvent(
+        event_type="response.text.annotation",
+        content_index=0,
+        annotation_index=0,
+        annotation_type="cortex_search_citation",
+        index=1,
+        search_result_id="sr_001",
+        doc_id="https://docs.example.com/widget-a-spec",
+        doc_title="Widget A Specification Sheet",
+        text="Performance benchmarks, compatibility matrix, pricing tiers.",
+    )
+    yield TextAnnotationEvent(
+        event_type="response.text.annotation",
+        content_index=0,
+        annotation_index=1,
+        annotation_type="cortex_search_citation",
+        index=2,
+        search_result_id="sr_002",
+        doc_id="internal://release-notes/q1-2026",
+        doc_title="Q1 2026 Product Release Notes",
+        text="New features for Widget B that close the gap with competing products.",
+    )
+    yield TextAnnotationEvent(
+        event_type="response.text.annotation",
+        content_index=0,
+        annotation_index=2,
+        annotation_type="cortex_search_citation",
+        index=3,
+        search_result_id="sr_003",
+        doc_id="https://docs.example.com/competitive-analysis-2026",
+        doc_title="Competitive Analysis 2026",
+        text="15% price advantage over Gadget X while maintaining comparable performance specs.",
+    )
     yield _metadata(3)
 
 
@@ -668,7 +703,7 @@ class MockThread:
         """
         self.scenario = scenario
 
-    def chat(self, agent_path: str, prompt: str) -> Iterator[SSEEvent]:
+    def chat(self, agent_path: str, prompt: str, **kwargs) -> Iterator[SSEEvent]:
         """Returns an event iterator for the configured scenario.
 
         Args:

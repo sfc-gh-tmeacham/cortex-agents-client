@@ -437,25 +437,25 @@ def _render_annotations_expander(
     if not annotations:
         return
 
-    with container.expander(
+    exp = container.expander(
         f"Sources ({len(annotations)})",
         icon=":material/library_books:",
         expanded=False,
-    ):
-        for ann in annotations:
-            is_url = ann.doc_id.startswith("http://") or ann.doc_id.startswith("https://")
-            label = ann.doc_title or ann.doc_id or f"Source {ann.index}"
-            if is_url:
-                container.markdown(
-                    f"**[{ann.index}]** "
-                    f'<a href="{ann.doc_id}" target="_blank" rel="noopener noreferrer">'
-                    f"{label}</a>",
-                    unsafe_allow_html=True,
-                )
-            else:
-                container.markdown(f"**[{ann.index}]** {label}")
-            if ann.text:
-                container.caption(f'"{ann.text}"')
+    )
+    for ann in annotations:
+        is_url = ann.doc_id.startswith("http://") or ann.doc_id.startswith("https://")
+        label = ann.doc_title or ann.doc_id or f"Source {ann.index}"
+        if is_url:
+            exp.markdown(
+                f"**[{ann.index}]** "
+                f'<a href="{ann.doc_id}" target="_blank" rel="noopener noreferrer">'
+                f"{label}</a>",
+                unsafe_allow_html=True,
+            )
+        else:
+            exp.markdown(f"**[{ann.index}]** {label}")
+        if ann.text:
+            exp.caption(f'"{ann.text}"')
 
 
 def render_stored_message(msg: StoredMessage, container: Any) -> None:
