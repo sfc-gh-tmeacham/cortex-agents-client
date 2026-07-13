@@ -378,7 +378,7 @@ See [`tests/live/README.md`](../tests/live/README.md) for setup instructions.
 | `test_get_nonexistent_thread_raises_not_found` | Non-existent id → `ThreadNotFoundError` |
 | `test_list_with_origin_filter_returns_own_threads` | `threads.list(origin_application=...)` includes test thread |
 | `test_delete_removes_thread` | After delete, `get()` raises `ThreadNotFoundError` |
-| `test_fork_creates_new_thread` | `thread.fork(at_message_id=...)` returns a thread with a different id |
+| `test_fork_creates_new_thread` | `thread.fork(at_message_id=N)` returns a Thread with same `thread_id` but `parent_message_id == N` |
 | `test_latest_context_returns_list` | `latest_context()` returns a list on a fresh thread |
 | `test_latest_context_after_chat_contains_messages` | After one chat turn, at least 2 messages in context |
 

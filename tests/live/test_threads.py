@@ -86,27 +86,28 @@ class TestThreadFork:
 
     def test_fork_creates_new_thread(
         self,
-        live_client: CortexAgentsClient,
         live_thread: Thread,
         agent_path_minimal: str,
     ) -> None:
-        """fork() returns a new Thread with a different thread_id."""
+        """fork() returns a Thread branched at the given message_id.
+
+        Thread.fork() does NOT create a new API thread — it returns a Thread
+        wrapper with the same thread_id but with parent_message_id set to the
+        fork point.  Subsequent chat() calls on the fork branch from that point.
+        """
         # Need at least one message so we have a message_id to fork from
         events = list(live_thread.chat(agent_path_minimal, "hello"))
-        # Find a MetadataEvent to get the assistant message_id
         from cortex_agents_client.models.events import MetadataEvent
         meta_event = next((e for e in events if isinstance(e, MetadataEvent) and e.role == "assistant"), None)
         if meta_event is None:
             pytest.skip("No MetadataEvent received — cannot determine message_id to fork from")
 
         fork = live_thread.fork(at_message_id=meta_event.message_id)
-        assert fork.thread_id != live_thread.thread_id
-        assert fork.thread_id > 0
-        # cleanup fork
-        try:
-            live_client.threads.delete(fork.thread_id)
-        except Exception:
-            pass
+        # fork() branches within the same API thread, so thread_id is identical
+        assert fork.thread_id == live_thread.thread_id
+        # but the fork starts from the specified message_id
+        assert fork.parent_message_id == meta_event.message_id
+        # the fixture teardown handles deleting the shared thread — no separate cleanup needed
 
 
 @pytest.mark.live
@@ -116,7 +117,6 @@ class TestLatestContext:
     def test_latest_context_returns_list(
         self,
         live_thread: Thread,
-        agent_path_minimal: str,
     ) -> None:
         """latest_context() returns a list (may be empty for a fresh thread)."""
         context = live_thread.latest_context()
