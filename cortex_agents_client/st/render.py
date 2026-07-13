@@ -493,11 +493,19 @@ def _render_suggested_queries(queries: list[str], container: Any) -> None:
     if not queries:
         return
 
-    cols = container.columns(len(queries))
-    for i, (col, query) in enumerate(zip(cols, queries)):
-        if col.button(
+    container.markdown(
+        "<style>"
+        "[data-testid='stButton']:has(button[kind='tertiary']) { margin-top: -1.25rem; }"
+        "[data-testid='stButton']:has(button[kind='tertiary']) button p { opacity: 0.6; }"
+        "</style>",
+        unsafe_allow_html=True,
+    )
+    container.caption("Suggested follow-ups")
+    for i, query in enumerate(queries):
+        if container.button(
             query,
             icon=":material/arrow_forward:",
+            type="tertiary",
             key=f"_ca_suggestion_{hash(query)}_{i}",
         ):
             st.session_state["_ca_pending_suggestion"] = query
