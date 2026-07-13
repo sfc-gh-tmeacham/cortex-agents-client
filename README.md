@@ -321,170 +321,6 @@ except ServerError as exc:
 
 ---
 
-## External Streamlit
-
-For Streamlit apps running locally or on an external host (not inside Snowflake).
-
-### Dependencies
-
-Add to `requirements.txt`:
-
-```
-streamlit>=1.59
-pandas
-requests
-```
-
-Or with uv/pip, install the `[streamlit]` extra — see [Installation](#installation).
-
-### Secrets configuration
-
-Create `.streamlit/secrets.toml` in your project root:
-
-```toml
-SNOWFLAKE_ACCOUNT_URL = "https://myorg-myaccount.snowflakecomputing.com"
-SNOWFLAKE_PAT         = "v2:..."
-```
-
-`SNOWFLAKE_PAT` is a Programmatic Access Token. Generate one in Snowsight under
-**Governance & security → Users & roles → your user → Programmatic access tokens**.
-
-The agent path is not sensitive — hardcode it directly in your app code.
-
-### Drop-in chatbot
-
-```python
-# app.py
-import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
-
-st.title("Revenue Assistant")
-
-StreamlitChatbot(
-    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
-    auth=st.secrets["SNOWFLAKE_PAT"],
-    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
-    show_thinking=True,
-    origin_application="revenue_app",
-).render()
-```
-
-Run with:
-
-```bash
-streamlit run app.py
-```
-
-### Manual integration
-
-```python
-import streamlit as st
-from cortex_agents_client.st.session import init_session, get_messages, append_message, reset_thread
-from cortex_agents_client.st.render import render_stored_message, render_streaming_response, escape_dollars
-from cortex_agents_client.models.thread import StoredMessage
-
-client, thread = init_session(
-    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
-    auth=st.secrets["SNOWFLAKE_PAT"],
-)
-
-if st.sidebar.button("New conversation", type="primary"):
-    reset_thread()
-    st.rerun()
-
-for msg in get_messages():
-    with st.chat_message(msg.role):
-        if msg.role == "user":
-            st.markdown(escape_dollars(msg.text))
-        else:
-            render_stored_message(msg, st, show_thinking=False)
-
-if prompt := st.chat_input("Ask a question..."):
-    with st.chat_message("user"):
-        st.markdown(escape_dollars(prompt))
-    append_message(StoredMessage(role="user", text=prompt))
-
-    with st.chat_message("assistant"):
-        stored = render_streaming_response(
-            thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt),
-            container=st,
-            show_thinking=False,
-            show_tool_status=True,
-        )
-    append_message(stored)
-```
-
-### Embedded mode
-
-Renders the chat inside a fixed-height scrollable container — useful for dashboards where the chat sits alongside other components. Requires Streamlit ≥ 1.59.
-
-```python
-StreamlitChatbot(
-    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
-    auth=st.secrets["SNOWFLAKE_PAT"],
-    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
-    mode="embedded",
-    height=600,
-).render()
-```
-
-### File and audio attachments
-
-Files and audio are displayed in the user's chat bubble and stored for replay across reruns, but are **not forwarded to the agent** — only the text prompt is sent.
-
-```python
-StreamlitChatbot(
-    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
-    auth=st.secrets["SNOWFLAKE_PAT"],
-    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
-    accept_file="multiple",           # True, "multiple", "directory", or False
-    file_type=["pdf", "csv", "txt"],  # None = all types
-    accept_audio=True,
-).render()
-```
-
-### Client-side tool execution
-
-Pass a `tool_executor` callable to handle tools the agent marks with `client_side_execute=True`:
-
-```python
-from cortex_agents_client.models.events import ToolUseEvent
-
-def my_tool_executor(event: ToolUseEvent) -> list[dict]:
-    if event.name == "get_current_user":
-        return [{"type": "json", "json": {"user": st.context.user.email}}]
-    return [{"type": "text", "text": "unknown tool"}]
-
-StreamlitChatbot(
-    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
-    auth=st.secrets["SNOWFLAKE_PAT"],
-    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
-    tool_executor=my_tool_executor,
-).render()
-```
-
-Tools that require user consent (`ToolUseEvent.permission_options` is non-empty) automatically show a permission approval UI before executing.
-
-### Working with table results
-
-`result_set_to_dataframe` converts a `TableEvent` result set to a pandas DataFrame with correct column types:
-
-```python
-from cortex_agents_client.st.render import render_streaming_response, result_set_to_dataframe
-from cortex_agents_client.models.events import TableEvent
-
-for event in thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt):
-    if isinstance(event, TableEvent):
-        df = result_set_to_dataframe(event)
-        st.dataframe(df.style.highlight_max(axis=0))
-```
-
-### Elicitation
-
-When the agent needs clarification it emits a `TextEvent` with `is_elicitation=True`. Both `render_streaming_response` and `render_stored_message` handle this automatically — the message is rendered with `st.info()` instead of plain markdown. In manual integration, check `msg.is_elicitation` on a `StoredMessage` to apply custom styling.
-
----
-
 ## Streamlit-in-Snowflake (container runtime)
 
 > **Container runtime is required.** The Cortex Agents API is not supported in warehouse runtime SiS apps.
@@ -689,6 +525,170 @@ The cleanest governance pattern is to set each user's default role correctly bef
 ```sql
 ALTER USER my_user SET DEFAULT_ROLE = analyst_role;
 ```
+
+---
+
+## External Streamlit
+
+For Streamlit apps running locally or on an external host (not inside Snowflake).
+
+### Dependencies
+
+Add to `requirements.txt`:
+
+```
+streamlit>=1.59
+pandas
+requests
+```
+
+Or with uv/pip, install the `[streamlit]` extra — see [Installation](#installation).
+
+### Secrets configuration
+
+Create `.streamlit/secrets.toml` in your project root:
+
+```toml
+SNOWFLAKE_ACCOUNT_URL = "https://myorg-myaccount.snowflakecomputing.com"
+SNOWFLAKE_PAT         = "v2:..."
+```
+
+`SNOWFLAKE_PAT` is a Programmatic Access Token. Generate one in Snowsight under
+**Governance & security → Users & roles → your user → Programmatic access tokens**.
+
+The agent path is not sensitive — hardcode it directly in your app code.
+
+### Drop-in chatbot
+
+```python
+# app.py
+import streamlit as st
+from cortex_agents_client.st import StreamlitChatbot
+
+st.title("Revenue Assistant")
+
+StreamlitChatbot(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    show_thinking=True,
+    origin_application="revenue_app",
+).render()
+```
+
+Run with:
+
+```bash
+streamlit run app.py
+```
+
+### Manual integration
+
+```python
+import streamlit as st
+from cortex_agents_client.st.session import init_session, get_messages, append_message, reset_thread
+from cortex_agents_client.st.render import render_stored_message, render_streaming_response, escape_dollars
+from cortex_agents_client.models.thread import StoredMessage
+
+client, thread = init_session(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+)
+
+if st.sidebar.button("New conversation", type="primary"):
+    reset_thread()
+    st.rerun()
+
+for msg in get_messages():
+    with st.chat_message(msg.role):
+        if msg.role == "user":
+            st.markdown(escape_dollars(msg.text))
+        else:
+            render_stored_message(msg, st, show_thinking=False)
+
+if prompt := st.chat_input("Ask a question..."):
+    with st.chat_message("user"):
+        st.markdown(escape_dollars(prompt))
+    append_message(StoredMessage(role="user", text=prompt))
+
+    with st.chat_message("assistant"):
+        stored = render_streaming_response(
+            thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt),
+            container=st,
+            show_thinking=False,
+            show_tool_status=True,
+        )
+    append_message(stored)
+```
+
+### Embedded mode
+
+Renders the chat inside a fixed-height scrollable container — useful for dashboards where the chat sits alongside other components. Requires Streamlit ≥ 1.59.
+
+```python
+StreamlitChatbot(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    mode="embedded",
+    height=600,
+).render()
+```
+
+### File and audio attachments
+
+Files and audio are displayed in the user's chat bubble and stored for replay across reruns, but are **not forwarded to the agent** — only the text prompt is sent.
+
+```python
+StreamlitChatbot(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    accept_file="multiple",           # True, "multiple", "directory", or False
+    file_type=["pdf", "csv", "txt"],  # None = all types
+    accept_audio=True,
+).render()
+```
+
+### Client-side tool execution
+
+Pass a `tool_executor` callable to handle tools the agent marks with `client_side_execute=True`:
+
+```python
+from cortex_agents_client.models.events import ToolUseEvent
+
+def my_tool_executor(event: ToolUseEvent) -> list[dict]:
+    if event.name == "get_current_user":
+        return [{"type": "json", "json": {"user": st.context.user.email}}]
+    return [{"type": "text", "text": "unknown tool"}]
+
+StreamlitChatbot(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    tool_executor=my_tool_executor,
+).render()
+```
+
+Tools that require user consent (`ToolUseEvent.permission_options` is non-empty) automatically show a permission approval UI before executing.
+
+### Working with table results
+
+`result_set_to_dataframe` converts a `TableEvent` result set to a pandas DataFrame with correct column types:
+
+```python
+from cortex_agents_client.st.render import render_streaming_response, result_set_to_dataframe
+from cortex_agents_client.models.events import TableEvent
+
+for event in thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt):
+    if isinstance(event, TableEvent):
+        df = result_set_to_dataframe(event)
+        st.dataframe(df.style.highlight_max(axis=0))
+```
+
+### Elicitation
+
+When the agent needs clarification it emits a `TextEvent` with `is_elicitation=True`. Both `render_streaming_response` and `render_stored_message` handle this automatically — the message is rendered with `st.info()` instead of plain markdown. In manual integration, check `msg.is_elicitation` on a `StoredMessage` to apply custom styling.
 
 ---
 
