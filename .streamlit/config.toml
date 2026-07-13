@@ -1,3 +1,9 @@
+# Disable PyArrow mimalloc allocator — prevents SIGSEGV on macOS ARM64
+# when converting pandas DataFrames via Arrow (known PyArrow/mimalloc bug).
+[env]
+ARROW_DEFAULT_MEMORY_POOL = "system"
+MALLOC_NANO_ZONE = "0"
+
 # shadcn/ui-inspired Streamlit Theme
 # Beautifully designed components aesthetic
 # Minimal, accessible, elegant with neutral palette
