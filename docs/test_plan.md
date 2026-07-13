@@ -30,16 +30,19 @@ tests/
 │   ├── test_chatbot.py          # StreamlitChatbot constructor + render dispatch
 │   └── test_render.py           # render_streaming_response + render_stored_message
 └── live/
-    ├── conftest.py              # fixtures: live_client, agent_path_minimal, agent_path_full, live_thread
+    ├── conftest.py              # fixtures: live_client, agent_path_minimal, agent_path_full, agent_path_analyst, live_thread
     ├── test_auth.py             # PAT auth smoke; bad token → AuthError; missing agent → AgentNotFoundError
     ├── test_threads.py          # create, get, list, delete, fork, latest_context
     ├── test_runs.py             # streaming events, ResponseEvent, multi-turn, non-streaming run (minimal agent)
     ├── test_runs_full.py        # ToolUseEvent, ToolResultEvent, TextAnnotationEvent (Cortex Search agent)
+    ├── test_runs_analyst.py     # ToolUseEvent (analyst), AnalystDeltaEvent, TableEvent, result_set_to_dataframe
     ├── README.md                # setup instructions, env vars, how to run
     └── seed/
         ├── 01_minimal_agent.sql       # LLM-only agent DDL
         ├── 02_search_service.sql      # fixed corpus table + Cortex Search service
         ├── 03_full_agent.sql          # Cortex Search agent DDL
+        ├── 04_semantic_view.sql       # sales table + semantic view DDL
+        ├── 05_analyst_agent.sql       # Cortex Analyst agent DDL
         └── cleanup_leaked_threads.py  # sweep origin_application='live_test' threads
 ```
 
@@ -356,6 +359,7 @@ See [`tests/live/README.md`](../tests/live/README.md) for setup instructions.
 | `SNOWFLAKE_PAT` | All | PAT token |
 | `LIVE_AGENT_MINIMAL` | All | Fully-qualified path to the minimal agent |
 | `LIVE_AGENT_FULL` | `test_runs_full.py` | Fully-qualified path to the Cortex Search agent |
+| `LIVE_AGENT_ANALYST` | `test_runs_analyst.py` | Fully-qualified path to the Cortex Analyst agent |
 
 ### `tests/live/test_auth.py`
 
@@ -401,5 +405,18 @@ See [`tests/live/README.md`](../tests/live/README.md) for setup instructions.
 | `test_tool_result_status_is_success` | All `ToolResultEvent.status == 'success'` |
 | `test_text_annotation_events_are_emitted` | At least one `TextAnnotationEvent` per search query |
 | `test_annotation_has_doc_id_and_title` | Each annotation has non-empty `doc_id` and `doc_title` |
+| `test_response_event_completed` | Final `ResponseEvent(status='completed')` |
+| `test_text_is_non_empty` | Assembled text from deltas is non-empty |
+
+### `tests/live/test_runs_analyst.py` (Cortex Analyst agent)
+
+| Test | Description |
+|---|---|
+| `test_tool_use_event_is_emitted` | `ToolUseEvent` with `type='cortex_analyst_text_to_sql'` is yielded |
+| `test_tool_result_event_follows_tool_use` | Every `tool_use_id` has a matching `ToolResultEvent` |
+| `test_analyst_delta_event_contains_sql` | `AnalystDeltaEvent` with non-empty SQL referencing `REVENUE` or `SALES` |
+| `test_table_event_is_emitted` | At least one `TableEvent` with query results |
+| `test_table_event_has_rows` | `TableEvent.result_set` contains ≥ 1 row |
+| `test_table_event_result_set_to_dataframe` | `result_set_to_dataframe()` returns a non-empty DataFrame |
 | `test_response_event_completed` | Final `ResponseEvent(status='completed')` |
 | `test_text_is_non_empty` | Assembled text from deltas is non-empty |

@@ -61,6 +61,15 @@ def agent_path_full() -> str:
     return _require_env("LIVE_AGENT_FULL")
 
 
+@pytest.fixture(scope="session")
+def agent_path_analyst() -> str:
+    """Fully-qualified path to the Cortex Analyst test agent.
+
+    Tests using this fixture are skipped if LIVE_AGENT_ANALYST is not set.
+    """
+    return _require_env("LIVE_AGENT_ANALYST")
+
+
 # ---------------------------------------------------------------------------
 # Function-scoped fixtures (created fresh for each test)
 # ---------------------------------------------------------------------------
