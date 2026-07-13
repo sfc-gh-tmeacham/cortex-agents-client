@@ -17,7 +17,7 @@ All requests require `Authorization: Bearer <token>`.
 | PAT | `Bearer <pat_token>` | `X-Snowflake-Authorization-Token-Type: PROGRAMMATIC_ACCESS_TOKEN` |
 | JWT (key-pair) | `Bearer <jwt>` | `X-Snowflake-Authorization-Token-Type: KEYPAIR_JWT` |
 | OAuth | `Bearer <oauth_token>` | `X-Snowflake-Authorization-Token-Type: OAUTH` |
-| WIF | `Bearer WIF.{AWS|AZURE|GCP|OIDC}.{token}` | `X-Snowflake-Authorization-Token-Type: WORKLOAD_IDENTITY_FEDERATION` |
+| WIF | `Bearer WIF.{AWS\|AZURE\|GCP\|OIDC}.{token}` | `X-Snowflake-Authorization-Token-Type: WORKLOAD_IDENTITY_FEDERATION` |
 
 JWT claims: `iss = ACCOUNT.USER.SHA256:<fingerprint>`, `sub = ACCOUNT.USER`, `iat` and `exp` (max 1h TTL). Both account and user must be UPPERCASE.
 
