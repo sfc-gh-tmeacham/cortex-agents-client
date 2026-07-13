@@ -47,7 +47,7 @@ def chat_turn(thread, message: str) -> None:
 
     for event in thread.chat(AGENT_PATH, message):
         if isinstance(event, TextDeltaEvent):
-            print(event.delta, end="", flush=True)
+            print(event.text, end="", flush=True)
         elif isinstance(event, TextEvent):
             # Complete text block after all deltas — check is_elicitation for clarification requests
             if event.is_elicitation:

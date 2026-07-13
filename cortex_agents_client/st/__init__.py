@@ -19,7 +19,7 @@ Example::
 """
 
 from cortex_agents_client.st.chatbot import StreamlitChatbot
-from cortex_agents_client.st.render import render_stored_message, render_streaming_response
+from cortex_agents_client.st.render import render_stored_message, render_streaming_response, result_set_to_dataframe
 from cortex_agents_client.st.session import (
     append_message,
     get_messages,
@@ -37,4 +37,5 @@ __all__ = [
     "append_message",
     "render_streaming_response",
     "render_stored_message",
+    "result_set_to_dataframe",
 ]

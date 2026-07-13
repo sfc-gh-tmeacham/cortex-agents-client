@@ -153,7 +153,7 @@ Response: `{"status": "Request successfully completed"}`
 ### Submit Feedback
 
 ```
-POST /api/v2/databases/{database}/schemas/{schema}/agents/{name}:feedback:
+POST /api/v2/databases/{database}/schemas/{schema}/agents/{name}:feedback
 ```
 
 ```json

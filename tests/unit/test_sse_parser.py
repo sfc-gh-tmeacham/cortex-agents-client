@@ -15,18 +15,18 @@ def test_empty_stream_yields_nothing():
 
 def test_single_text_delta_event():
     """A single text delta event is parsed correctly."""
-    lines = stream_of(("response.text.delta", {"content_index": 0, "delta": "hello"}))
+    lines = stream_of(("response.text.delta", {"content_index": 0, "text": "hello"}))
     events = list(parse_sse_stream(iter(lines)))
     assert len(events) == 1
     event_type, payload = events[0]
     assert event_type == "response.text.delta"
-    assert payload["delta"] == "hello"
+    assert payload["text"] == "hello"
 
 
 def test_multiple_events_all_yielded():
     """Two consecutive events are both yielded."""
     lines = stream_of(
-        ("response.text.delta", {"delta": "hi"}),
+        ("response.text.delta", {"text": "hi"}),
         ("response.status", {"status": "done", "message": ""}),
     )
     events = list(parse_sse_stream(iter(lines)))

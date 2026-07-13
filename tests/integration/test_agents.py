@@ -1,6 +1,9 @@
 """Integration tests for AgentsResource using pytest-httpx."""
 from __future__ import annotations
 
+import json
+
+import httpx
 import pytest
 from pytest_httpx import HTTPXMock
 
@@ -97,7 +100,6 @@ class TestUpdateAgent:
         httpx_mock.add_callback(responder)
         ca_client.agents.update("MY_AGENT", comment="New comment")
 
-        import json
         body = json.loads(captured_request["body"])
         assert "comment" in body
         assert "profile" not in body
@@ -170,7 +172,6 @@ class TestFeedback:
         captured: dict = {}
 
         def responder(request):
-            import json, httpx
             captured["body"] = json.loads(request.content)
             return httpx.Response(200, json={"status": "Feedback submitted successfully"})
 
@@ -192,7 +193,6 @@ class TestFeedback:
         captured: dict = {}
 
         def responder(request):
-            import json, httpx
             captured["body"] = json.loads(request.content)
             return httpx.Response(200, json={"status": "Feedback submitted successfully"})
 

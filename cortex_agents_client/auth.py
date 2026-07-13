@@ -22,10 +22,6 @@ from __future__ import annotations
 import time
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    pass
 
 __all__ = ["AuthProvider", "PATAuth", "JWTAuth", "OAuthAuth", "SiSContainerAuth"]
 

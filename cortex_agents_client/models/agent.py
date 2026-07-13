@@ -311,6 +311,19 @@ class Agent:
     tools: list[Tool] = field(default_factory=list)
     tool_resources: dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def path(self) -> str:
+        """Fully-qualified agent path in ``DB.SCHEMA.NAME`` format.
+
+        Convenience for use with :meth:`~cortex_agents_client.client.Thread.chat`
+        and related methods that accept ``agent_path``::
+
+            agent = client.agents.get("MY_AGENT", database="DB", schema="SC")
+            for event in thread.chat(agent.path, "What is total revenue?"):
+                ...
+        """
+        return f"{self.database_name}.{self.schema_name}.{self.name}"
+
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Agent:
         """Creates an Agent from an API response dict.

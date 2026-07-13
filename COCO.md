@@ -15,6 +15,7 @@ cortex_agents_client/
 ├── http.py            # HttpClient (httpx-based, auth header injection)
 ├── sse.py             # SSE stream parser, event_from_sse() factory
 ├── models/
+│   ├── agent.py      # Agent, Tool, ToolSpec, AgentProfile, AgentInstructions, BudgetConfig
 │   ├── events.py      # 17 typed SSE event dataclasses (16 API types + UnknownEvent)
 │   └── thread.py      # StoredMessage, ThreadMessage, ThreadMetadata
 ├── resources/
@@ -24,7 +25,7 @@ cortex_agents_client/
 └── st/
     ├── chatbot.py     # StreamlitChatbot — drop-in full-page or embedded chat component
     ├── render.py      # render_streaming_response(), render_stored_message(), helpers
-    └── session.py     # st.session_state helpers: init_session, get_messages, append_message
+    └── session.py     # st.session_state helpers: init_session, sis_init_session, get_messages, append_message
 ```
 
 ---
@@ -43,14 +44,14 @@ thread in `st.session_state` so it survives reruns.
 
 ### Session state key prefix
 Every `StreamlitChatbot` uses a `session_key_prefix` (default `_ca`) to namespace its
-session state keys (`_ca_client`, `_ca_thread`, `_ca_messages`, `_ca_input`). Change the
+session state keys (`_ca_client`, `_ca_thread`, `_ca_messages`, `_ca_input`, `_ca_pending_perm`). Change the
 prefix to run multiple chatbots on one page without collisions.
 
 ### Streamlit version requirement: ≥ 1.59
 Required for:
-- `st.skeleton()` — shown as a loading placeholder before the first text token arrives
 - `st.chat_input` in any container (embedded mode, replaces old `st.form` workaround)
 - `accept_file` / `accept_audio` params on `st.chat_input`
+- `key` param on `st.chat_input` (needed for embedded mode placement)
 - `st.column_config.MarkdownColumn` — applied to all `object`-dtype columns in Analyst result dataframes
 
 ---
@@ -104,7 +105,7 @@ uv run pytest tests/ -m "not live" -v
 uv run streamlit run streamlit_demo/app.py
 ```
 
-Tests: 163 passing, 1 skipped (`tests/` tree below):
+Tests: 194 passing, 1 skipped (`tests/` tree below):
 ```
 tests/
 ├── unit/          # core client, auth, SSE parsing, event models

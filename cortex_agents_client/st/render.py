@@ -210,6 +210,7 @@ def render_streaming_response(
         if isinstance(event, TextDeltaEvent):
             accumulated_text += event.text
             if event.is_elicitation:
+                stored.is_elicitation = True
                 text_placeholder.info(_escape_dollars(accumulated_text) + " :shimmer[▌]", icon=":material/contact_support:", title="Clarification needed")
             else:
                 text_placeholder.markdown(_escape_dollars(accumulated_text) + " :shimmer[▌]")
@@ -485,13 +486,13 @@ def render_stored_message(msg: StoredMessage, container: Any) -> None:
                 render_stored_message(msg, st)
     """
     if msg.thinking:
-        with container.expander(
+        exp = container.expander(
             "Reasoning",
             icon=":material/psychology:",
             expanded=False,
             type="compact",
-        ):
-            container.markdown(msg.thinking)
+        )
+        exp.markdown(msg.thinking)
 
     # Tool result text appears before the main answer (tools execute first).
     for tool_use, _tool_result in msg.tool_executions:
@@ -502,7 +503,7 @@ def render_stored_message(msg: StoredMessage, container: Any) -> None:
     if msg.text:
         if msg.is_elicitation:
             # Agent was asking the user a question — render as info box
-            container.info(msg.text, icon=":material/contact_support:", title="Clarification needed")
+            container.info(_escape_dollars(msg.text), icon=":material/contact_support:", title="Clarification needed")
         else:
             container.markdown(_escape_dollars(msg.text))
 

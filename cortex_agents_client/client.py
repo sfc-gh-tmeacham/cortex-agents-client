@@ -112,6 +112,12 @@ class Thread:
         """
         return self._parent_message_id
 
+    def __repr__(self) -> str:
+        return (
+            f"Thread(thread_id={self._thread_id!r}, "
+            f"parent_message_id={self._parent_message_id!r})"
+        )
+
     def chat(
         self,
         agent_path: str,
@@ -367,6 +373,9 @@ class CortexAgentsClient:
         self.threads = ThreadsResource(self._http)
         self.runs = RunsResource(self._http, default_database, default_schema)
 
+    def __repr__(self) -> str:
+        return f"CortexAgentsClient(account_url={self._http._base_url!r})"
+
     def create_thread(
         self, *, origin_application: str | None = None
     ) -> Thread:
@@ -387,6 +396,23 @@ class CortexAgentsClient:
         app = origin_application or self._origin_application
         metadata = self.threads.create(origin_application=app)
         return Thread(self, metadata.thread_id)
+
+    def get_thread(self, thread_id: int, *, parent_message_id: int = 0) -> Thread:
+        """Returns a :class:`Thread` wrapper for a previously created thread.
+
+        Use this to resume a conversation whose ``thread_id`` was persisted
+        (e.g. in a database or URL parameter).
+
+        Args:
+            thread_id: The integer thread identifier to resume.
+            parent_message_id: The parent message ID to start from. Defaults
+                to ``0`` (beginning of thread). Pass the last known assistant
+                message ID to resume mid-conversation.
+
+        Returns:
+            A :class:`Thread` ready for :meth:`~Thread.chat` calls.
+        """
+        return Thread(self, thread_id, parent_message_id=parent_message_id)
 
     def stream(
         self,

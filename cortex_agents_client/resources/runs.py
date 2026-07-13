@@ -442,7 +442,6 @@ class RunsResource:
                 error event.
         """
         result = RunResult()
-        pending_tool_uses: dict[str, ToolUseEvent] = {}
 
         for event in self.stream(messages, **kwargs):
             if isinstance(event, TextDeltaEvent):
@@ -457,10 +456,8 @@ class RunsResource:
                 result.annotations.append(event)
             elif isinstance(event, ToolUseEvent):
                 result.tool_uses.append(event)
-                pending_tool_uses[event.tool_use_id] = event
             elif isinstance(event, ToolResultEvent):
                 result.tool_results.append(event)
-                pending_tool_uses.pop(event.tool_use_id, None)
             elif isinstance(event, AnalystDeltaEvent):
                 if event.sql:
                     result.analyst_sql[event.tool_use_id] = event.sql

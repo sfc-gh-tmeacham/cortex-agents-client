@@ -256,5 +256,3 @@ class HttpClient:
             raise TimeoutError(f"Stream timed out after {self._timeout}s") from exc
         except httpx.HTTPError as exc:
             raise CortexAgentError(f"Stream HTTP error: {exc}") from exc
-        except (AuthError, PermissionError, RateLimitError, ServerError, CortexAgentError):
-            raise

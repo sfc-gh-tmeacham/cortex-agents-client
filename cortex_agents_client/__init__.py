@@ -42,15 +42,41 @@ from cortex_agents_client.exceptions import (
     ThreadNotFoundError,
     TimeoutError,
 )
+from cortex_agents_client.models.agent import Agent
+from cortex_agents_client.models.thread import StoredMessage, ThreadMessage, ThreadMetadata
+from cortex_agents_client.models.events import (
+    AnalystDeltaEvent,
+    ChartEvent,
+    ErrorEvent,
+    MetadataEvent,
+    ResponseEvent,
+    SSEEvent,
+    StatusEvent,
+    TableEvent,
+    TextAnnotationEvent,
+    TextDeltaEvent,
+    TextEvent,
+    ThinkingDeltaEvent,
+    ThinkingEvent,
+    ToolResultEvent,
+    ToolResultStatusEvent,
+    ToolUseEvent,
+    UnknownEvent,
+    WarningEvent,
+)
+from cortex_agents_client.resources.runs import RunResult
 
 __all__ = [
+    # Core client
     "CortexAgentsClient",
     "Thread",
+    # Auth
     "PATAuth",
     "JWTAuth",
     "OAuthAuth",
     "SiSContainerAuth",
     "account_url_from_env",
+    # Exceptions
     "CortexAgentError",
     "AuthError",
     "PermissionError",
@@ -60,4 +86,29 @@ __all__ = [
     "TimeoutError",
     "AgentNotFoundError",
     "ThreadNotFoundError",
+    # Models
+    "Agent",
+    "StoredMessage",
+    "ThreadMessage",
+    "ThreadMetadata",
+    "RunResult",
+    # SSE events
+    "SSEEvent",
+    "TextDeltaEvent",
+    "TextEvent",
+    "TextAnnotationEvent",
+    "ThinkingDeltaEvent",
+    "ThinkingEvent",
+    "ToolUseEvent",
+    "ToolResultEvent",
+    "ToolResultStatusEvent",
+    "AnalystDeltaEvent",
+    "TableEvent",
+    "ChartEvent",
+    "StatusEvent",
+    "WarningEvent",
+    "ErrorEvent",
+    "MetadataEvent",
+    "ResponseEvent",
+    "UnknownEvent",
 ]

@@ -307,7 +307,7 @@ class AgentsResource:
         if limit is not None:
             params["showLimit"] = limit
 
-        data = self._http.request("GET", self._path(db, sc), params=params or None)
+        data = self._http.request("GET", self._path(db, sc), params=params or None, resource="agent")
         if isinstance(data, list):
             return [Agent.from_dict(item) for item in data]
         return []

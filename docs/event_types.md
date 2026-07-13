@@ -36,7 +36,7 @@ Token-by-token text streaming. Accumulate deltas in order of `content_index` to 
 ```json
 {
   "content_index": 0,
-  "delta": "The total"
+  "text": "The total"
 }
 ```
 
@@ -373,8 +373,12 @@ Final aggregated response. **Always the last event in the stream.** Emitted once
   "metadata": {
     "usage": {
       "tokens_consumed": [
-        {"model_name": "llama3.1-70b", "token_type": "input", "tokens": 812},
-        {"model_name": "llama3.1-70b", "token_type": "output", "tokens": 104}
+        {
+          "model_name": "llama3.1-70b",
+          "input_tokens": {"total": 812, "cache_read": 0, "cache_write": 0, "uncached": 812},
+          "output_tokens": {"total": 104},
+          "context_window": 128000
+        }
       ]
     },
     "run_id": "4264-83472",
@@ -413,10 +417,10 @@ event: response.table
 data: {"content_index": 1, "tool_use_id": "toolu_01", "result_set": {...}, "title": "Revenue"}
 
 event: response.text.delta
-data: {"content_index": 2, "delta": "Based on the "}
+data: {"content_index": 2, "text": "Based on the "}
 
 event: response.text.delta
-data: {"content_index": 2, "delta": "data, revenue was $4.2B."}
+data: {"content_index": 2, "text": "data, revenue was $4.2B."}
 
 event: response.text
 data: {"content_index": 2, "text": "Based on the data, revenue was $4.2B."}

@@ -874,13 +874,16 @@ class UnknownEvent(SSEEvent):
     raw_payload: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def _from_payload(cls, payload: dict[str, Any]) -> UnknownEvent:
+    def _from_payload(cls, payload: dict[str, Any], *, event_type: str = "unknown") -> UnknownEvent:
         """Constructs an UnknownEvent from a raw SSE payload.
 
         Args:
             payload: Parsed JSON dict from the SSE data field.
+            event_type: The original SSE event type string. Defaults to
+                ``"unknown"`` for backward compatibility but should always
+                be provided so the actual type is preserved.
 
         Returns:
             A populated UnknownEvent instance.
         """
-        return cls(event_type="unknown", raw_payload=payload)
+        return cls(event_type=event_type, raw_payload=payload)

@@ -21,10 +21,7 @@ and dialog — and applies to both new apps and existing ones.
 
    ```toml
    dependencies = [
-       "cortex-agents-client @ file:///path/to/cortex-agents-client",
-       "httpx>=0.27",
-       "streamlit>=1.59",
-       "pandas>=2.0",
+       "cortex-agents-client[streamlit] @ file:///path/to/cortex-agents-client",
    ]
    ```
 
