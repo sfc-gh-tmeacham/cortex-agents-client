@@ -59,6 +59,29 @@ Required for:
 
 ---
 
+## Platform notes
+
+### macOS ARM64 (Apple Silicon) — PyArrow mimalloc SIGSEGV
+
+**Symptom:** Streamlit crashes with `SIGSEGV / Segmentation fault: 11` immediately
+after rendering a table result. The crash occurs inside PyArrow's mimalloc memory
+allocator (`mi_heap_main → mi_thread_init → _mi_malloc_generic`) when pandas
+converts a result set via Arrow.
+
+**Affects:** macOS ARM64 only. Not reproducible on Linux or macOS x86_64.
+
+**Fix (already applied):** `.streamlit/config.toml` sets two env vars that
+Streamlit injects at startup:
+```toml
+[env]
+ARROW_DEFAULT_MEMORY_POOL = "system"   # use OS allocator instead of mimalloc
+MALLOC_NANO_ZONE = "0"                 # disable macOS nano-zone allocator
+```
+
+These are no-ops on other platforms and do not affect correctness.
+
+---
+
 ## Known bugs fixed this session
 
 ### LaTeX rendering of dollar signs (`render.py`)
