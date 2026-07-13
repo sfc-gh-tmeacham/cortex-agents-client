@@ -147,8 +147,7 @@ class Thread:
             tool_executor: Optional callable invoked when the agent emits a
                 :class:`~cortex_agents_client.models.events.ToolUseEvent` with
                 ``client_side_execute=True``. Receives the event and must
-                return a list of
-                :class:`~cortex_agents_client.models.events.ToolResultContent`
+                return a list of result content
                 dicts (e.g. ``[{"type": "json", "json": {...}}]``).
                 The library executes the tool, yields a synthetic
                 :class:`~cortex_agents_client.models.events.ToolResultEvent` so

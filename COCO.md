@@ -15,7 +15,7 @@ cortex_agents_client/
 ├── http.py            # HttpClient (httpx-based, auth header injection)
 ├── sse.py             # SSE stream parser, event_from_sse() factory
 ├── models/
-│   ├── events.py      # 15+ typed SSE event dataclasses (TextDeltaEvent, ThinkingEvent, ...)
+│   ├── events.py      # 17 typed SSE event dataclasses (16 API types + UnknownEvent)
 │   └── thread.py      # StoredMessage, ThreadMessage, ThreadMetadata
 ├── resources/
 │   ├── agents.py      # AgentsResource (CRUD for agent objects)
@@ -146,7 +146,7 @@ via `account_url_from_env()`.
 | File | Contents |
 |---|---|
 | `docs/api_spec.md` | REST API endpoint reference |
-| `docs/event_types.md` | All 15+ SSE event types and their fields |
+| `docs/event_types.md` | All 16 SSE event types and their fields |
 | `docs/streamlit_guide.md` | Streamlit integration design reference |
 | `docs/test_plan.md` | Test coverage plan and strategy |
 | `docs/roadmap.md` | Planned features; file/audio attachment implementation plan |

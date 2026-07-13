@@ -20,7 +20,7 @@ bot = StreamlitChatbot(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
     auth=st.secrets["SNOWFLAKE_PAT"],
     agent_path=AGENT_PATH,
-    show_thinking=st.sidebar.toggle("Show reasoning", value=False),
+    show_thinking=st.sidebar.toggle("Show reasoning", value=True),
     show_tool_status=True,
     origin_application="streamlit_example",
 )

@@ -1,6 +1,6 @@
 """Typed dataclasses for all Cortex Agents SSE event types.
 
-All 16 event types emitted by the ``agent:run`` endpoint are represented
+All 17 event type dataclasses (16 emitted by the ``agent:run`` endpoint + ``UnknownEvent`` catch-all) are represented
 as dataclasses with fully typed fields. Each class has a ``_from_payload``
 class method that constructs the instance from the raw SSE JSON dict.
 
@@ -414,7 +414,7 @@ class AnalystDeltaEvent(SSEEvent):
         event_type: Always ``"response.tool_result.analyst.delta"``.
         content_index: Index of this content block in the response array.
         tool_use_id: ID of the Analyst tool invocation.
-        tool_type: Always ``"cortex_analyst_text_to_sql"``.
+        tool_type: The Analyst tool type string (e.g. ``"cortex_analyst_text_to_sql"``).
         tool_name: The Analyst tool instance name.
         text: Incremental text from Analyst's narrative response.
         think: Incremental text from Analyst's reasoning process.

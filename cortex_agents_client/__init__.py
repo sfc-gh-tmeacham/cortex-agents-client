@@ -9,7 +9,7 @@ Basic usage::
 
     client = CortexAgentsClient(
         account_url="https://myorg-myaccount.snowflakecomputing.com",
-        auth="my_pat_token",
+        auth="v2:my_pat_token",
     )
 
     thread = client.create_thread()

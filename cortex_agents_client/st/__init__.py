@@ -3,7 +3,7 @@
 Provides session state management, event rendering helpers, and a high-level
 drop-in chatbot component.
 
-Requires ``pip install cortex-agents[streamlit]`` (installs ``streamlit``
+Requires ``pip install "cortex-agents-client[streamlit]"`` (installs ``streamlit``
 and ``pandas``).
 
 Example::

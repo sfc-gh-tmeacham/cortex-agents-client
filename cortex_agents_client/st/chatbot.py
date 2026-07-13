@@ -90,7 +90,7 @@ class StreamlitChatbot:
         height: Height in pixels of the scrollable message area when
             ``mode="embedded"``. Ignored in fullpage mode. Default 450.
         show_thinking: If ``True``, renders agent thinking in an expander.
-            Defaults to ``False``.
+            Defaults to ``True``.
         show_tool_status: If ``True``, shows ``st.status()`` spinners during
             tool execution. Defaults to ``True``.
         new_conversation_button: If ``True``, adds a "New conversation" button.
@@ -112,7 +112,7 @@ class StreamlitChatbot:
             ``None`` accepts all file types.
         tool_executor: Optional callable for ``client_side_execute=True`` tools.
             Receives a :class:`~cortex_agents_client.models.events.ToolUseEvent`
-            and returns a list of ``ToolResultContent`` dicts (e.g.
+            and returns a list of result content dicts (e.g.
             ``[{"type": "json", "json": {...}}]``). Passed to
             :meth:`~cortex_agents_client.client.Thread.chat` on every run.
     """

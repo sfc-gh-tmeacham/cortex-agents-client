@@ -117,7 +117,7 @@ client = CortexAgentsClient("https://myorg.snowflakecomputing.com", auth)
 | `agent_path` | Yes | — | `DB.SCHEMA.AGENT` |
 | `mode` | No | `"fullpage"` | `"fullpage"` or `"embedded"` |
 | `height` | No | `450` | Message area height in px — `embedded` mode only |
-| `show_thinking` | No | `False` | Show agent reasoning in an expander |
+| `show_thinking` | No | `True` | Show agent reasoning in an expander |
 | `show_tool_status` | No | `True` | Show tool execution spinners |
 | `new_conversation_button` | No | `True` | Show "New conversation" button |
 | `origin_application` | No | `None` | Thread label for monitoring (max 16 bytes) |
@@ -377,7 +377,7 @@ client, thread = init_session(
     auth=st.secrets["SNOWFLAKE_PAT"],
 )
 
-if st.sidebar.button("New conversation"):
+if st.sidebar.button("New conversation", type="primary"):
     reset_thread()
     st.rerun()
 
@@ -443,7 +443,7 @@ from cortex_agents_client.models.events import ToolUseEvent
 
 def my_tool_executor(event: ToolUseEvent) -> list[dict]:
     if event.name == "get_current_user":
-        return [{"type": "json", "json": {"user": st.experimental_user.email}}]
+        return [{"type": "json", "json": {"user": st.context.user.email}}]
     return [{"type": "text", "text": "unknown tool"}]
 
 bot = StreamlitChatbot(
@@ -600,7 +600,7 @@ import streamlit as st
 
 client, thread = sis_init_session(origin_application="my_sis_app")
 
-if st.sidebar.button("New conversation"):
+if st.sidebar.button("New conversation", type="primary"):
     reset_thread()
     st.rerun()
 
@@ -668,12 +668,12 @@ cortex_agents_client/
 ├── client.py         CortexAgentsClient (top-level facade), Thread (stateful)
 ├── auth.py           PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, account_url_from_env
 ├── http.py           _HttpClient (httpx wrapper, error mapping)
-├── sse.py            SSE parser + event factory (all 15 types)
+├── sse.py            SSE parser + event factory (all 16 types)
 ├── exceptions.py     Typed exceptions
 ├── models/
 │   ├── agent.py      Agent, Tool, ToolSpec, etc.
 │   ├── thread.py     ThreadMetadata, ThreadMessage, StoredMessage
-│   └── events.py     All 16 SSE event dataclasses + UnknownEvent
+│   └── events.py     All 17 SSE event dataclasses (16 API types + UnknownEvent)
 ├── resources/
 │   ├── agents.py     AgentsResource (CRUD + feedback)
 │   ├── threads.py    ThreadsResource (CRUD + pagination + compaction)
@@ -686,7 +686,7 @@ cortex_agents_client/
 
 ## Notes
 
-- **Streamlit-in-Snowflake**: Container runtime is required — warehouse runtime is not supported by the Agents API. Use `SiSContainerAuth` + `account_url_from_env()` for credentials, and attach an External Network Access Integration (ENAI) so the container can reach the API. See [Streamlit-in-Snowflake (container runtime)](#streamlit-in-snowflake-container-runtime) above.
+- **Streamlit-in-Snowflake**: Container runtime is required — warehouse runtime is not supported by the Agents API. Use `SiSContainerAuth` + `account_url_from_env()` for credentials, and attach an External Network Access Integration (EAI) so the container can reach the API. See [Streamlit-in-Snowflake (container runtime)](#streamlit-in-snowflake-container-runtime) above.
 - **Timeout**: Default is 900 seconds (15 minutes), matching the Agents API maximum.
 - **Unknown event types**: Yielded as `UnknownEvent` (never raise) for forward-compatibility with new Snowflake tools.
 - **Thread compaction**: Use `client.threads.latest_context(thread_id)` to get the most recent summary + subsequent messages when resuming long conversations.

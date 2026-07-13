@@ -77,7 +77,7 @@ StreamlitChatbot(
     account_url=account_url_from_env(),
     auth=SiSContainerAuth(),
     agent_path=AGENT_PATH,
-    show_thinking=st.sidebar.toggle("Show reasoning", value=False),
+    show_thinking=st.sidebar.toggle("Show reasoning", value=True),
     origin_application="sis_fullpage",
 ).render()
 ```

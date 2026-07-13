@@ -2,7 +2,7 @@
 
 Supports four methods:
 - PAT (Programmatic Access Token): simplest, recommended for external apps.
-- JWT (key-pair): requires ``pip install cortex-agents[jwt]``.
+- JWT (key-pair): requires ``pip install "cortex-agents-client[jwt]"``.
 - OAuth: standard Bearer token with a static token string.
 - SiSContainerAuth: for Streamlit-in-Snowflake container runtime, reads the
   Snowflake-injected token file on every request so tokens are always fresh.
@@ -89,7 +89,7 @@ class JWTAuth(AuthProvider):
     Generates a fresh JWT on every :meth:`headers` call. The token is valid
     for up to one hour, which is the maximum allowed by Snowflake.
 
-    Requires ``pip install cortex-agents[jwt]`` (installs ``cryptography``
+    Requires ``pip install "cortex-agents-client[jwt]"`` (installs ``cryptography``
     and ``PyJWT``).
 
     Args:
@@ -150,7 +150,7 @@ class JWTAuth(AuthProvider):
         except ImportError as exc:
             raise ImportError(
                 "JWT authentication requires 'cryptography'. "
-                "Install with: pip install cortex-agents[jwt]"
+                "Install with: pip install "cortex-agents-client[jwt]""
             ) from exc
 
         key_data = self._private_key_path.read_bytes()
@@ -189,7 +189,7 @@ class JWTAuth(AuthProvider):
         except ImportError as exc:
             raise ImportError(
                 "JWT authentication requires 'PyJWT'. "
-                "Install with: pip install cortex-agents[jwt]"
+                "Install with: pip install "cortex-agents-client[jwt]""
             ) from exc
 
         now = int(time.time())

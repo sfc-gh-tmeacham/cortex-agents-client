@@ -1,6 +1,6 @@
 # Cortex Agents SSE Event Types
 
-All 15 server-sent event types emitted by the `agent:run` endpoint.
+All 16 server-sent event types emitted by the `agent:run` endpoint.
 
 The streaming protocol is standard SSE (`text/event-stream`):
 
@@ -357,6 +357,37 @@ Thread persistence confirmation. Sent **twice** per run: once when the user mess
 **Usage:** The assistant `message_id` (456 in this example) becomes the `parent_message_id` for the next request.
 
 `Thread.chat()` captures these events automatically and advances `parent_message_id`. Users never interact with this event directly.
+
+---
+
+## 16. `response`
+
+Final aggregated response. **Always the last event in the stream.** Emitted once, after all other events. For streaming clients most content has already arrived via individual events, but this is the only source of per-model token counts and the cancellation status.
+
+```json
+{
+  "role": "assistant",
+  "content": [...],
+  "warnings": [],
+  "status": "",
+  "metadata": {
+    "usage": {
+      "tokens_consumed": [
+        {"model_name": "llama3.1-70b", "token_type": "input", "tokens": 812},
+        {"model_name": "llama3.1-70b", "token_type": "output", "tokens": 104}
+      ]
+    },
+    "run_id": "4264-83472",
+    "thread_id": 7,
+    "user_message_id": 123,
+    "assistant_message_id": 456
+  }
+}
+```
+
+**Dataclass:** `ResponseEvent` — fields: `role`, `content`, `warnings`, `status` (`"cancelled"` if aborted, empty for normal completion), `usage` (list of `TokensConsumed`), `run_id`, `thread_id`, `user_message_id`, `assistant_message_id`.
+
+**Usage:** inspect `usage` for token counts; check `status == "cancelled"` to detect server-side abort.
 
 ---
 

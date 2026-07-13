@@ -59,7 +59,7 @@ Tests `cortex_agents_client.sse.parse_sse_stream()` in isolation.
 | `test_retry_field_ignored` | `retry:` lines are skipped |
 | `test_blank_line_dispatches` | Event dispatched on blank line separator |
 | `test_multiple_events_sequential` | Two consecutive events both yielded |
-| `test_all_15_event_types` | One fixture event of each type → 15 tuples |
+| `test_all_event_types` | One fixture event of each type → 17 tuples (16 API types + UnknownEvent) |
 | `test_truncated_stream` | Stream ends mid-event → partial event discarded |
 | `test_invalid_json_in_data` | Malformed JSON in `data:` → yielded as `("error", None)` or raw |
 | `test_missing_event_line` | `data:` without preceding `event:` → event_type defaults to `"message"` |
@@ -198,7 +198,7 @@ Provides:
 
 | Test | Description |
 |---|---|
-| `test_stream_all_15_event_types` | One of each event type → correct dataclass for each |
+| `test_stream_all_event_types` | One of each event type → correct dataclass for each (17 total) |
 | `test_stream_text_accumulation` | 3 `text.delta` + 1 `text` → final `TextEvent.text` matches deltas |
 | `test_stream_thinking_events` | Thinking delta + thinking complete → both yielded |
 | `test_stream_tool_use_and_result` | `tool_use` → `tool_result.status` → `tool_result` sequence |

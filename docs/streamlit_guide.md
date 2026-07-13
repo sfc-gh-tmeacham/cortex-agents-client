@@ -39,6 +39,7 @@ class StoredMessage:
     role: str                  # "user" or "assistant"
     text: str                  # Final assembled text (may contain [^N] citation markers)
     thinking: str | None       # Agent reasoning (None if model didn't think)
+    is_elicitation: bool       # True when the agent is asking the user a clarifying question
     tables: list[TableEvent]   # SQL result grids, in order of appearance
     charts: list[ChartEvent]   # Vega-Lite specs, in order of appearance
     annotations: list[TextAnnotationEvent]  # Citations (matched to [^N] markers)
@@ -46,6 +47,10 @@ class StoredMessage:
     warnings: list[WarningEvent]
     error: ErrorEvent | None
     analyst_sql: dict[str, str]    # tool_use_id → SQL string (for debugging)
+    verified_tool_uses: set[str]   # tool_use_ids whose results were verified
+    tool_result_text: dict[str, str]  # tool_use_id → plain-text result summary
+    attachments: list[Any]         # Uploaded files / audio from the user turn
+    pending_permission: ToolUseEvent | None  # Tool awaiting user approval
     message_id: int | None         # Thread message ID from metadata event
 ```
 
@@ -179,7 +184,7 @@ AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"
 
 The Cortex Agents API is **not supported** from SiS apps using **warehouse runtime**. Use **container runtime** for SiS deployments. For external Streamlit (running outside Snowflake), any runtime works.
 
-When running in container runtime, PAT auth is the simplest approach. The `account_url` can be read from environment variables injected by the container.
+When running in container runtime, use `SiSContainerAuth()` — credentials are injected automatically by Snowflake. The `account_url` is available via `account_url_from_env()`.
 
 ---
 
