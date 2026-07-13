@@ -3,6 +3,7 @@
 -- Run AFTER 04_semantic_view.sql — the semantic view must exist before
 -- the agent can reference it in tool_resources.
 --
+-- Requires live_test_wh to exist (created by 02_search_service.sql).
 -- Adjust names to match your test account.
 
 CREATE AGENT IF NOT EXISTS live_test_db.live_test_schema.analyst_agent
@@ -21,6 +22,9 @@ CREATE AGENT IF NOT EXISTS live_test_db.live_test_schema.analyst_agent
   tool_resources:
     SalesAnalyst:
       semantic_view: live_test_db.live_test_schema.sales_view
+      execution_environment:
+        type: warehouse
+        warehouse: live_test_wh
   $$;
 
 GRANT USAGE ON AGENT live_test_db.live_test_schema.analyst_agent
