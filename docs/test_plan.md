@@ -250,6 +250,8 @@ Fixtures (defined in `tests/integration/conftest.py`):
 | `TestDeleteThread` | `test_delete_happy_path`, `test_delete_404_raises_thread_not_found` |
 | `TestUpdateThread` | `test_update_happy_path`, `test_update_sends_correct_body` |
 | `TestListThreads` | `test_list_returns_metadata_list`, `test_list_with_origin_filter_sends_query_param` |
+| `TestClientGetThread` | `test_get_thread_returns_thread_with_correct_thread_id`, `test_get_thread_with_explicit_parent_message_id` |
+| `TestThreadWrapperMethods` | `test_list_messages_delegates_to_resource`, `test_latest_context_delegates_to_resource`, `test_get_history_emits_deprecation_warning` |
 
 ---
 

@@ -427,7 +427,7 @@ SNOWFLAKE_PAT = "v2:..."
 ```python
 import streamlit as st
 from cortex_agents_client.st.session import init_session, get_messages, append_message, reset_thread
-from cortex_agents_client.st.render import render_stored_message, render_streaming_response
+from cortex_agents_client.st.render import render_stored_message, render_streaming_response, _escape_dollars
 from cortex_agents_client.models.thread import StoredMessage
 
 client, thread = init_session(
@@ -442,7 +442,7 @@ if st.sidebar.button("New conversation", type="primary"):
 for msg in get_messages():
     with st.chat_message(msg.role):
         if msg.role == "user":
-            st.markdown(msg.text)
+            st.markdown(_escape_dollars(msg.text))
         else:
             render_stored_message(msg, st, show_thinking=False)
 
@@ -652,7 +652,7 @@ Use `sis_init_session()` in place of `init_session()` for the same idempotent se
 
 ```python
 from cortex_agents_client.st.session import sis_init_session, get_messages, append_message, reset_thread
-from cortex_agents_client.st.render import render_stored_message, render_streaming_response
+from cortex_agents_client.st.render import render_stored_message, render_streaming_response, _escape_dollars
 from cortex_agents_client.models.thread import StoredMessage
 import streamlit as st
 
@@ -665,7 +665,7 @@ if st.sidebar.button("New conversation", type="primary"):
 for msg in get_messages():
     with st.chat_message(msg.role):
         if msg.role == "user":
-            st.markdown(msg.text)
+            st.markdown(_escape_dollars(msg.text))
         else:
             render_stored_message(msg, st, show_thinking=False)
 

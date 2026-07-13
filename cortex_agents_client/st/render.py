@@ -366,7 +366,7 @@ def render_streaming_response(
 
         elif isinstance(event, ErrorEvent):
             stored.error = event
-            container.error(_escape_dollars(f"{event.message}"), icon=":material/error:", title=f"Error {event.code}")
+            container.error(_escape_dollars(event.message), icon=":material/error:", title=f"Error {event.code}")
             break
 
         elif isinstance(event, MetadataEvent):
