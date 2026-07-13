@@ -87,7 +87,22 @@ Request body:
       "search_service": "db.schema.policy_search",
       "title_column": "doc_title",
       "id_column": "doc_id",
-      "filter": {"@eq": {"region": "North America"}}
+      "max_results": 5,
+      "filter": {"@eq": {"region": "North America"}},
+      "columns_and_descriptions": {
+        "TEXT": {
+          "description": "Main document content.",
+          "type": "string",
+          "searchable": true,
+          "filterable": false
+        },
+        "CATEGORY": {
+          "description": "Document category: policy, guide, reference.",
+          "type": "string",
+          "searchable": false,
+          "filterable": true
+        }
+      }
     },
     "get_weather": {
       "type": "function",
@@ -158,7 +173,7 @@ POST /api/v2/databases/{database}/schemas/{schema}/agents/{name}:feedback
 
 ```json
 {
-  "request_id": "61987ff6-6d56-4695-83c0-1e7cfed818c7",
+  "orig_request_id": "61987ff6-6d56-4695-83c0-1e7cfed818c7",
   "positive": true,
   "feedback_message": "Great answer!",
   "categories": ["accurate", "helpful"],
@@ -389,10 +404,14 @@ Response: `{"success": true}`
 
 ## ToolResource variants by type
 
-**`cortex_analyst_text_to_sql`**: `semantic_model_file` XOR `semantic_view`, plus `execution_environment`.
+**`cortex_analyst_text_to_sql`**: `semantic_model_file` XOR `semantic_view`, plus optional `execution_environment: {type, warehouse, query_timeout?}`.
 
-**`cortex_search`**: `search_service`, `title_column`, `id_column`, `filter`.
+**`cortex_search`**: `search_service` (fully-qualified name), `title_column`, `id_column`, optional `filter`, optional `max_results` (integer), optional `columns_and_descriptions` (map of column name → `{description, type, searchable, filterable}` — recommended for filterable/searchable columns to improve result quality).
 
 **`generic`**: `type` (`function` | `procedure`), `execution_environment`, `identifier`.
 
 **`web_search`**: `max_results` (integer).
+
+**`code_execution`**, **`data_to_chart`**: No `tool_resources` entry required.
+
+**`agent_skill`**, **`mcp_connector`**: Resource schemas not yet publicly documented; pass tool-specific resource objects as needed.

@@ -21,6 +21,19 @@ from dataclasses import dataclass, field
 from typing import Any
 
 
+def _parse_bool(value: Any) -> bool:
+    """Coerce a value that may be a JSON boolean or the strings ``"true"``/``"false"``
+    to a Python bool.
+
+    The Cortex Agents API occasionally sends ``"client_side_execute": "true"``
+    as a JSON string rather than a boolean literal. ``bool("false")`` evaluates
+    to ``True`` in Python (non-empty string), which would silently invert the flag.
+    """
+    if isinstance(value, str):
+        return value.lower() == "true"
+    return bool(value)
+
+
 # ---------------------------------------------------------------------------
 # Base class
 # ---------------------------------------------------------------------------
@@ -311,7 +324,9 @@ class ToolUseEvent(SSEEvent):
             type=payload.get("type", ""),
             name=payload.get("name", ""),
             input=payload.get("input") or {},
-            client_side_execute=bool(payload.get("client_side_execute", False)),
+            # The API may send "true"/"false" as a JSON string instead of a boolean.
+            # bool("false") == True in Python, so we need a string-aware coercion.
+            client_side_execute=_parse_bool(payload.get("client_side_execute", False)),
             permission_options=permission.get("options") or [],
         )
 
@@ -811,7 +826,7 @@ class ResponseEvent(SSEEvent):
         content: All content blocks produced during the run (raw dicts).
         warnings: All non-fatal warnings produced during the run (raw dicts).
         status: Completion status. ``"cancelled"`` if the run was stopped
-            early; empty string for normal completion.
+            early; ``"completed"`` for normal completion.
         usage: Per-model token consumption for this run. One
             :class:`TokensConsumed` entry per model used.
         run_id: Unique identifier for this run.

@@ -48,11 +48,11 @@ def test_oauth_auth_authorization_header():
     assert headers["Authorization"] == f"Bearer {token}"
 
 
-def test_oauth_auth_no_type_header():
-    """OAuthAuth does not include X-Snowflake-Authorization-Token-Type."""
+def test_oauth_auth_includes_type_header():
+    """OAuthAuth now includes X-Snowflake-Authorization-Token-Type: OAUTH."""
     auth = OAuthAuth("some_token")
     headers = auth.headers()
-    assert "X-Snowflake-Authorization-Token-Type" not in headers
+    assert headers.get("X-Snowflake-Authorization-Token-Type") == "OAUTH"
 
 
 def test_jwt_auth_raises_without_cryptography():
@@ -115,12 +115,12 @@ class TestSiSContainerAuth:
         with pytest.raises(FileNotFoundError, match="token file not found"):
             SiSContainerAuth(token_path=tmp_path / "nonexistent_token")
 
-    def test_no_token_type_header(self, tmp_path):
-        """SiSContainerAuth does not add X-Snowflake-Authorization-Token-Type."""
+    def test_includes_oauth_type_header(self, tmp_path):
+        """SiSContainerAuth includes X-Snowflake-Authorization-Token-Type: OAUTH."""
         token_file = tmp_path / "token"
         token_file.write_text("tok")
         auth = SiSContainerAuth(token_path=token_file)
-        assert "X-Snowflake-Authorization-Token-Type" not in auth.headers()
+        assert auth.headers().get("X-Snowflake-Authorization-Token-Type") == "OAUTH"
 
 
 class TestAccountUrlFromEnv:

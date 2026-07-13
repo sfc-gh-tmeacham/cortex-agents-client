@@ -134,6 +134,27 @@ def test_tool_use_event_no_permission():
     assert event.client_side_execute is False
 
 
+def test_tool_use_client_side_execute_string_true():
+    """The API sends client_side_execute as the string \"true\" (not a boolean) — must parse to True."""
+    payload = {**TOOL_USE_PAYLOAD, "client_side_execute": "true"}
+    event = event_from_sse("response.tool_use", payload)
+    assert event.client_side_execute is True
+
+
+def test_tool_use_client_side_execute_string_false():
+    """String \"false\" must not be coerced to True via bool(\"false\")."""
+    payload = {**TOOL_USE_PAYLOAD, "client_side_execute": "false"}
+    event = event_from_sse("response.tool_use", payload)
+    assert event.client_side_execute is False
+
+
+def test_tool_use_client_side_execute_bool_true():
+    """Boolean True (JSON literal) must still parse to True."""
+    payload = {**TOOL_USE_PAYLOAD, "client_side_execute": True}
+    event = event_from_sse("response.tool_use", payload)
+    assert event.client_side_execute is True
+
+
 def test_tool_use_event_with_permission():
     """response.tool_use with permission options populated."""
     event = event_from_sse("response.tool_use", TOOL_USE_WITH_PERMISSION_PAYLOAD)

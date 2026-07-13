@@ -122,6 +122,8 @@ The agent has decided to use a tool. If `permission.options` is non-empty, the c
 }
 ```
 
+> **Note:** The API may send `client_side_execute` as the JSON string `"true"` (not a boolean) when the flag is set. The library handles both forms. When `false`, the field is sent as a JSON boolean.
+
 When permission is required:
 ```json
 {
@@ -393,7 +395,7 @@ Final aggregated response. **Always the last event in the stream.** Emitted once
 }
 ```
 
-**Dataclass:** `ResponseEvent` — fields: `role`, `content`, `warnings`, `status` (`"cancelled"` if aborted, empty for normal completion), `usage` (list of `TokensConsumed`), `run_id`, `thread_id`, `user_message_id`, `assistant_message_id`.
+**Dataclass:** `ResponseEvent` — fields: `role`, `content`, `warnings`, `status` (`"cancelled"` if aborted via CancelAgentRun, `"completed"` for normal completion), `usage` (list of `TokensConsumed`), `run_id`, `thread_id`, `user_message_id`, `assistant_message_id`.
 
 **Usage:** inspect `usage` for token counts; check `status == "cancelled"` to detect server-side abort.
 

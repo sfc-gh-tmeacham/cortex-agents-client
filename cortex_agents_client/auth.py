@@ -233,10 +233,13 @@ class OAuthAuth(AuthProvider):
         """Returns OAuth authentication headers.
 
         Returns:
-            Dict with the ``Authorization`` header only.
-            Snowflake determines the token type automatically.
+            Dict with ``Authorization`` and
+            ``X-Snowflake-Authorization-Token-Type: OAUTH`` headers.
         """
-        return {"Authorization": f"Bearer {self._token}"}
+        return {
+            "Authorization": f"Bearer {self._token}",
+            "X-Snowflake-Authorization-Token-Type": "OAUTH",
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -308,14 +311,17 @@ class SiSContainerAuth(AuthProvider):
         are used automatically without restarting the application.
 
         Returns:
-            Dict with ``Authorization`` header only. Snowflake determines
-            the token type from the token value.
+            Dict with ``Authorization`` and
+            ``X-Snowflake-Authorization-Token-Type: OAUTH`` headers.
 
         Raises:
             FileNotFoundError: If the token file was removed after init.
         """
         token = self._token_path.read_text().strip()
-        return {"Authorization": f"Bearer {token}"}
+        return {
+            "Authorization": f"Bearer {token}",
+            "X-Snowflake-Authorization-Token-Type": "OAUTH",
+        }
 
 
 def account_url_from_env(host_env: str = _SNOWFLAKE_HOST_ENV) -> str:
