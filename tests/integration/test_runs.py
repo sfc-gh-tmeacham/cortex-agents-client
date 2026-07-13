@@ -13,8 +13,6 @@ from cortex_agents_client.models.events import (
     MetadataEvent,
     TextDeltaEvent,
     TextEvent,
-    ToolResultEvent,
-    ToolUseEvent,
     UnknownEvent,
     WarningEvent,
 )

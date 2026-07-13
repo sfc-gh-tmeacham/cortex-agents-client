@@ -219,6 +219,11 @@ Fixtures (defined in `tests/integration/conftest.py`):
 | `TestRunURLs` | `test_agent_object_run_uses_agent_url`, `test_lite_run_uses_cortex_agent_run_url` |
 | `TestHttpErrors` | `test_http_401_raises_auth_error`, `test_http_403_raises_permission_error`, `test_http_429_raises_rate_limit_error`, `test_http_500_raises_server_error` |
 | `TestThreadClass` | `test_first_turn_uses_parent_message_id_zero`, `test_second_turn_uses_assistant_message_id`, `test_fork_creates_new_thread_at_message_id`, `test_missing_assistant_metadata_preserves_id` |
+| `TestNotFoundErrorHierarchy` | `test_agent_not_found_catchable_as_not_found_error`, `test_thread_not_found_catchable_as_not_found_error` |
+| `TestCortexTimeoutError` | `test_request_timeout_raises_cortex_timeout_error` |
+| `TestStreamAndCollectFallback` | `test_text_delta_fallback_when_no_text_event`, `test_thinking_delta_fallback_when_no_thinking_event`, `test_summary_event_takes_precedence_over_deltas` |
+| `TestNonStreamingThinking` | `test_run_with_thinking_content_in_response` |
+| `TestNonStreamingToolParsing` | `test_run_parses_tool_use_and_tool_result`, `test_run_parses_top_level_warnings` |
 
 ---
 
@@ -284,7 +289,10 @@ Both files use `unittest.mock.MagicMock` and `patch.dict("sys.modules", ...)` to
 | `test_renders_text` | `StoredMessage.text` rendered via `st.markdown` |
 | `test_renders_table` | `StoredMessage.tables` rendered via `st.dataframe` |
 | `test_renders_chart` | `StoredMessage.charts` rendered via `st.vega_lite_chart` |
-| `test_renders_thinking_expander` | Thinking text in expander |
+| `test_renders_thinking_expander` | Thinking text in expander (show_thinking=True) |
+| `test_does_not_render_thinking_when_show_thinking_false` | Expander not created when show_thinking=False |
+| `test_default_show_thinking_is_false` | Default show_thinking=False matches render_streaming_response |
+| `test_elicitation_renders_info_not_markdown` | is_elicitation=True uses st.info() not st.markdown() |
 | `test_renders_warning` | `WarningEvent` rendered as `st.warning` |
 | `test_renders_error` | `ErrorEvent` rendered as `st.error` |
 | `test_empty_message_no_calls` | Empty `StoredMessage` makes no render calls |

@@ -28,9 +28,6 @@ from cortex_agents_client.exceptions import (
 
 __all__ = ["HttpClient"]
 
-_AGENT_NOT_FOUND_CODES = {"002002", "002021"}  # Snowflake object-not-found codes
-
-
 def _raise_for_status(response: httpx.Response, *, resource: str = "resource") -> None:
     """Raises a typed exception for non-2xx HTTP responses.
 

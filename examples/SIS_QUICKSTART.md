@@ -177,13 +177,7 @@ def _chat() -> None:
         origin_application="sis_dialog",
     ).render()
 
-if "dialog_open" not in st.session_state:
-    st.session_state.dialog_open = False
-
 if st.button("Ask the agent", icon=":material/chat:", type="primary"):
-    st.session_state.dialog_open = True
-
-if st.session_state.dialog_open:
     _chat()
 ```
 

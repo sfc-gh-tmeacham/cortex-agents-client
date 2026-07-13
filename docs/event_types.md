@@ -375,7 +375,7 @@ Final aggregated response. **Always the last event in the stream.** Emitted once
   "role": "assistant",
   "content": [...],
   "warnings": [],
-  "status": "",
+  "status": "completed",
   "metadata": {
     "usage": {
       "tokens_consumed": [
@@ -438,5 +438,5 @@ event: metadata
 data: {"metadata": {"role": "assistant", "message_id": 456, "run_id": "run_001"}}
 
 event: response
-data: {"role": "assistant", "content": [...], "status": "", "metadata": {"usage": [...], "run_id": "run_001"}}
+data: {"role": "assistant", "content": [...], "status": "completed", "metadata": {"usage": [...], "run_id": "run_001"}}
 ```
