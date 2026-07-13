@@ -95,13 +95,26 @@ uv run pytest tests/ -m "not live" -v
 
 ---
 
-## Thread cleanup
+## Object cleanup
 
-Each test creates threads tagged `origin_application='cac_live'` and deletes them on
-teardown (best-effort). If a test run is interrupted (e.g. `Ctrl+C`), leaked threads
-can be swept with:
+All Snowflake objects created by the seed scripts are **dropped automatically** when
+the test session ends. The session fixture runs the DROP statements in
+`seed/teardown.sql` via the SQL REST API after all tests complete.
+
+To skip teardown (e.g. for debugging):
 
 ```bash
+LIVE_SKIP_TEARDOWN=1 uv run pytest tests/live/ -m live -v
+```
+
+If a test session is interrupted before teardown runs, use either of these:
+
+```bash
+# Re-run the teardown script directly
+SNOWFLAKE_ACCOUNT_URL="https://..." SNOWFLAKE_PAT="v2:..." \
+  uv run python tests/live/seed/teardown.py
+
+# Sweep any leaked threads (separate from objects)
 SNOWFLAKE_ACCOUNT_URL="https://..." SNOWFLAKE_PAT="v2:..." \
   uv run python tests/live/seed/cleanup_leaked_threads.py
 ```

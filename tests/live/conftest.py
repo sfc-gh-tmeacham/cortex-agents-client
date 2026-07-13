@@ -11,11 +11,18 @@ All test threads are tagged with origin_application='cac_live' and deleted on te
 Any threads that leak (e.g. due to a keyboard interrupt) can be swept with:
 
     uv run python tests/live/seed/cleanup_leaked_threads.py
+
+All Snowflake objects created by the seed scripts are dropped automatically when the
+test session ends (via the session-scoped _teardown_live_objects fixture). To skip
+teardown (e.g. for debugging), set LIVE_SKIP_TEARDOWN=1.
 """
 from __future__ import annotations
 
 import os
+import pathlib
+import time
 
+import httpx
 import pytest
 
 from cortex_agents_client import CortexAgentsClient
@@ -25,6 +32,8 @@ from cortex_agents_client.client import Thread
 # easy to identify and clean up.
 LIVE_ORIGIN_APP = "cac_live"
 
+_TEARDOWN_SQL = pathlib.Path(__file__).parent / "seed" / "teardown.sql"
+
 
 def _require_env(name: str) -> str:
     """Return the value of *name* or skip the test if it is unset."""
@@ -32,6 +41,35 @@ def _require_env(name: str) -> str:
     if not value:
         pytest.skip(f"Environment variable {name!r} is not set")
     return value
+
+
+def _run_teardown(account_url: str, pat: str) -> None:
+    """Execute each DROP statement in teardown.sql via the SQL REST API."""
+    statements = [
+        line.strip().rstrip(";")
+        for line in _TEARDOWN_SQL.read_text().splitlines()
+        if line.strip() and not line.strip().startswith("--")
+    ]
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": f"Bearer {pat}",
+        "X-Snowflake-Authorization-Token-Type": "PROGRAMMATIC_ACCESS_TOKEN",
+    }
+    with httpx.Client(timeout=60.0) as client:
+        for stmt in statements:
+            try:
+                resp = client.post(
+                    f"{account_url}/api/v2/statements",
+                    headers=headers,
+                    json={"statement": stmt, "timeout": 30},
+                )
+                if resp.status_code not in (200, 202):
+                    # Non-fatal — object may not have been created if tests were skipped
+                    pass
+            except Exception:
+                pass  # best-effort
+            time.sleep(0.1)
 
 
 # ---------------------------------------------------------------------------
@@ -80,6 +118,22 @@ def agent_path_web() -> str:
     return _require_env("LIVE_AGENT_WEB")
 
 
+@pytest.fixture(scope="session", autouse=True)
+def _teardown_live_objects() -> None:
+    """Drops all cac_live Snowflake objects after the session ends.
+
+    Runs the DROP statements in seed/teardown.sql via the SQL REST API.
+    Set LIVE_SKIP_TEARDOWN=1 to disable (useful when debugging failures).
+    """
+    yield  # tests run here
+    if os.environ.get("LIVE_SKIP_TEARDOWN"):
+        return
+    url = os.environ.get("SNOWFLAKE_ACCOUNT_URL")
+    pat = os.environ.get("SNOWFLAKE_PAT")
+    if url and pat:
+        _run_teardown(url, pat)
+
+
 # ---------------------------------------------------------------------------
 # Function-scoped fixtures (created fresh for each test)
 # ---------------------------------------------------------------------------
@@ -93,3 +147,4 @@ def live_thread(live_client: CortexAgentsClient) -> Thread:
         live_client.threads.delete(thread.thread_id)
     except Exception:
         pass  # best-effort — cleanup_leaked_threads.py handles leaks
+
