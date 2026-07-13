@@ -120,6 +120,35 @@ independently while the background thread drains the HTTP connection.
 
 ## Potential future items
 
+### API-consistency improvements (deferred — breaking changes)
+
+- **`PermissionError` / `TimeoutError` shadow Python builtins** — Both exception
+  classes in `exceptions.py` shadow `builtins.PermissionError` (a subclass of
+  `OSError`) and `builtins.TimeoutError`. Anyone who imports them into a file and
+  later catches `PermissionError` may inadvertently catch file-system errors instead
+  of Cortex errors (or vice versa). Rename to `CortexPermissionError` /
+  `CortexTimeoutError` (or `AgentPermissionError` / `AgentTimeoutError`) with
+  deprecated aliases for a transition window.
+
+- **`NotFoundError` base class** — `AgentNotFoundError` and `ThreadNotFoundError`
+  both inherit directly from `CortexAgentError`. As more resource types are added,
+  callers who want to catch any not-found error must list all variants. Add an
+  intermediate `NotFoundError(CortexAgentError)` so callers can write
+  `except NotFoundError` instead.
+
+- **`Thread.get_history` → `Thread.list_messages`** — `Thread.get_history()` wraps
+  `ThreadsResource.list_messages()`. The inconsistent naming (same operation, two
+  names) will confuse users who switch between the high-level `Thread` API and the
+  lower-level `client.threads` resource directly. Rename the `Thread` method to
+  `list_messages` and add `Thread.latest_context()` to mirror the resource method.
+
+- **`RunResult.thinking` empty string vs `StoredMessage.thinking` None** —
+  `RunResult` uses `thinking: str = ""` to mean "no thinking", while `StoredMessage`
+  uses `thinking: str | None = None`. Both represent the same concept with different
+  sentinels, which creates a trap when converting between them. Standardise on
+  `str | None = None` in `RunResult` (requires updating the accumulation logic in
+  `runs.py::stream_and_collect`).
+
 - **Image pasting** — CoWork supports pasting images directly from the clipboard; this
   would follow the same stage-upload pattern as file attachments.
 - **Voice-to-text preview** — Show a transcript of recorded audio in the user bubble
