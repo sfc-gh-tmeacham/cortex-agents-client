@@ -174,7 +174,7 @@ RESPONSE_PAYLOAD = {
         {"type": "text", "text": {"text": "Revenue was $4.2B", "annotations": []}},
     ],
     "warnings": [],
-    "status": "",
+    "status": "completed",
     "metadata": {
         "run_id": "run_1",
         "thread_id": 99,

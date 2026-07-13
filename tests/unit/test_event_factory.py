@@ -325,7 +325,7 @@ def test_response_event():
     assert event.role == "assistant"
     assert len(event.content) == 1
     assert event.warnings == []
-    assert event.status == ""
+    assert event.status == "completed"
     assert event.run_id == "run_1"
     assert event.thread_id == 99
     assert event.user_message_id == 123

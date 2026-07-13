@@ -810,7 +810,7 @@ class ResponseEvent(SSEEvent):
     events), but it is the only source of:
 
     - ``status``: set to ``"cancelled"`` when the run was terminated early
-      via CancelAgentRun; otherwise empty.
+      via CancelAgentRun; "completed" for normal completion.
     - ``usage``: per-model token counts for the entire run.
     - ``run_id`` / ``thread_id``: stable IDs for the run and thread.
     - ``user_message_id`` / ``assistant_message_id``: persisted message IDs
@@ -826,7 +826,7 @@ class ResponseEvent(SSEEvent):
         content: All content blocks produced during the run (raw dicts).
         warnings: All non-fatal warnings produced during the run (raw dicts).
         status: Completion status. ``"cancelled"`` if the run was stopped
-            early via CancelAgentRun; empty string for normal completion.
+            early via CancelAgentRun; "completed" for normal completion.
         usage: Per-model token consumption for this run. One
             :class:`TokensConsumed` entry per model used.
         run_id: Unique identifier for this run.

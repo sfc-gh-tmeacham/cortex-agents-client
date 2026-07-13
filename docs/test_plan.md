@@ -3,7 +3,7 @@
 Living document describing the test suite for `cortex_agents_client`.
 All test names and file paths reflect the actual code on disk.
 
-**Current totals:** 194 passing, 1 skipped (JWT-missing-cryptography path skipped when `cryptography` is installed).
+**Current totals:** 230 passing, 1 skipped (JWT-missing-cryptography path skipped when `cryptography` is installed).
 
 ---
 
