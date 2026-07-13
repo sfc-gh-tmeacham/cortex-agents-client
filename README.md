@@ -507,30 +507,44 @@ ALTER STREAMLIT my_db.my_schema.my_app
 
 #### How RBAC is enforced
 
-All API calls made by `SiSContainerAuth` run as the **logged-in Snowflake user** using their **default role**. The OAuth token injected at `/snowflake/session/token` is signed and scoped at authentication time — Snowflake enforces all access control server-side.
+By default, SiS container runtime apps run with **owner's rights** — the same model as stored procedures. The OAuth token at `/snowflake/session/token` (what `SiSContainerAuth()` reads) is scoped to the **app owner's role**, not the role of the user who opened the app. Snowflake enforces all access control server-side.
 
-Each user automatically sees only their own threads (`GET /api/v2/cortex/threads` returns only threads belonging to the calling user). Thread isolation is a Snowflake API guarantee.
+This means:
+- `CURRENT_USER()` and `CURRENT_ROLE()` inside Cortex Agents API calls return the **app owner's** identity and role.
+- Every viewer of the app shares the same token and the same effective privileges.
+- Thread visibility: each user sees only threads belonging to the calling identity — which in owner's rights mode is the app owner, so all viewers share the same thread namespace.
 
-**Agent access requires:**
-- `USAGE ON AGENT` granted to the user's role
-- `SNOWFLAKE.CORTEX_AGENT_USER` (or `SNOWFLAKE.CORTEX_USER`) database role granted to the user's role
-- Tool-level privileges: `SELECT` on tables for Cortex Analyst, `USAGE` on search services for Cortex Search, `USAGE` on functions/procedures for custom tools
+**Agent access requires (granted to the app owner's role):**
+- `USAGE ON AGENT` granted to the app owner's role
+- `SNOWFLAKE.CORTEX_AGENT_USER` (or `SNOWFLAKE.CORTEX_USER`) database role granted to the app owner's role
+- Tool-level privileges: `SELECT` on tables for Cortex Analyst, `USAGE` on search services for Cortex Search
+
+#### Restricted Caller's Rights
+
+As of June 1, 2026 (GA), container runtime apps support **Restricted Caller's Rights**, which runs connections with the viewer's privileges instead of the owner's. This requires Streamlit ≥ 1.53.1.
+
+With restricted caller's rights, `st.connection("snowflake-callers-rights")` gives a Snowflake SQL connection scoped to the viewer's role — useful for data queries that should respect per-user row access policies.
+
+**However, Restricted Caller's Rights does not extend to the Cortex Agents REST API.** The caller's rights token (`Sf-Context-Current-User-Token` request header) is:
+- Designed for Snowflake SQL connections via the connector, not for raw REST API Bearer tokens
+- Only valid for **2 minutes** (created at session start, not refreshed)
+- Not accessible via any documented mechanism for use as a Bearer token in external REST API calls
+
+`SiSContainerAuth()` reads `/snowflake/session/token`, which is always the **owner's** token. There is no supported way to inject the viewer's caller's rights token into Cortex Agents REST API calls.
 
 #### Role switching
 
-Users **cannot change their active role** through the Cortex Agents REST API. The token is fixed for the duration of the session — there is no `USE ROLE` equivalent for REST API calls.
+Roles cannot be changed through the Cortex Agents REST API. The token is fixed — there is no `USE ROLE` equivalent for REST API calls.
 
-#### If you need role-selectable access
+#### Options for per-viewer data isolation
 
-- **App-level workaround**: Present a role selector in the Streamlit UI and use it to filter what the app displays. This is a UI-level guard only — it does not change the token or the effective Snowflake role.
-- **Separate app deployments**: Deploy two Streamlit objects — one requiring `analyst_role` as default, one requiring `admin_role`. Users are directed to the appropriate app based on their default role.
-- **Snowpark session for non-agent operations**: A SiS container app can open a parallel Snowpark connection and call `session.use_role('X')` for non-Cortex-Agents SQL work. That session cannot be used to obtain a new Bearer token for the REST API.
+Since the REST API always runs as the app owner, per-viewer data isolation must be achieved through other means:
 
-The cleanest governance pattern is to set each user's default role correctly before they use the app:
+- **Row access policies on agent tools**: Configure row access policies on the tables used by Cortex Analyst. The policy can use the `CURRENT_USER()` context (which returns the owner in owner's rights mode) — this won't filter per-viewer. For true per-viewer filtering, pass the viewer's identity through the prompt and rely on the agent's response logic, or enforce it at the semantic model/tool level.
+- **Separate app deployments**: Deploy separate Streamlit objects owned by roles with different data access. Direct users to the appropriate app based on their role.
+- **Snowpark session for non-agent SQL**: A SiS container app can open a parallel `st.connection("snowflake-callers-rights")` for regular SQL queries that should respect the viewer's privileges. This does not affect Cortex Agents REST API calls.
 
-```sql
-ALTER USER my_user SET DEFAULT_ROLE = analyst_role;
-```
+The cleanest governance pattern is to grant the app owner's role exactly the data access it should have on behalf of all viewers, and use the agent's tool configuration to control what data is returned.
 
 ---
 
