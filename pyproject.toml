@@ -34,7 +34,6 @@ dev = [
 ]
 
 [project.urls]
-Repository = "https://github.com/snowflake/cortex-agents-python"
 Documentation = "https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents"
 
 [tool.setuptools.packages.find]

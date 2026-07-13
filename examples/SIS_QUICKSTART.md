@@ -16,11 +16,12 @@ and dialog — and applies to both new apps and existing ones.
    for the `CREATE NETWORK RULE` / `CREATE EXTERNAL ACCESS INTEGRATION` SQL.
 
 2. **Library** — Copy `cortex_agents_client/` into your workspace root (the directory
-   Snowflake puts on `sys.path`), or declare it as a dependency in `pyproject.toml`:
+   Snowflake puts on `sys.path`), or declare it as a dependency in `pyproject.toml`
+   (replace the path with wherever you have the library on disk):
 
    ```toml
    dependencies = [
-       "cortex-agents-client @ git+https://github.com/snowflake/cortex-agents-python.git",
+       "cortex-agents-client @ file:///path/to/cortex-agents-client",
        "httpx>=0.27",
        "streamlit>=1.59",
        "pandas>=2.0",
