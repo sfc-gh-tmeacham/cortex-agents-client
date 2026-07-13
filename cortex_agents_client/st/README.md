@@ -398,13 +398,17 @@ You only need it when rendering text yourself.
 ## macOS note (ARM64)
 
 If Streamlit crashes with a segfault when rendering DataFrames on Apple Silicon,
-add this to `.streamlit/config.toml`:
+set two env vars **inline in the shell command** before Python loads:
 
-```toml
-[env]
-ARROW_DEFAULT_MEMORY_POOL = "system"
-MALLOC_NANO_ZONE = "0"
+```bash
+ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 streamlit run app.py
+# or with uv:
+ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZERO=0 uv run streamlit run app.py
 ```
+
+> **Note:** Streamlit 1.59 removed support for the `[env]` section in
+> `config.toml`. The env vars must be in the shell — setting them in Python
+> code is too late because PyArrow is already loaded by that point.
 
 This is a known PyArrow mimalloc allocator issue on macOS ARM64 and has no
 impact on deployed apps running on Linux.

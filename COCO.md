@@ -70,13 +70,14 @@ converts a result set via Arrow.
 
 **Affects:** macOS ARM64 only. Not reproducible on Linux or macOS x86_64.
 
-**Fix (already applied):** `.streamlit/config.toml` sets two env vars that
-Streamlit injects at startup:
-```toml
-[env]
-ARROW_DEFAULT_MEMORY_POOL = "system"   # use OS allocator instead of mimalloc
-MALLOC_NANO_ZONE = "0"                 # disable macOS nano-zone allocator
+**Fix:** Set two env vars **inline in the shell command** before Python loads:
+```bash
+ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run streamlit_demo/app.py
 ```
+
+> **Important:** Streamlit 1.59 removed support for the `[env]` section in
+> `config.toml`. The env vars **must** be set in the shell before launch —
+> setting them inside Python after PyArrow has already been imported is too late.
 
 These are no-ops on other platforms and do not affect correctness.
 
@@ -128,7 +129,8 @@ uv sync --extra dev --extra streamlit --extra jwt
 uv run pytest tests/ -m "not live" -v
 
 # Run the interactive demo (no Snowflake account needed)
-uv run streamlit run streamlit_demo/app.py
+# Note: env vars required on macOS ARM64 — see Platform notes above
+ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run streamlit_demo/app.py
 ```
 
 Tests: 230 passing, 1 skipped (`tests/` tree below):
