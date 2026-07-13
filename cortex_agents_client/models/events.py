@@ -289,7 +289,10 @@ class ToolUseEvent(SSEEvent):
         event_type: Always ``"response.tool_use"``.
         content_index: Index of this content block in the response array.
         tool_use_id: Unique identifier for this tool invocation.
-        type: The tool type (e.g. ``"cortex_analyst_text_to_sql"``).
+        type: The tool type (e.g. ``"system_execute_sql"``, ``"cortex_search"``,
+            ``"generic"``). As of Apr 2026, Cortex Analyst uses
+            ``"system_execute_sql"`` (previously ``"cortex_analyst_text_to_sql"``).
+            The generated SQL is in ``input["sql"]``.
         name: The tool instance name configured on the agent.
         input: The structured input arguments for the tool.
         client_side_execute: If ``True``, the client must execute this tool
@@ -425,6 +428,12 @@ class ToolResultStatusEvent(SSEEvent):
 class AnalystDeltaEvent(SSEEvent):
     """Streaming delta from the Cortex Analyst tool.
 
+    .. deprecated:: Apr 2026
+        As of the Apr 13, 2026 API update, Cortex Analyst no longer emits
+        ``response.tool_result.analyst.delta`` events. SQL is now delivered in
+        ``ToolUseEvent.input["sql"]`` for events with ``type="system_execute_sql"``.
+        This class is retained for backward compatibility with older deployments.
+
     Contains progressive output as Analyst generates SQL, executes it, and
     returns results. All delta fields are optional — not every delta
     contains all fields.
@@ -433,7 +442,8 @@ class AnalystDeltaEvent(SSEEvent):
         event_type: Always ``"response.tool_result.analyst.delta"``.
         content_index: Index of this content block in the response array.
         tool_use_id: ID of the Analyst tool invocation.
-        tool_type: The Analyst tool type string (e.g. ``"cortex_analyst_text_to_sql"``).
+        tool_type: The Analyst tool type string (``"system_execute_sql"`` on
+            Apr 2026+ deployments; ``"cortex_analyst_text_to_sql"`` on older ones).
         tool_name: The Analyst tool instance name.
         text: Incremental text from Analyst's narrative response.
         think: Incremental text from Analyst's reasoning process.
@@ -572,6 +582,45 @@ class ChartEvent(SSEEvent):
             content_index=payload.get("content_index", 0),
             tool_use_id=payload.get("tool_use_id", ""),
             chart_spec=payload.get("chart_spec", ""),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Suggested queries
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SuggestedQueriesEvent(SSEEvent):
+    """Follow-up question suggestions from the agent.
+
+    Emitted near the end of a response with suggested follow-up queries the
+    user might ask next. Useful for building "quick reply" buttons in chat UIs.
+
+    Attributes:
+        event_type: Always ``"response.suggested_queries"``.
+        content_index: Index of this content block in the response array.
+        queries: List of suggested question strings.
+    """
+
+    content_index: int = 0
+    queries: list[str] = field(default_factory=list)
+
+    @classmethod
+    def _from_payload(cls, payload: dict[str, Any]) -> SuggestedQueriesEvent:
+        """Constructs a SuggestedQueriesEvent from a raw SSE payload.
+
+        Args:
+            payload: Parsed JSON dict from the SSE data field.
+
+        Returns:
+            A populated SuggestedQueriesEvent instance.
+        """
+        items = payload.get("suggested_queries") or []
+        return cls(
+            event_type="response.suggested_queries",
+            content_index=payload.get("content_index", 0),
+            queries=[item["query"] for item in items if isinstance(item, dict) and "query" in item],
         )
 
 

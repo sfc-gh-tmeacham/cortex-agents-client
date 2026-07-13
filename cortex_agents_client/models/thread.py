@@ -205,6 +205,12 @@ class StoredMessage:
     (e.g. results from generic or web_search tools). Used by render_stored_message
     to replay text results on Streamlit reruns.
     """
+    suggested_queries: list[str] = field(default_factory=list)
+    """Follow-up question suggestions from the agent.
+
+    Populated from ``response.suggested_queries`` events. Rendered as clickable
+    buttons in the Streamlit chatbot to auto-submit a follow-up.
+    """
     pending_permission: ToolUseEvent | None = None
     """Set when the stream was interrupted by a tool requiring user permission.
 

@@ -21,10 +21,10 @@ CREATE AGENT IF NOT EXISTS cac_live_db.cac_live_schema.analyst_agent
 
   tool_resources:
     SalesAnalyst:
-      semantic_view: cac_live_db.cac_live_schema.sales_view
+      semantic_view: CAC_LIVE_DB.CAC_LIVE_SCHEMA.SALES_VIEW
       execution_environment:
         type: warehouse
-        warehouse: cac_live_wh
+        warehouse: CAC_LIVE_WH
   $$;
 
 GRANT USAGE ON AGENT cac_live_db.cac_live_schema.analyst_agent

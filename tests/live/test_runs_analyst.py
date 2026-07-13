@@ -1,9 +1,13 @@
-"""Live tests: Cortex Analyst agent — TableEvent, AnalystDeltaEvent, SQL generation.
+"""Live tests: Cortex Analyst agent — SQL generation via system_execute_sql.
 
 These tests require LIVE_AGENT_ANALYST to be set and the analyst agent to be
 deployed (see tests/live/seed/04_semantic_view.sql and 05_analyst_agent.sql).
-They verify that Cortex Analyst-specific events (AnalystDeltaEvent, TableEvent)
-are emitted when the agent answers an aggregation question.
+They verify that the agent calls system_execute_sql with generated SQL when
+answering aggregation questions.
+
+As of Apr 2026, tool use blocks of type ``cortex_analyst_text_to_sql`` were
+replaced by ``system_execute_sql``. The SQL is in ``ToolUseEvent.input["sql"]``
+and results (when successful) are in ``ToolResultEvent.content``.
 
 Skipped automatically if LIVE_AGENT_ANALYST is not set.
 """
@@ -13,17 +17,17 @@ import pytest
 
 from cortex_agents_client.client import Thread
 from cortex_agents_client.models.events import (
-    AnalystDeltaEvent,
     ResponseEvent,
-    TableEvent,
     TextDeltaEvent,
     ToolResultEvent,
     ToolUseEvent,
 )
 
-# A question that should cause the agent to query the sales semantic view
-# and return a table of results.
+# A question that should cause the agent to query the sales semantic view.
 _ANALYST_QUERY = "What is the total revenue by product?"
+
+# The new tool types emitted by agentic Cortex Analyst (Apr 2026+).
+_ANALYST_TOOL_TYPES = {"system_execute_sql", "system_agentic_semantic_context"}
 
 
 @pytest.mark.live
@@ -35,12 +39,14 @@ class TestAnalystToolUse:
         live_thread: Thread,
         agent_path_analyst: str,
     ) -> None:
-        """At least one ToolUseEvent with type='cortex_analyst_text_to_sql' is yielded."""
+        """At least one ToolUseEvent with a recognized analyst tool type is yielded."""
         events = list(live_thread.chat(agent_path_analyst, _ANALYST_QUERY))
         tool_use_events = [e for e in events if isinstance(e, ToolUseEvent)]
         assert len(tool_use_events) >= 1
         tool_types = {e.type for e in tool_use_events}
-        assert "cortex_analyst_text_to_sql" in tool_types
+        assert tool_types & _ANALYST_TOOL_TYPES, (
+            f"Expected one of {_ANALYST_TOOL_TYPES} but got {tool_types}"
+        )
 
     def test_tool_result_event_follows_tool_use(
         self,
@@ -56,70 +62,46 @@ class TestAnalystToolUse:
 
 
 @pytest.mark.live
-class TestAnalystDeltaEvent:
-    """Verify AnalystDeltaEvent (streaming SQL) is emitted."""
+class TestAnalystSQL:
+    """Verify SQL generation in tool use events."""
 
-    def test_analyst_delta_event_contains_sql(
+    def test_system_execute_sql_contains_sql(
         self,
         live_thread: Thread,
         agent_path_analyst: str,
     ) -> None:
-        """At least one AnalystDeltaEvent with non-empty SQL is emitted."""
+        """At least one system_execute_sql ToolUseEvent has a non-empty SQL field."""
         events = list(live_thread.chat(agent_path_analyst, _ANALYST_QUERY))
-        analyst_deltas = [e for e in events if isinstance(e, AnalystDeltaEvent) and e.sql]
-        assert len(analyst_deltas) >= 1, "No AnalystDeltaEvent with SQL was emitted"
-        # SQL should reference the sales table or semantic view
-        combined_sql = " ".join(e.sql for e in analyst_deltas if e.sql).upper()
+        sql_events = [
+            e for e in events
+            if isinstance(e, ToolUseEvent)
+            and e.type == "system_execute_sql"
+            and e.input.get("sql")
+        ]
+        assert len(sql_events) >= 1, "No system_execute_sql ToolUseEvent with SQL was emitted"
+        combined_sql = " ".join(e.input["sql"] for e in sql_events).upper()
         assert "REVENUE" in combined_sql or "SALES" in combined_sql, (
             f"Generated SQL does not mention expected tables/columns: {combined_sql[:200]}"
         )
 
-
-@pytest.mark.live
-class TestTableEvent:
-    """Verify TableEvent (SQL result set) is emitted."""
-
-    def test_table_event_is_emitted(
+    def test_verified_query_used(
         self,
         live_thread: Thread,
         agent_path_analyst: str,
     ) -> None:
-        """At least one TableEvent is yielded containing query results."""
+        """The agent uses the verified query (verified_query_used=True)."""
         events = list(live_thread.chat(agent_path_analyst, _ANALYST_QUERY))
-        table_events = [e for e in events if isinstance(e, TableEvent)]
-        assert len(table_events) >= 1, "No TableEvent was emitted"
-
-    def test_table_event_has_rows(
-        self,
-        live_thread: Thread,
-        agent_path_analyst: str,
-    ) -> None:
-        """The TableEvent result set contains at least one row."""
-        events = list(live_thread.chat(agent_path_analyst, _ANALYST_QUERY))
-        table_events = [e for e in events if isinstance(e, TableEvent)]
-        if not table_events:
-            pytest.skip("No TableEvent received")
-        # numRows is inside resultSetMetaData
-        num_rows = int(
-            table_events[0].result_set.get("resultSetMetaData", {}).get("numRows", 0)
-        )
-        assert num_rows >= 1, f"TableEvent result set has no rows (numRows={num_rows})"
-
-    def test_table_event_result_set_to_dataframe(
-        self,
-        live_thread: Thread,
-        agent_path_analyst: str,
-    ) -> None:
-        """result_set_to_dataframe() converts the TableEvent to a non-empty DataFrame."""
-        from cortex_agents_client.st.render import result_set_to_dataframe
-
-        events = list(live_thread.chat(agent_path_analyst, _ANALYST_QUERY))
-        table_events = [e for e in events if isinstance(e, TableEvent)]
-        if not table_events:
-            pytest.skip("No TableEvent received")
-        df = result_set_to_dataframe(table_events[0])
-        assert len(df) >= 1
-        assert len(df.columns) >= 1
+        sql_events = [
+            e for e in events
+            if isinstance(e, ToolUseEvent)
+            and e.type == "system_execute_sql"
+            and e.input.get("sql")
+        ]
+        if not sql_events:
+            pytest.skip("No system_execute_sql events emitted")
+        # At least one should mark verified_query_used
+        verified = [e for e in sql_events if e.input.get("verified_query_used")]
+        assert verified, "Agent did not use verified query"
 
 
 @pytest.mark.live
@@ -142,7 +124,7 @@ class TestAnalystStreaming:
         live_thread: Thread,
         agent_path_analyst: str,
     ) -> None:
-        """The agent produces a non-empty text response alongside the table."""
+        """The agent produces a non-empty text response."""
         events = list(live_thread.chat(agent_path_analyst, _ANALYST_QUERY))
         text_deltas = [e for e in events if isinstance(e, TextDeltaEvent)]
         full_text = "".join(e.text for e in text_deltas)

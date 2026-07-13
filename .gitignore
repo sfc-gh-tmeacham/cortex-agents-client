@@ -35,6 +35,7 @@ htmlcov/
 coverage.xml
 *.cover
 .hypothesis/
+tests/live/captures/
 
 # Type checking / linting
 .mypy_cache/

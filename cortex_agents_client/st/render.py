@@ -33,6 +33,7 @@ from cortex_agents_client.models.events import (
     MetadataEvent,
     SSEEvent,
     StatusEvent,
+    SuggestedQueriesEvent,
     TableEvent,
     TextAnnotationEvent,
     TextDeltaEvent,
@@ -269,6 +270,9 @@ def render_streaming_response(
 
         elif isinstance(event, ToolUseEvent):
             pending_tool_uses[event.tool_use_id] = event
+            # Extract SQL from system_execute_sql (Apr 2026+ Cortex Analyst)
+            if event.type == "system_execute_sql" and event.input.get("sql"):
+                stored.analyst_sql[event.tool_use_id] = event.input["sql"]
             if event.permission_options:
                 # Tool requires user approval — stop consuming the stream.
                 # The Streamlit chatbot will show the approval UI on the next
@@ -328,6 +332,7 @@ def render_streaming_response(
                     )
 
         elif isinstance(event, AnalystDeltaEvent):
+            # Legacy path: pre-Apr 2026 deployments still emit analyst.delta
             if event.sql:
                 stored.analyst_sql[event.tool_use_id] = event.sql
             if event.verified_query_used:
@@ -363,6 +368,9 @@ def render_streaming_response(
         elif isinstance(event, WarningEvent):
             stored.warnings.append(event)
             container.warning(escape_dollars(event.message), icon=":material/warning:", title="Warning")
+
+        elif isinstance(event, SuggestedQueriesEvent):
+            stored.suggested_queries = event.queries
 
         elif isinstance(event, ErrorEvent):
             stored.error = event
@@ -401,6 +409,9 @@ def render_streaming_response(
 
     if stored.annotations:
         _render_annotations_expander(stored.annotations, container)
+
+    if stored.suggested_queries:
+        _render_suggested_queries(stored.suggested_queries, container)
 
     return stored
 
@@ -464,6 +475,33 @@ def _render_annotations_expander(
             exp.markdown(f"**[{ann.index}]** {escape_dollars(label)}")
         if ann.text:
             exp.caption(f'"{escape_dollars(ann.text)}"')
+
+
+def _render_suggested_queries(queries: list[str], container: Any) -> None:
+    """Renders suggested follow-up queries as clickable pill buttons.
+
+    When a button is clicked, the query text is stored in session state
+    under ``_ca_pending_suggestion`` and a rerun is triggered. The chatbot
+    component picks this up and submits it as the next user message.
+
+    Args:
+        queries: List of suggested question strings from the agent.
+        container: Streamlit container to render into.
+    """
+    import streamlit as st
+
+    if not queries:
+        return
+
+    cols = container.columns(len(queries))
+    for col, query in zip(cols, queries):
+        if col.button(
+            query,
+            icon=":material/arrow_forward:",
+            use_container_width=True,
+        ):
+            st.session_state["_ca_pending_suggestion"] = query
+            st.rerun()
 
 
 def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: bool = False) -> None:
@@ -544,6 +582,9 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
 
     if msg.error:
         container.error(escape_dollars(msg.error.message), icon=":material/error:", title=f"Error {msg.error.code}")
+
+    if msg.suggested_queries:
+        _render_suggested_queries(msg.suggested_queries, container)
 
     if msg.pending_permission:
         container.warning(

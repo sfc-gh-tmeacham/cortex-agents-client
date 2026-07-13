@@ -197,6 +197,8 @@ class HttpClient:
             raise CortexAgentError(f"HTTP error: {exc}") from exc
 
         _raise_for_status(response, resource=resource)
+        if response.status_code == 204 or not response.content:
+            return None
         return response.json()
 
     @contextlib.contextmanager

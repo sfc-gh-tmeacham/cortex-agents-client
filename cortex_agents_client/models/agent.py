@@ -202,7 +202,9 @@ class ToolSpec:
 
     Attributes:
         type: Tool type (e.g. ``"cortex_analyst_text_to_sql"``,
-            ``"cortex_search"``, ``"generic"``).
+            ``"cortex_search"``, ``"generic"``). The agent spec still uses
+            ``"cortex_analyst_text_to_sql"`` for creation; the API emits
+            ``"system_execute_sql"`` at runtime (Apr 2026+).
         name: Unique name for this tool instance.
         description: Human-readable description used by the agent for
             tool selection.

@@ -75,7 +75,22 @@ CREATE SEMANTIC VIEW IF NOT EXISTS cac_live_db.cac_live_schema.sales_view
       COMMENT = 'Number of sales transactions'
   )
 
-  COMMENT = 'Sales semantic view for cortex-agents-client live integration tests.';
+  COMMENT = 'Sales semantic view for cortex-agents-client live integration tests.'
+
+  AI_VERIFIED_QUERIES (
+    revenue_by_product AS (
+      QUESTION 'What is the total revenue by product?'
+      VERIFIED_AT 1752451200
+      VERIFIED_BY '(STEWARD = live_test_seed)'
+      SQL 'SELECT product, SUM(revenue) AS total_revenue FROM __sales GROUP BY product ORDER BY total_revenue DESC'
+    ),
+    quantity_by_region AS (
+      QUESTION 'What is the total quantity sold by region?'
+      VERIFIED_AT 1752451200
+      VERIFIED_BY '(STEWARD = live_test_seed)'
+      SQL 'SELECT region, SUM(quantity) AS total_quantity FROM __sales GROUP BY region ORDER BY total_quantity DESC'
+    )
+  );
 
 -- The agent's role needs REFERENCES and SELECT to use this view in Cortex Analyst
 GRANT REFERENCES, SELECT ON SEMANTIC VIEW cac_live_db.cac_live_schema.sales_view

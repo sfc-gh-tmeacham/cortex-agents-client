@@ -15,9 +15,13 @@ Any threads that leak (e.g. due to a keyboard interrupt) can be swept with:
 All Snowflake objects created by the seed scripts are dropped automatically when the
 test session ends (via the session-scoped _teardown_live_objects fixture). To skip
 teardown (e.g. for debugging), set LIVE_SKIP_TEARDOWN=1.
+
+Set LIVE_DUMP_EVENTS=1 to always dump captured SSE events (not just on failure).
 """
 from __future__ import annotations
 
+import dataclasses
+import json
 import os
 import pathlib
 import time
@@ -81,7 +85,12 @@ def live_client() -> CortexAgentsClient:
     """A CortexAgentsClient connected to the live test account."""
     url = _require_env("SNOWFLAKE_ACCOUNT_URL")
     pat = _require_env("SNOWFLAKE_PAT")
-    return CortexAgentsClient(url, pat, timeout=120.0)
+    # Extract database and schema from the minimal agent path (db.schema.agent)
+    agent_path = _require_env("LIVE_AGENT_MINIMAL")
+    parts = agent_path.split(".")
+    db = parts[0] if len(parts) >= 3 else None
+    schema = parts[1] if len(parts) >= 3 else None
+    return CortexAgentsClient(url, pat, timeout=120.0, default_database=db, default_schema=schema)
 
 
 @pytest.fixture(scope="session")
@@ -147,4 +156,61 @@ def live_thread(live_client: CortexAgentsClient) -> Thread:
         live_client.threads.delete(thread.thread_id)
     except Exception:
         pass  # best-effort — cleanup_leaked_threads.py handles leaks
+
+
+# ---------------------------------------------------------------------------
+# SSE event capture (raw event recording for debugging)
+# ---------------------------------------------------------------------------
+
+_CAPTURES_DIR = pathlib.Path(__file__).parent / "captures"
+
+# Collects events for the current test (reset per test via the fixture).
+_current_test_events: list[dict] = []
+
+
+def _serialize_event(event) -> dict:
+    """Converts an SSEEvent to a JSON-serializable dict."""
+    if dataclasses.is_dataclass(event) and not isinstance(event, type):
+        d = dataclasses.asdict(event)
+        d["_class"] = type(event).__name__
+        return d
+    return {"_class": type(event).__name__, "repr": repr(event)}
+
+
+@pytest.fixture(autouse=True)
+def _capture_events(request, monkeypatch):
+    """Monkey-patches Thread.chat to capture all SSE events during a test.
+
+    Events are stored in _current_test_events. On failure (or when
+    LIVE_DUMP_EVENTS=1), they are written to tests/live/captures/<test_name>.json.
+    """
+    _current_test_events.clear()
+    original_chat = Thread.chat
+
+    def capturing_chat(self, *args, **kwargs):
+        for event in original_chat(self, *args, **kwargs):
+            _current_test_events.append(_serialize_event(event))
+            yield event
+
+    monkeypatch.setattr(Thread, "chat", capturing_chat)
+    yield
+    # monkeypatch reverts automatically
+
+
+@pytest.hookimpl(tryfirst=True, hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Writes captured events to disk on test failure or when LIVE_DUMP_EVENTS=1."""
+    outcome = yield
+    report = outcome.get_result()
+    if report.when != "call":
+        return
+    should_dump = (
+        report.failed
+        or os.environ.get("LIVE_DUMP_EVENTS") == "1"
+    )
+    if should_dump and _current_test_events:
+        _CAPTURES_DIR.mkdir(exist_ok=True)
+        filename = f"{item.nodeid.replace('/', '_').replace('::', '__')}.json"
+        path = _CAPTURES_DIR / filename
+        path.write_text(json.dumps(_current_test_events, indent=2, default=str))
 

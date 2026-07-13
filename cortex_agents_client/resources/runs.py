@@ -19,6 +19,7 @@ from cortex_agents_client.models.events import (
     ErrorEvent,
     MetadataEvent,
     SSEEvent,
+    SuggestedQueriesEvent,
     TableEvent,
     TextAnnotationEvent,
     TextDeltaEvent,
@@ -76,6 +77,7 @@ class RunResult:
     metadata_events: list[MetadataEvent] = field(default_factory=list)
     error: ErrorEvent | None = None
     analyst_sql: dict[str, str] = field(default_factory=dict)
+    suggested_queries: list[str] = field(default_factory=list)
 
 
 def _parse_non_streaming_response(data: dict[str, Any]) -> RunResult:
@@ -481,9 +483,13 @@ class RunsResource:
                 result.annotations.append(event)
             elif isinstance(event, ToolUseEvent):
                 result.tool_uses.append(event)
+                # Extract SQL from system_execute_sql (Apr 2026+ Cortex Analyst)
+                if event.type == "system_execute_sql" and event.input.get("sql"):
+                    result.analyst_sql[event.tool_use_id] = event.input["sql"]
             elif isinstance(event, ToolResultEvent):
                 result.tool_results.append(event)
             elif isinstance(event, AnalystDeltaEvent):
+                # Legacy path: pre-Apr 2026 deployments still emit analyst.delta
                 if event.sql:
                     result.analyst_sql[event.tool_use_id] = event.sql
             elif isinstance(event, TableEvent):
@@ -492,6 +498,8 @@ class RunsResource:
                 result.charts.append(event)
             elif isinstance(event, WarningEvent):
                 result.warnings.append(event)
+            elif isinstance(event, SuggestedQueriesEvent):
+                result.suggested_queries = event.queries
             elif isinstance(event, MetadataEvent):
                 result.metadata_events.append(event)
             elif isinstance(event, ErrorEvent):

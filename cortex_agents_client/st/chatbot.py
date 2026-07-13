@@ -470,6 +470,9 @@ class StreamlitChatbot:
 
         if self._pending_permission_key in st.session_state:
             self._render_permission_ui(thread, append_message)
+        elif "_ca_pending_suggestion" in st.session_state:
+            suggestion = st.session_state.pop("_ca_pending_suggestion")
+            self._process_prompt(suggestion, thread, append_message)
         elif prompt := st.chat_input(
             self._input_placeholder,
             accept_file=self._accept_file,
@@ -533,6 +536,10 @@ class StreamlitChatbot:
         # is rendered inside a container or dialog.
         if self._pending_permission_key in st.session_state:
             self._render_permission_ui(thread, append_message)
+        elif "_ca_pending_suggestion" in st.session_state:
+            suggestion = st.session_state.pop("_ca_pending_suggestion")
+            with chat_area:
+                self._process_prompt(suggestion, thread, append_message)
         elif prompt := st.chat_input(
             self._input_placeholder,
             key=self._input_key,

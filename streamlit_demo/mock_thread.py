@@ -36,6 +36,7 @@ from cortex_agents_client.models.events import (
     ErrorEvent,
     MetadataEvent,
     SSEEvent,
+    SuggestedQueriesEvent,
     TableEvent,
     TextAnnotationEvent,
     TextDeltaEvent,
@@ -462,6 +463,14 @@ def _scenario_simple_text(prompt: str) -> Iterator[SSEEvent]:
         "the next Streamlit rerun."
     )
     yield from _stream_text(response)
+    yield SuggestedQueriesEvent(
+        event_type="response.suggested_queries",
+        queries=[
+            "What regions have the highest revenue?",
+            "Show me a chart of monthly trends",
+            "How does Q1 compare to last year?",
+        ],
+    )
     yield _metadata(1)
 
 
@@ -590,17 +599,27 @@ def _scenario_cortex_search(prompt: str) -> Iterator[SSEEvent]:
         doc_title="Competitive Analysis 2026",
         text="15% price advantage over Gadget X while maintaining comparable performance specs.",
     )
+    yield SuggestedQueriesEvent(
+        event_type="response.suggested_queries",
+        queries=[
+            "What new features were added in Q1 2026?",
+            "How does Widget A compare to Gadget X on price?",
+        ],
+    )
     yield _metadata(3)
 
 
 def _scenario_cortex_analyst(prompt: str, *, verified: bool = False) -> Iterator[SSEEvent]:
-    """Simulates Cortex Analyst — SQL generation, execution, table result.
+    """Simulates Cortex Analyst — SQL generation via system_execute_sql.
+
+    Models the Apr 2026+ API behavior: ToolUseEvent with type="system_execute_sql"
+    and SQL in input["sql"], followed by ToolResultStatusEvent updates, a
+    ToolResultEvent, and a TableEvent with the result set.
 
     Args:
         prompt: The user's input text.
-        verified: If ``True``, sets ``verified_query_used=True`` on the
-            :class:`~cortex_agents_client.models.events.AnalystDeltaEvent`
-            to trigger the :material/verified: icon in the status expander.
+        verified: If ``True``, sets ``verified_query_used=True`` in the
+            tool use input to indicate a pre-verified query was matched.
 
     Yields:
         :class:`~cortex_agents_client.models.events.SSEEvent` objects.
@@ -608,42 +627,36 @@ def _scenario_cortex_analyst(prompt: str, *, verified: bool = False) -> Iterator
     yield ToolUseEvent(
         event_type="response.tool_use",
         tool_use_id="tool_001",
-        type="cortex_analyst_text_to_sql",
-        name="SALES_SEMANTIC_MODEL",
-        input={"question": prompt},
+        type="system_execute_sql",
+        name="system_execute_sql",
+        input={
+            "semantic_model": "SalesAnalyst",
+            "sql": _ANALYST_SQL,
+            "verified_query_used": verified,
+        },
     )
     time.sleep(0.15)
     yield ToolResultStatusEvent(
         event_type="response.tool_result.status",
         tool_use_id="tool_001",
-        tool_type="cortex_analyst_text_to_sql",
-        status="generating_sql",
-        message="Generating SQL from your question...",
+        tool_type="system_execute_sql",
+        status="Validating SQL",
+        message="Postprocessing and validating SQL",
     )
-    time.sleep(0.3)
-    # Analyst SQL arrives as an AnalystDelta
-    yield AnalystDeltaEvent(
-        event_type="response.tool_result.analyst.delta",
-        tool_use_id="tool_001",
-        tool_type="cortex_analyst_text_to_sql",
-        sql=_ANALYST_SQL,
-        sql_explanation="Aggregates revenue and order metrics by region, filtered to Q1 2026.",
-        verified_query_used=verified,
-    )
-    time.sleep(0.05)
+    time.sleep(0.2)
     yield ToolResultStatusEvent(
         event_type="response.tool_result.status",
         tool_use_id="tool_001",
-        tool_type="cortex_analyst_text_to_sql",
-        status="executing_sql",
-        message="Executing query...",
+        tool_type="system_execute_sql",
+        status="Executing SQL",
+        message="Executing SQL",
     )
-    time.sleep(0.5)
+    time.sleep(0.4)
     yield ToolResultEvent(
         event_type="response.tool_result",
         tool_use_id="tool_001",
-        type="cortex_analyst_text_to_sql",
-        name="SALES_SEMANTIC_MODEL",
+        type="system_execute_sql",
+        name="system_execute_sql",
         status="success",
         content=[],
     )
@@ -656,6 +669,14 @@ def _scenario_cortex_analyst(prompt: str, *, verified: bool = False) -> Iterator
         "across all regions, suggesting the gap is driven by volume, not price."
     )
     yield from _stream_text(response)
+    yield SuggestedQueriesEvent(
+        event_type="response.suggested_queries",
+        queries=[
+            "How does the total quantity sold break down by product?",
+            "How does revenue break down by region for each product?",
+            "How many transactions were there for each product?",
+        ],
+    )
     yield _metadata(4)
 
 
@@ -834,7 +855,7 @@ def _scenario_kitchen_sink(prompt: str) -> Iterator[SSEEvent]:
     yield ToolUseEvent(
         event_type="response.tool_use",
         tool_use_id="tool_ks_001",
-        type="cortex_analyst_text_to_sql",
+        type="system_execute_sql",
         name="SALES_SEMANTIC_MODEL",
         input={"question": prompt},
     )
@@ -842,7 +863,7 @@ def _scenario_kitchen_sink(prompt: str) -> Iterator[SSEEvent]:
     yield ToolResultStatusEvent(
         event_type="response.tool_result.status",
         tool_use_id="tool_ks_001",
-        tool_type="cortex_analyst_text_to_sql",
+        tool_type="system_execute_sql",
         status="generating_sql",
         message="Generating SQL...",
     )
@@ -850,14 +871,14 @@ def _scenario_kitchen_sink(prompt: str) -> Iterator[SSEEvent]:
     yield AnalystDeltaEvent(
         event_type="response.tool_result.analyst.delta",
         tool_use_id="tool_ks_001",
-        tool_type="cortex_analyst_text_to_sql",
+        tool_type="system_execute_sql",
         sql=_ANALYST_SQL,
     )
     time.sleep(0.05)
     yield ToolResultStatusEvent(
         event_type="response.tool_result.status",
         tool_use_id="tool_ks_001",
-        tool_type="cortex_analyst_text_to_sql",
+        tool_type="system_execute_sql",
         status="executing_sql",
         message="Executing query...",
     )
@@ -865,7 +886,7 @@ def _scenario_kitchen_sink(prompt: str) -> Iterator[SSEEvent]:
     yield ToolResultEvent(
         event_type="response.tool_result",
         tool_use_id="tool_ks_001",
-        type="cortex_analyst_text_to_sql",
+        type="system_execute_sql",
         name="SALES_SEMANTIC_MODEL",
         status="success",
         content=[],
@@ -894,6 +915,14 @@ def _scenario_kitchen_sink(prompt: str) -> Iterator[SSEEvent]:
         "the fastest growth rate at +22% quarter-over-quarter."
     )
     yield from _stream_text(response)
+    yield SuggestedQueriesEvent(
+        event_type="response.suggested_queries",
+        queries=[
+            "Break down revenue by product",
+            "Show quarter-over-quarter growth rates",
+            "Which region is growing fastest?",
+        ],
+    )
     yield _metadata(9)
 
 
@@ -933,17 +962,17 @@ SCENARIOS: dict[str, Any] = {
 
 #: One-line description shown as an info banner in the demo UI.
 SCENARIO_HINTS: dict[str, str] = {
-    "Simple text": "Streaming text deltas → final TextEvent. Tests the shimmer cursor and basic history replay.",
+    "Simple text": "Streaming text deltas → final TextEvent + suggested follow-up queries as clickable buttons.",
     "Thinking": "ThinkingDeltaEvent blocks before the answer. Toggle 'Show reasoning' in the sidebar to show/hide the expander.",
-    "Cortex Search": "ToolUse + ToolResultStatus + ToolResult. Tests the compact status spinner and success state.",
-    "Cortex Analyst": "Text-to-SQL tool with AnalystDelta (SQL capture), ToolResult, and a TableEvent result. verified_query_used=False → check_circle icon.",
+    "Cortex Search": "ToolUse + ToolResultStatus + ToolResult + citations + suggested queries. Tests the compact status spinner and success state.",
+    "Cortex Analyst": "system_execute_sql tool with SQL in input, ToolResult, TableEvent result, and suggested follow-up queries.",
     "Cortex Analyst (Verified)": "Same as Cortex Analyst but verified_query_used=True → status expander shows the verified icon instead of check_circle.",
     "Table": "A standalone TableEvent rendered as a DataFrame — no tool framing.",
     "Chart": "Six ChartEvent types: line, bar, area, stacked bar, scatter, and heatmap — all rendered via st.vega_lite_chart.",
     "Clarification": "is_elicitation=True response. Renders as st.info() with a contact_support icon instead of plain markdown.",
     "Warning": "WarningEvent (non-fatal) + text response. Tests st.warning() with title and continuation of the stream.",
     "Error": "Fatal ErrorEvent that terminates the stream. Tests st.error() rendering.",
-    "Kitchen sink": "All event types: thinking + tool use + analyst SQL + table + chart + warning + text.",
+    "Kitchen sink": "All event types: thinking + tool use + SQL + table + chart + warning + text + suggested queries.",
 }
 
 

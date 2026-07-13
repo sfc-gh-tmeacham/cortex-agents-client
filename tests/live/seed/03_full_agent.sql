@@ -20,7 +20,7 @@ CREATE AGENT IF NOT EXISTS cac_live_db.cac_live_schema.full_agent
 
   tool_resources:
     DocSearch:
-      name: cac_live_db.cac_live_schema.doc_search
+      name: CAC_LIVE_DB.CAC_LIVE_SCHEMA.DOC_SEARCH
       title_column: title
       id_column: doc_id
       max_results: '3'
