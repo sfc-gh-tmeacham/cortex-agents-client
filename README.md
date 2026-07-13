@@ -4,38 +4,40 @@ Python client library for the Snowflake Cortex Agents REST API, with first-class
 
 ## Installation
 
+This library is not currently published to PyPI or a public Git repository. Install it directly from a local clone of the project directory.
+
 ### uv (recommended)
 
 [uv](https://docs.astral.sh/uv/) is required for Streamlit in Snowflake Workspaces and is the recommended tool for any project that may be deployed there.
 
 ```bash
 # Core library
-uv add "git+https://github.com/snowflake/cortex-agents-python.git"
+uv add /path/to/cortex-agents-client
 
 # With Streamlit rendering support
-uv add "cortex-agents-client[streamlit] @ git+https://github.com/snowflake/cortex-agents-python.git"
+uv add "/path/to/cortex-agents-client[streamlit]"
 
 # With JWT key-pair authentication
-uv add "cortex-agents-client[jwt] @ git+https://github.com/snowflake/cortex-agents-python.git"
+uv add "/path/to/cortex-agents-client[jwt]"
 
 # Everything
-uv add "cortex-agents-client[streamlit,jwt] @ git+https://github.com/snowflake/cortex-agents-python.git"
+uv add "/path/to/cortex-agents-client[streamlit,jwt]"
 ```
 
 ### pip
 
 ```bash
 # Core library
-pip install "git+https://github.com/snowflake/cortex-agents-python.git"
+pip install /path/to/cortex-agents-client
 
 # With Streamlit rendering support
-pip install "cortex-agents-client[streamlit] @ git+https://github.com/snowflake/cortex-agents-python.git"
+pip install "/path/to/cortex-agents-client[streamlit]"
 
 # With JWT key-pair authentication
-pip install "cortex-agents-client[jwt] @ git+https://github.com/snowflake/cortex-agents-python.git"
+pip install "/path/to/cortex-agents-client[jwt]"
 
 # Everything
-pip install "cortex-agents-client[streamlit,jwt] @ git+https://github.com/snowflake/cortex-agents-python.git"
+pip install "/path/to/cortex-agents-client[streamlit,jwt]"
 ```
 
 ## Quick start
