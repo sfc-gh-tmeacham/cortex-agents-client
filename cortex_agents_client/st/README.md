@@ -51,7 +51,7 @@ CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION cortex_agents_api_eai
   ALLOWED_NETWORK_RULES = (common_db.security.cortex_agents_api_rule)
   ENABLED = TRUE;
 
-GRANT USAGE ON INTEGRATION cortex_agents_api_eai TO ROLE my_role;
+GRANT USAGE ON INTEGRATION cortex_agents_api_eai TO ROLE app_owner_role;
 ```
 
 > If your app and agent live in different accounts, add both hosts to
@@ -72,7 +72,7 @@ CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION pypi_eai
   ALLOWED_NETWORK_RULES = (snowflake.external_access.pypi_rule)
   ENABLED = TRUE;
 
-GRANT USAGE ON INTEGRATION pypi_eai TO ROLE my_role;
+GRANT USAGE ON INTEGRATION pypi_eai TO ROLE app_owner_role;
 ```
 
 **Attach both EAIs to your Streamlit object:**
