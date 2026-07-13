@@ -120,7 +120,7 @@ from cortex_agents_client.st import StreamlitChatbot
 bot = StreamlitChatbot(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
     auth=st.secrets["SNOWFLAKE_PAT"],
-    agent_path=st.secrets["AGENT_PATH"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
 )
 bot.render()
 ```
@@ -159,10 +159,9 @@ if prompt := st.chat_input("Ask about revenue..."):
     append_message(StoredMessage(role="user", text=prompt))
 
     # Stream assistant response
-    agent_path = st.secrets["AGENT_PATH"]
     with st.chat_message("assistant"):
         stored = render_streaming_response(
-            thread.chat(agent_path, prompt),
+            thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt),
             container=st,
             show_thinking=False,
             show_tool_status=True,
@@ -178,8 +177,9 @@ if prompt := st.chat_input("Ask about revenue..."):
 ```toml
 SNOWFLAKE_ACCOUNT_URL = "https://myorg-myaccount.snowflakecomputing.com"
 SNOWFLAKE_PAT = "v2:..."
-AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"
 ```
+
+The agent path is not a secret — hardcode it directly in your app.
 
 ---
 

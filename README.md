@@ -163,7 +163,7 @@ Do not set these manually — use `SiSContainerAuth()` and `account_url_from_env
 |---|---|---|
 | `SNOWFLAKE_ACCOUNT_URL` | All | Account URL with `https://` scheme |
 | `SNOWFLAKE_PAT` | PAT | Programmatic Access Token |
-| `SNOWFLAKE_AGENT_PATH` | All | `DB.SCHEMA.AGENT` |
+| `SNOWFLAKE_AGENT_PATH` | All | `DB.SCHEMA.AGENT` — not sensitive; used as a convenience variable in examples and live tests |
 
 ## Multi-turn conversations
 

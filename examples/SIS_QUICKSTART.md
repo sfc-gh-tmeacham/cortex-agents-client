@@ -57,12 +57,11 @@ users come specifically to talk to the agent.
 
 ```python
 # sis_fullpage.py
-import os
 import streamlit as st
 from cortex_agents_client.st import StreamlitChatbot
 from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
 
-AGENT_PATH = os.environ.get("AGENT_PATH", "MY_DB.MY_SCHEMA.MY_AGENT")
+AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # not sensitive — hardcode your agent path
 
 st.set_page_config(
     page_title="My Agent",
@@ -96,12 +95,11 @@ Key points:
 
 ```python
 # sis_embedded.py
-import os
 import streamlit as st
 from cortex_agents_client.st import StreamlitChatbot
 from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
 
-AGENT_PATH = os.environ.get("AGENT_PATH", "MY_DB.MY_SCHEMA.MY_AGENT")
+AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # not sensitive — hardcode your agent path
 
 st.set_page_config(page_title="Sales Dashboard", layout="wide")
 st.title("Sales Dashboard")
@@ -146,12 +144,11 @@ Key points:
 
 ```python
 # sis_dialog.py
-import os
 import streamlit as st
 from cortex_agents_client.st import StreamlitChatbot
 from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
 
-AGENT_PATH = os.environ.get("AGENT_PATH", "MY_DB.MY_SCHEMA.MY_AGENT")
+AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # not sensitive — hardcode your agent path
 
 st.set_page_config(page_title="Sales Dashboard", layout="wide")
 st.title("Sales Dashboard")

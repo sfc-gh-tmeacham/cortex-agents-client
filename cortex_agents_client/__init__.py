@@ -23,7 +23,7 @@ Streamlit usage::
     bot = StreamlitChatbot(
         account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
         auth=st.secrets["SNOWFLAKE_PAT"],
-        agent_path=st.secrets["AGENT_PATH"],
+        agent_path="DB.SCHEMA.MY_AGENT",
     )
     bot.render()
 """
