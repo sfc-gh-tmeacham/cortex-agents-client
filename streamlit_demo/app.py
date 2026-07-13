@@ -412,12 +412,11 @@ ALTER STREAMLIT my_db.my_schema.my_agent_app
     )
     st.code(
         """
-import os
 import streamlit as st
 from cortex_agents_client.st import StreamlitChatbot
 from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
 
-AGENT_PATH = os.environ.get("AGENT_PATH", "MY_DB.MY_SCHEMA.MY_AGENT")
+AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"
 
 st.set_page_config(layout="wide")
 st.title("My Agent")
