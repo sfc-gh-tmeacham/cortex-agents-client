@@ -154,7 +154,7 @@ def event_from_sse(event_type: str, payload: dict[str, Any]) -> SSEEvent:
         for event_type, payload in parse_sse_stream(lines):
             event = event_from_sse(event_type, payload)
             if isinstance(event, TextDeltaEvent):
-                print(event.delta, end="")
+                print(event.text, end="")
     """
     factory = _EVENT_FACTORIES.get(event_type)
     if factory is None:

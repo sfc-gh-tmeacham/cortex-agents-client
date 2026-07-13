@@ -46,14 +46,14 @@ tests/
 | `test_string_coercion_wraps_as_pat` | `_coerce_auth(str)` wraps the string as `PATAuth` |
 | `test_auth_provider_passthrough` | `_coerce_auth(AuthProvider)` returns the instance unchanged |
 | `test_oauth_auth_authorization_header` | `OAuthAuth.headers()` returns correct bearer token |
-| `test_oauth_auth_no_type_header` | `OAuthAuth` does not add `X-Snowflake-Authorization-Token-Type` |
+| `test_oauth_auth_includes_type_header` | `OAuthAuth` includes `X-Snowflake-Authorization-Token-Type: OAUTH` |
 | `test_jwt_auth_raises_without_cryptography` | `JWTAuth` raises `ImportError` when `cryptography` is missing (skipped when installed) |
 | **`TestSiSContainerAuth`** | |
 | `test_reads_token_from_file` | `headers()` reads bearer token from token file |
 | `test_strips_whitespace_from_token` | Trailing newline is stripped |
 | `test_re_reads_token_on_each_call` | Each `headers()` call re-reads the file (token rotation) |
 | `test_raises_if_token_file_missing` | `FileNotFoundError` if token file is absent |
-| `test_no_token_type_header` | No `X-Snowflake-Authorization-Token-Type` added |
+| `test_includes_oauth_type_header` | `SiSContainerAuth` includes `X-Snowflake-Authorization-Token-Type: OAUTH` |
 | **`TestAccountUrlFromEnv`** | |
 | `test_returns_https_url` | Constructs `https://` URL from `SNOWFLAKE_HOST` env var |
 | `test_raises_if_env_var_missing` | `EnvironmentError` if `SNOWFLAKE_HOST` not set |

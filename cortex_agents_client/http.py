@@ -22,7 +22,6 @@ from cortex_agents_client.exceptions import (
     CortexTimeoutError,
     NotFoundError,
     RateLimitError,
-    RunError,
     ServerError,
     ThreadNotFoundError,
 )

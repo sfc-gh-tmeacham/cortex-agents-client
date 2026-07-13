@@ -102,7 +102,7 @@ class StreamlitChatbot:
             to avoid collisions when using multiple chatbots on one page.
         default_database: Default database for agent runs.
         default_schema: Default schema for agent runs.
-        accept_file: If ``True`` or ``"multiple"``, adds a file-attachment
+        accept_file: If ``True``, ``"multiple"``, or ``"directory"``, adds a file-attachment
             button to ``st.chat_input``. ``"multiple"`` allows uploading
             several files at once. Defaults to ``False``.
         accept_audio: If ``True``, adds a microphone button to

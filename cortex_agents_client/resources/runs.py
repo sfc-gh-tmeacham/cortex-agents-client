@@ -62,6 +62,7 @@ class RunResult:
 
     text: str = ""
     thinking: str | None = None
+    status: str = ""  # "completed" | "cancelled" (from non-streaming response)
     tables: list[TableEvent] = field(default_factory=list)
     charts: list[ChartEvent] = field(default_factory=list)
     tool_uses: list[ToolUseEvent] = field(default_factory=list)
@@ -116,6 +117,18 @@ def _parse_non_streaming_response(data: dict[str, Any]) -> RunResult:
                     "chart_spec": chart_data.get("chart_spec", ""),
                 })
             )
+        elif item_type == "tool_use":
+            tool_data = item.get("tool_use") or {}
+            result.tool_uses.append(ToolUseEvent._from_payload(tool_data))
+        elif item_type == "tool_result":
+            tool_data = item.get("tool_result") or {}
+            result.tool_results.append(ToolResultEvent._from_payload(tool_data))
+
+    for w in data.get("warnings") or []:
+        if isinstance(w, dict):
+            result.warnings.append(WarningEvent._from_payload(w))
+
+    result.status = data.get("status", "")
 
     error_data = data.get("error")
     if error_data and isinstance(error_data, dict):
@@ -368,10 +381,10 @@ class RunsResource:
     ) -> RunResult:
         """Sends a non-streaming request and returns the assembled RunResult.
 
-        Collects all SSE events (or parses a single JSON response when
-        ``stream=False``) and returns a fully assembled
-        :class:`RunResult`. Raises :class:`~cortex_agents_client.exceptions.RunError`
-        if an error event is emitted.
+        Sends a non-streaming request (``stream=False``) and parses the
+        single JSON response body into a :class:`RunResult`. Raises
+        :class:`~cortex_agents_client.exceptions.RunError` if the agent
+        returns a fatal error.
 
         All arguments are the same as :meth:`stream`.
 

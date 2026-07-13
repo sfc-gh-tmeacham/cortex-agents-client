@@ -56,7 +56,7 @@ client = CortexAgentsClient(
 thread = client.create_thread()
 for event in thread.chat("MY_AGENT", "What was total revenue in 2025?"):
     if isinstance(event, TextDeltaEvent):
-        print(event.delta, end="", flush=True)
+        print(event.text, end="", flush=True)
 ```
 
 ## Authentication
@@ -175,12 +175,12 @@ thread = client.create_thread(origin_application="my_app")
 # First turn
 for event in thread.chat("MY_AGENT", "What was revenue in 2025?"):
     if isinstance(event, TextDeltaEvent):
-        print(event.delta, end="")
+        print(event.text, end="")
 
 # Second turn — uses correct parent_message_id automatically
 for event in thread.chat("MY_AGENT", "How does that compare to 2024?"):
     if isinstance(event, TextDeltaEvent):
-        print(event.delta, end="")
+        print(event.text, end="")
 ```
 
 ## Handling all event types
@@ -723,13 +723,13 @@ uv run streamlit run streamlit_demo/app.py
 ```
 cortex_agents_client/
 ├── client.py         CortexAgentsClient (top-level facade), Thread (stateful)
-├── auth.py           PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, account_url_from_env
+├── auth.py           PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, AuthProvider, account_url_from_env
 ├── http.py           HttpClient (httpx wrapper, error mapping)
 ├── sse.py            SSE parser + event factory (16 API types + UnknownEvent)
 ├── exceptions.py     Typed exceptions
 ├── models/
 │   ├── agent.py      Agent, Tool, ToolSpec, etc.
-│   ├── thread.py     ThreadMetadata, ThreadMessage, StoredMessage
+│   ├── thread.py     ThreadMetadata, ThreadDetail, ThreadMessage, StoredMessage
 │   └── events.py     All 17 SSE event dataclasses (16 API types + UnknownEvent)
 ├── resources/
 │   ├── agents.py     AgentsResource (CRUD + feedback)

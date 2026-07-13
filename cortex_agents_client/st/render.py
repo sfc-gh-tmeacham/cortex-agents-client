@@ -266,8 +266,7 @@ def render_streaming_response(
                             expanded=False,
                             type="compact",
                         )
-                    with thinking_expander:
-                        st.markdown(event.text)
+                    thinking_expander.markdown(event.text)
 
         elif isinstance(event, ToolUseEvent):
             pending_tool_uses[event.tool_use_id] = event

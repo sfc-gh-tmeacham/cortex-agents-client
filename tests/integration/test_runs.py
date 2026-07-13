@@ -16,7 +16,6 @@ from cortex_agents_client.models.events import (
     TableEvent,
     TextDeltaEvent,
     TextEvent,
-    ThinkingEvent,
     ToolResultEvent,
     ToolUseEvent,
     UnknownEvent,
@@ -34,11 +33,9 @@ from tests.fixtures.sse_streams import (
     TEXT_DELTA_PAYLOAD,
     TEXT_PAYLOAD,
     THINKING_DELTA_PAYLOAD,
-    THINKING_PAYLOAD,
     TOOL_RESULT_PAYLOAD,
     TOOL_USE_PAYLOAD,
     WARNING_PAYLOAD,
-    stream_of,
 )
 from tests.integration.conftest import ACCOUNT_URL
 

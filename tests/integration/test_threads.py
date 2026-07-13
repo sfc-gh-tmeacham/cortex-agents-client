@@ -35,7 +35,6 @@ class TestCreateThread:
         captured: dict = {}
 
         def responder(request):
-            import json, httpx
             captured["body"] = json.loads(request.content)
             return httpx.Response(200, json=THREAD_CREATE_RESPONSE)
 

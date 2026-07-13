@@ -414,6 +414,24 @@ class TestRenderStoredMessage:
         render_stored_message(msg, container)  # no show_thinking arg
         container.expander.assert_not_called()
 
+    def test_streaming_default_show_thinking_false_suppresses_expander(self):
+        """render_streaming_response default show_thinking=False suppresses thinking expander."""
+        container = make_container()
+        thinking = ThinkingEvent._from_payload(
+            {"content_index": 1, "text": "Hidden...", "signature": ""}
+        )
+        render_streaming_response(event_stream(thinking), container)  # default show_thinking=False
+        container.expander.assert_not_called()
+
+    def test_elicitation_renders_info_not_markdown(self):
+        """render_stored_message with is_elicitation=True uses container.info, not markdown."""
+        container = make_container()
+        msg = StoredMessage(role="assistant", text="Could you clarify?", is_elicitation=True)
+
+        render_stored_message(msg, container)
+        container.info.assert_called_once()
+        container.markdown.assert_not_called()
+
     def test_renders_warning(self):
         """StoredMessage with warning → container.warning called."""
         container = make_container()
@@ -473,9 +491,6 @@ class TestRenderStoredMessage:
 
     def test_annotations_render_sources_expander_in_stored_message(self):
         """render_stored_message with annotations → Sources expander created."""
-        from cortex_agents_client.models.events import TextAnnotationEvent
-        from tests.fixtures.sse_streams import TEXT_ANNOTATION_PAYLOAD
-
         container = make_container()
         annotation = TextAnnotationEvent._from_payload(TEXT_ANNOTATION_PAYLOAD)
         msg = StoredMessage(role="assistant", text="See [^1].", annotations=[annotation])
@@ -488,7 +503,6 @@ class TestRenderStoredMessage:
 
     def test_url_doc_id_rendered_with_unsafe_html(self):
         """Annotation with http doc_id → unsafe_allow_html=True on the expander."""
-        from cortex_agents_client.models.events import TextAnnotationEvent
         from cortex_agents_client.st.render import _render_annotations_expander
 
         ann = TextAnnotationEvent._from_payload({
@@ -519,7 +533,6 @@ class TestRenderStoredMessage:
 
     def test_non_url_doc_id_no_html(self):
         """Annotation with non-URL doc_id → plain markdown on expander, no unsafe_allow_html."""
-        from cortex_agents_client.models.events import TextAnnotationEvent
         from cortex_agents_client.st.render import _render_annotations_expander
 
         ann = TextAnnotationEvent._from_payload({

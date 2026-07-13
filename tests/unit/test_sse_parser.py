@@ -132,8 +132,8 @@ def test_data_field_whitespace_stripped():
     """Leading space after 'data: ' is stripped from the payload."""
     lines = [
         "event: response.text.delta",
-        "data: {\"content_index\": 0, \"delta\": \"hi\"}",
+        "data: {\"content_index\": 0, \"text\": \"hi\"}",
         "",
     ]
     events = list(parse_sse_stream(iter(lines)))
-    assert events[0][1]["delta"] == "hi"
+    assert events[0][1]["text"] == "hi"

@@ -20,7 +20,7 @@ cortex_agents_client/
 ├── models/
 │   ├── agent.py      # Agent, Tool, ToolSpec, AgentProfile, AgentInstructions, BudgetConfig
 │   ├── events.py      # 17 typed SSE event dataclasses (16 API types + UnknownEvent)
-│   └── thread.py      # StoredMessage, ThreadMessage, ThreadMetadata
+│   └── thread.py      # StoredMessage, ThreadDetail, ThreadMessage, ThreadMetadata
 ├── resources/
 │   ├── agents.py      # AgentsResource (CRUD for agent objects)
 │   ├── runs.py        # RunsResource — agent:run endpoint, streaming + non-streaming

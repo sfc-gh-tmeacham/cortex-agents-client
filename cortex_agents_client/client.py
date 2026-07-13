@@ -181,7 +181,7 @@ class Thread:
 
             for event in thread.chat("DB.SCHEMA.MY_AGENT", "What is revenue?"):
                 if isinstance(event, TextDeltaEvent):
-                    print(event.delta, end="", flush=True)
+                    print(event.text, end="", flush=True)
         """
         content: list[dict[str, Any]] = [{"type": "text", "text": message}]
         if permission_decisions:
