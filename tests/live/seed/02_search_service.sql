@@ -8,11 +8,13 @@
 -- Requires:
 --   - A warehouse (default: live_test_wh) with USAGE granted to app_owner_role
 --   - CREATE CORTEX SEARCH SERVICE privilege on the target schema
+--   - SNOWFLAKE.CORTEX_USER or SNOWFLAKE.CORTEX_EMBED_USER database role
+--     granted to the role creating the service (required for embedding functions)
 --
 -- Adjust names to match your test account.
 
-CREATE DATABASE IF NOT EXISTS live_test_db;
-CREATE SCHEMA  IF NOT EXISTS live_test_db.live_test_schema;
+CREATE DATABASE  IF NOT EXISTS live_test_db;
+CREATE SCHEMA    IF NOT EXISTS live_test_db.live_test_schema;
 CREATE WAREHOUSE IF NOT EXISTS live_test_wh
   WAREHOUSE_SIZE = 'XSMALL'
   AUTO_SUSPEND   = 60
@@ -23,9 +25,9 @@ GRANT USAGE ON WAREHOUSE live_test_wh TO ROLE app_owner_role;
 
 -- Fixed corpus table
 CREATE TABLE IF NOT EXISTS live_test_db.live_test_schema.test_docs (
-    doc_id   INT           NOT NULL COMMENT 'Unique document identifier',
-    title    VARCHAR       NOT NULL COMMENT 'Document title used as a citation label',
-    body     VARCHAR       NOT NULL COMMENT 'Document body text indexed by Cortex Search'
+    doc_id   INT     NOT NULL COMMENT 'Unique document identifier',
+    title    VARCHAR NOT NULL COMMENT 'Document title used as a citation label',
+    body     VARCHAR NOT NULL COMMENT 'Document body text indexed by Cortex Search'
 )
 COMMENT = 'Fixed test corpus for cortex-agents-client live integration tests.';
 
