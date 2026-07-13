@@ -41,14 +41,18 @@ class RunResult:
     """The assembled result of a non-streaming agent run.
 
     Contains all content types emitted during the run, fully accumulated.
-    If the agent returns a fatal error event, :meth:`RunsResource.run` and
+    If the agent returns a fatal error, :meth:`RunsResource.run` and
     :meth:`RunsResource.stream_and_collect` both raise
-    :class:`~cortex_agents_client.exceptions.RunError`; :attr:`error` holds
-    the underlying event if you catch the exception and need more detail.
+    :class:`~cortex_agents_client.exceptions.RunError`. Inspect the
+    exception's ``code`` and ``request_id`` attributes for details.
 
     Attributes:
         text: Final assembled text from all ``response.text`` events.
         thinking: Agent reasoning text, or ``None`` if not emitted.
+        status: Completion status from the response body.
+            ``"completed"`` for a normal non-streaming run;
+            ``"cancelled"`` if the run was stopped early.
+            Empty string when assembled via :meth:`RunsResource.stream_and_collect`.
         tables: List of table events in order of appearance.
         charts: List of chart events in order of appearance.
         tool_uses: List of all tool use events.

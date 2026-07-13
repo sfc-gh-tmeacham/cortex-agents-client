@@ -826,7 +826,7 @@ class ResponseEvent(SSEEvent):
         content: All content blocks produced during the run (raw dicts).
         warnings: All non-fatal warnings produced during the run (raw dicts).
         status: Completion status. ``"cancelled"`` if the run was stopped
-            early; ``"completed"`` for normal completion.
+            early via CancelAgentRun; empty string for normal completion.
         usage: Per-model token consumption for this run. One
             :class:`TokensConsumed` entry per model used.
         run_id: Unique identifier for this run.

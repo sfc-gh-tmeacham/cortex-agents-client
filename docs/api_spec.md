@@ -290,6 +290,9 @@ Inline (lite agent) request adds config fields:
 }
 ```
 
+The Python client captures `status` as `RunResult.status` — `"completed"` for a normal run,
+`"cancelled"` if stopped early via CancelAgentRun.
+
 ---
 
 ## Thread API — `/api/v2/cortex/threads`

@@ -395,7 +395,7 @@ Final aggregated response. **Always the last event in the stream.** Emitted once
 }
 ```
 
-**Dataclass:** `ResponseEvent` — fields: `role`, `content`, `warnings`, `status` (`"cancelled"` if aborted via CancelAgentRun, `"completed"` for normal completion), `usage` (list of `TokensConsumed`), `run_id`, `thread_id`, `user_message_id`, `assistant_message_id`.
+**Dataclass:** `ResponseEvent` — fields: `role`, `content`, `warnings`, `status` (`"cancelled"` if aborted via CancelAgentRun, empty string for normal completion), `usage` (list of `TokensConsumed`), `run_id`, `thread_id`, `user_message_id`, `assistant_message_id`.
 
 **Usage:** inspect `usage` for token counts; check `status == "cancelled"` to detect server-side abort.
 

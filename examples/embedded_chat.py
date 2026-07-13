@@ -95,14 +95,22 @@ else:
         color="#29b5e8",
     )
 
-    if st.button(
-        "Ask the agent",
-        icon=":material/chat:",
-        type="primary",
-    ):
-        # st.dialog opens a modal overlay — embedded mode fits perfectly here.
-        @st.dialog("Cortex Agent", width="large")
-        def _chat_dialog() -> None:
-            _make_bot("dlg").render()
+# st.dialog must be defined at module scope so it persists across reruns.
+# Defining it inside if st.button() would close the dialog on the next rerun.
+@st.dialog("Cortex Agent", width="large")
+def _chat_dialog() -> None:
+    _make_bot("dlg").render()
 
-        _chat_dialog()
+
+if "dialog_open" not in st.session_state:
+    st.session_state.dialog_open = False
+
+if st.button(
+    "Ask the agent",
+    icon=":material/chat:",
+    type="primary",
+):
+    st.session_state.dialog_open = True
+
+if st.session_state.dialog_open:
+    _chat_dialog()

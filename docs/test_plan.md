@@ -289,7 +289,7 @@ Both files use `unittest.mock.MagicMock` and `patch.dict("sys.modules", ...)` to
 | `test_renders_error` | `ErrorEvent` rendered as `st.error` |
 | `test_empty_message_no_calls` | Empty `StoredMessage` makes no render calls |
 | `test_tool_result_text_replayed` | `tool_result_text` re-rendered on replay |
-| `test_pending_permission_renders_info` | Pending permission shown as `st.info` |
+| `test_pending_permission_renders_warning` | Pending permission shown as `st.warning` |
 | `test_annotations_render_sources_expander_in_stored_message` | Sources expander in stored message |
 | `test_url_doc_id_rendered_with_unsafe_html` | URL `doc_id` renders as HTML anchor |
 | `test_non_url_doc_id_no_html` | Non-URL `doc_id` rendered as plain text |

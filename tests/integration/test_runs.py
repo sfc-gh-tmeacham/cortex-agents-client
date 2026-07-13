@@ -9,11 +9,8 @@ from pytest_httpx import HTTPXMock
 
 from cortex_agents_client.exceptions import AuthError, RunError
 from cortex_agents_client.models.events import (
-    AnalystDeltaEvent,
-    ChartEvent,
     ErrorEvent,
     MetadataEvent,
-    TableEvent,
     TextDeltaEvent,
     TextEvent,
     ToolResultEvent,
@@ -158,6 +155,7 @@ class TestNonStreamingRun:
         assert result.text == "The revenue was $4.2B."
         assert len(result.tables) == 1
         assert result.thinking is None  # no thinking content in response
+        assert result.status == "completed"  # non-streaming response status
 
     def test_run_non_streaming_error_raises(self, ca_client, httpx_mock: HTTPXMock):
         """Non-streaming response with error → RunError raised."""
@@ -415,3 +413,64 @@ class TestNonStreamingThinking:
         result = ca_client.runs.run(messages, agent_path="DB.SC.AGENT")
         assert result.thinking == "Let me reason through this."
         assert result.text == "The answer is 42."
+
+
+class TestNonStreamingToolParsing:
+    """Tests that _parse_non_streaming_response handles tool_use and tool_result items."""
+
+    def test_run_parses_tool_use_and_tool_result(self, ca_client, httpx_mock: HTTPXMock):
+        """Non-streaming response with tool_use and tool_result items populates RunResult."""
+        response = {
+            "role": "assistant",
+            "content": [
+                {
+                    "type": "tool_use",
+                    "tool_use": {
+                        "tool_use_id": "toolu_01",
+                        "type": "cortex_analyst_text_to_sql",
+                        "name": "Analyst1",
+                        "input": {"query": "total revenue"},
+                        "client_side_execute": False,
+                        "permission": {"options": []},
+                    },
+                },
+                {
+                    "type": "tool_result",
+                    "tool_result": {
+                        "tool_use_id": "toolu_01",
+                        "type": "cortex_analyst_text_to_sql",
+                        "name": "Analyst1",
+                        "content": [{"type": "json", "json": {"answer": 42}}],
+                        "status": "success",
+                    },
+                },
+                {"type": "text", "text": "The answer is 42."},
+            ],
+            "status": "completed",
+            "error": None,
+        }
+        httpx_mock.add_response(json=response)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        result = ca_client.runs.run(messages, agent_path="DB.SC.AGENT")
+        assert len(result.tool_uses) == 1
+        assert result.tool_uses[0].tool_use_id == "toolu_01"
+        assert len(result.tool_results) == 1
+        assert result.tool_results[0].status == "success"
+        assert result.text == "The answer is 42."
+        assert result.status == "completed"
+
+    def test_run_parses_top_level_warnings(self, ca_client, httpx_mock: HTTPXMock):
+        """Non-streaming response top-level warnings array is parsed into result.warnings."""
+        response = {
+            "role": "assistant",
+            "content": [{"type": "text", "text": "Here is the answer."}],
+            "warnings": [{"message": "MCP server unavailable", "code": "003001"}],
+            "status": "completed",
+            "error": None,
+        }
+        httpx_mock.add_response(json=response)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        result = ca_client.runs.run(messages, agent_path="DB.SC.AGENT")
+        assert len(result.warnings) == 1
+        assert result.warnings[0].message == "MCP server unavailable"
+        assert result.warnings[0].code == "003001"

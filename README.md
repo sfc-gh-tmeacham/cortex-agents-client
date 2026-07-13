@@ -282,6 +282,7 @@ for event in thread.chat("MY_AGENT", "Show me the top 5 customers by revenue"):
 ```python
 result = client.run("MY_DB.MY_SCHEMA.MY_AGENT", "What is total revenue?")
 print(result.text)
+print(result.status)  # "completed" | "cancelled"
 for table in result.tables:
     print(f"Table: {table.title}")
 ```

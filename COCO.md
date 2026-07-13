@@ -9,7 +9,7 @@ high-level Streamlit chatbot component (`cortex_agents_client.st`).
 
 ```
 cortex_agents_client/
-├── auth.py            # PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth
+├── auth.py            # PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, AuthProvider, account_url_from_env
 ├── client.py          # CortexAgentsClient, Thread (primary entry points)
 ├── exceptions.py      # CortexAgentError, AuthError, CortexPermissionError, CortexTimeoutError,
 │                      # NotFoundError, AgentNotFoundError, ThreadNotFoundError,
