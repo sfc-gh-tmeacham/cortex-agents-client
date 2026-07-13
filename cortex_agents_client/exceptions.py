@@ -39,7 +39,7 @@ class AuthError(CortexAgentError):
     """
 
 
-class PermissionError(CortexAgentError):  # noqa: A001
+class CortexPermissionError(CortexAgentError):
     """Raised when the caller lacks the required privilege (HTTP 403)."""
 
 
@@ -47,19 +47,32 @@ class RateLimitError(CortexAgentError):
     """Raised when the API rate limit is exceeded (HTTP 429)."""
 
 
+class CortexTimeoutError(CortexAgentError):
+    """Raised when a request exceeds the configured timeout."""
+
+
 class ServerError(CortexAgentError):
     """Raised on unexpected server errors (HTTP 5xx)."""
 
 
-class TimeoutError(CortexAgentError):  # noqa: A001
-    """Raised when a request exceeds the configured timeout."""
+class NotFoundError(CortexAgentError):
+    """Raised when a requested resource does not exist (HTTP 404).
+
+    Use this as the catch-all for any not-found error::
+
+        except NotFoundError:
+            ...
+
+    Specific subclasses (:class:`AgentNotFoundError`,
+    :class:`ThreadNotFoundError`) are raised when the resource type is known.
+    """
 
 
-class AgentNotFoundError(CortexAgentError):
+class AgentNotFoundError(NotFoundError):
     """Raised when the specified agent does not exist (HTTP 404)."""
 
 
-class ThreadNotFoundError(CortexAgentError):
+class ThreadNotFoundError(NotFoundError):
     """Raised when the specified thread does not exist (HTTP 404)."""
 
 
@@ -87,3 +100,32 @@ class RunError(CortexAgentError):
         """
         super().__init__(message, request_id=request_id)
         self.code = code
+
+
+# ---------------------------------------------------------------------------
+# Deprecated aliases — use the Cortex-prefixed names instead
+# ---------------------------------------------------------------------------
+
+def _make_deprecated(new_cls: type, old_name: str) -> type:
+    """Creates a subclass that emits a DeprecationWarning on instantiation."""
+    import warnings
+
+    class _Deprecated(new_cls):  # type: ignore[valid-type]
+        def __init_subclass__(cls, **kwargs: object) -> None:
+            super().__init_subclass__(**kwargs)
+
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            warnings.warn(
+                f"{old_name} is deprecated; use {new_cls.__name__} instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            super().__init__(*args, **kwargs)
+
+    _Deprecated.__name__ = old_name
+    _Deprecated.__qualname__ = old_name
+    return _Deprecated
+
+
+PermissionError = _make_deprecated(CortexPermissionError, "PermissionError")  # noqa: A001
+TimeoutError    = _make_deprecated(CortexTimeoutError,    "TimeoutError")     # noqa: A001

@@ -118,7 +118,7 @@ def main() -> None:
 
     print(f"\nFinal parent_message_id: {thread.parent_message_id}")
     print("Thread history:")
-    for msg in thread.get_history():
+    for msg in thread.list_messages():
         payload_preview = str(msg.message_payload)[:60]
         print(f"  [{msg.role}] id={msg.message_id}: {payload_preview}...")
 

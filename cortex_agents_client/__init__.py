@@ -35,12 +35,15 @@ from cortex_agents_client.exceptions import (
     AgentNotFoundError,
     AuthError,
     CortexAgentError,
-    PermissionError,
+    CortexPermissionError,
+    CortexTimeoutError,
+    NotFoundError,
+    PermissionError,   # deprecated alias for CortexPermissionError
     RateLimitError,
     RunError,
     ServerError,
     ThreadNotFoundError,
-    TimeoutError,
+    TimeoutError,      # deprecated alias for CortexTimeoutError
 )
 from cortex_agents_client.models.agent import Agent
 from cortex_agents_client.models.thread import StoredMessage, ThreadMessage, ThreadMetadata
@@ -79,13 +82,17 @@ __all__ = [
     # Exceptions
     "CortexAgentError",
     "AuthError",
-    "PermissionError",
+    "CortexPermissionError",
+    "CortexTimeoutError",
+    "NotFoundError",
     "RateLimitError",
     "RunError",
     "ServerError",
-    "TimeoutError",
     "AgentNotFoundError",
     "ThreadNotFoundError",
+    # Deprecated exception aliases
+    "PermissionError",
+    "TimeoutError",
     # Models
     "Agent",
     "StoredMessage",

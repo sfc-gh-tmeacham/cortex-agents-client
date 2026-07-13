@@ -219,14 +219,14 @@ class TestHttpErrors:
 
     def test_http_403_raises_permission_error(self, ca_client, httpx_mock: HTTPXMock):
         """HTTP 403 raises PermissionError."""
-        from cortex_agents_client.exceptions import PermissionError
+        from cortex_agents_client.exceptions import CortexPermissionError
         httpx_mock.add_response(
             status_code=403,
             headers={"Content-Type": "application/json"},
             json={"message": "Forbidden"},
         )
         messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
-        with pytest.raises(PermissionError):
+        with pytest.raises(CortexPermissionError):
             list(ca_client.runs.stream(messages, agent_path="DB.SC.A"))
 
     def test_http_429_raises_rate_limit_error(self, ca_client, httpx_mock: HTTPXMock):

@@ -7,7 +7,7 @@ import httpx
 import pytest
 from pytest_httpx import HTTPXMock
 
-from cortex_agents_client.exceptions import AgentNotFoundError, AuthError, PermissionError
+from cortex_agents_client.exceptions import AgentNotFoundError, AuthError, CortexPermissionError
 from tests.fixtures.api_responses import AGENT_DESCRIBE_RESPONSE, AGENT_LIST_RESPONSE
 from tests.integration.conftest import ACCOUNT_URL, make_json_response
 
@@ -69,7 +69,7 @@ class TestGetAgent:
     def test_get_403_raises_permission_error(self, ca_client, httpx_mock: HTTPXMock):
         """HTTP 403 raises PermissionError."""
         httpx_mock.add_response(status_code=403, json={"message": "Insufficient privileges"})
-        with pytest.raises(PermissionError):
+        with pytest.raises(CortexPermissionError):
             ca_client.agents.get("MY_AGENT")
 
     def test_get_401_raises_auth_error(self, ca_client, httpx_mock: HTTPXMock):

@@ -60,7 +60,7 @@ class RunResult:
     """
 
     text: str = ""
-    thinking: str = ""
+    thinking: str | None = None
     tables: list[TableEvent] = field(default_factory=list)
     charts: list[ChartEvent] = field(default_factory=list)
     tool_uses: list[ToolUseEvent] = field(default_factory=list)
@@ -103,7 +103,9 @@ def _parse_non_streaming_response(data: dict[str, Any]) -> RunResult:
             )
         elif item_type == "thinking":
             thinking_data = item.get("thinking") or {}
-            result.thinking += thinking_data.get("text", "")
+            chunk = thinking_data.get("text", "")
+            if chunk:
+                result.thinking = (result.thinking or "") + chunk
         elif item_type == "chart":
             chart_data = item.get("chart") or {}
             result.charts.append(
@@ -312,8 +314,8 @@ class RunsResource:
 
         Raises:
             cortex_agents_client.exceptions.AuthError: On HTTP 401.
-            cortex_agents_client.exceptions.PermissionError: On HTTP 403.
-            cortex_agents_client.exceptions.TimeoutError: On request timeout.
+            cortex_agents_client.exceptions.CortexPermissionError: On HTTP 403.
+            cortex_agents_client.exceptions.CortexTimeoutError: On request timeout.
             cortex_agents_client.exceptions.CortexAgentError: On other errors.
 
         Example::
@@ -393,7 +395,7 @@ class RunsResource:
             cortex_agents_client.exceptions.RunError: If the agent emits a fatal
                 error event.
             cortex_agents_client.exceptions.AuthError: On HTTP 401.
-            cortex_agents_client.exceptions.PermissionError: On HTTP 403.
+            cortex_agents_client.exceptions.CortexPermissionError: On HTTP 403.
         """
         path = self._resolve_path(agent_path, database, schema, agent)
         api_path = path or "/api/v2/cortex/agent:run"
@@ -451,7 +453,7 @@ class RunsResource:
             elif isinstance(event, ThinkingDeltaEvent):
                 pass  # Accumulated by ThinkingEvent
             elif isinstance(event, ThinkingEvent):
-                result.thinking += event.text
+                result.thinking = (result.thinking or "") + event.text
             elif isinstance(event, TextAnnotationEvent):
                 result.annotations.append(event)
             elif isinstance(event, ToolUseEvent):

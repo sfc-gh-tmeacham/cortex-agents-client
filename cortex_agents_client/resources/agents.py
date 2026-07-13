@@ -139,7 +139,7 @@ class AgentsResource:
         Raises:
             ValueError: If database or schema is missing.
             cortex_agents_client.exceptions.AuthError: On authentication failure.
-            cortex_agents_client.exceptions.PermissionError: On missing privileges.
+            cortex_agents_client.exceptions.CortexPermissionError: On missing privileges.
             cortex_agents_client.exceptions.CortexAgentError: On other API errors.
 
         Example::

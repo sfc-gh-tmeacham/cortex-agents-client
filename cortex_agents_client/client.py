@@ -281,16 +281,42 @@ class Thread:
         """
         return Thread(self._client, self._thread_id, parent_message_id=at_message_id)
 
-    def get_history(self) -> list[ThreadMessage]:
+    def list_messages(self) -> list[ThreadMessage]:
         """Returns all conversation messages in chronological order.
 
-        Args: None.
+        Delegates to
+        :meth:`~cortex_agents_client.resources.ThreadsResource.list_messages`.
 
         Returns:
             Chronologically ordered list of
             :class:`~cortex_agents_client.models.thread.ThreadMessage` objects.
         """
         return self._client.threads.list_messages(self._thread_id)
+
+    def latest_context(self) -> list[ThreadMessage]:
+        """Returns the latest compaction summary and all subsequent messages.
+
+        Delegates to
+        :meth:`~cortex_agents_client.resources.ThreadsResource.latest_context`.
+        Useful for seeding multi-turn context without replaying the entire
+        history.
+
+        Returns:
+            List of :class:`~cortex_agents_client.models.thread.ThreadMessage`
+            objects in chronological order: the newest compaction summary
+            (if any) followed by all subsequent conversation messages.
+        """
+        return self._client.threads.latest_context(self._thread_id)
+
+    def get_history(self) -> list[ThreadMessage]:
+        """Deprecated: use :meth:`list_messages` instead."""
+        import warnings
+        warnings.warn(
+            "Thread.get_history() is deprecated; use Thread.list_messages() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.list_messages()
 
     def delete(self) -> None:
         """Deletes this thread and all its messages.

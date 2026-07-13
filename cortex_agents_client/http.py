@@ -18,12 +18,12 @@ from cortex_agents_client.exceptions import (
     AgentNotFoundError,
     AuthError,
     CortexAgentError,
-    PermissionError,
+    CortexPermissionError,
+    CortexTimeoutError,
     RateLimitError,
     RunError,
     ServerError,
     ThreadNotFoundError,
-    TimeoutError,
 )
 
 __all__ = ["HttpClient"]
@@ -41,7 +41,7 @@ def _raise_for_status(response: httpx.Response, *, resource: str = "resource") -
 
     Raises:
         AuthError: On HTTP 401.
-        PermissionError: On HTTP 403.
+        CortexPermissionError: On HTTP 403.
         AgentNotFoundError: On HTTP 404 when resource is ``"agent"``.
         ThreadNotFoundError: On HTTP 404 when resource is ``"thread"``.
         CortexAgentError: On HTTP 404 for other resource types.
@@ -67,7 +67,7 @@ def _raise_for_status(response: httpx.Response, *, resource: str = "resource") -
     if response.status_code == 401:
         raise AuthError(f"Authentication failed: {message}", **kwargs)
     if response.status_code == 403:
-        raise PermissionError(f"Permission denied: {message}", **kwargs)
+        raise CortexPermissionError(f"Permission denied: {message}", **kwargs)
     if response.status_code == 404:
         if resource == "agent":
             raise AgentNotFoundError(f"Agent not found: {message}", **kwargs)
@@ -176,12 +176,12 @@ class HttpClient:
 
         Raises:
             AuthError: On HTTP 401.
-            PermissionError: On HTTP 403.
+            CortexPermissionError: On HTTP 403.
             AgentNotFoundError: On HTTP 404 for agents.
             ThreadNotFoundError: On HTTP 404 for threads.
             RateLimitError: On HTTP 429.
             ServerError: On HTTP 5xx.
-            TimeoutError: On request timeout.
+            CortexTimeoutError: On request timeout.
             CortexAgentError: On connection or other HTTP errors.
         """
         try:
@@ -194,7 +194,7 @@ class HttpClient:
                     json=json,
                 )
         except httpx.TimeoutException as exc:
-            raise TimeoutError(f"Request timed out after {self._timeout}s") from exc
+            raise CortexTimeoutError(f"Request timed out after {self._timeout}s") from exc
         except httpx.HTTPError as exc:
             raise CortexAgentError(f"HTTP error: {exc}") from exc
 
@@ -226,8 +226,8 @@ class HttpClient:
 
         Raises:
             AuthError: On HTTP 401.
-            PermissionError: On HTTP 403.
-            TimeoutError: On request timeout.
+            CortexPermissionError: On HTTP 403.
+            CortexTimeoutError: On request timeout.
             CortexAgentError: On connection or other HTTP errors.
 
         Example::
@@ -253,6 +253,6 @@ class HttpClient:
                     _raise_for_status(response)
                     yield response.iter_lines()
         except httpx.TimeoutException as exc:
-            raise TimeoutError(f"Stream timed out after {self._timeout}s") from exc
+            raise CortexTimeoutError(f"Stream timed out after {self._timeout}s") from exc
         except httpx.HTTPError as exc:
             raise CortexAgentError(f"Stream HTTP error: {exc}") from exc
