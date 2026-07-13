@@ -108,7 +108,7 @@ uv run pytest tests/ -m "not live" -v
 uv run streamlit run streamlit_demo/app.py
 ```
 
-Tests: 194 passing, 1 skipped (`tests/` tree below):
+Tests: 230 passing, 1 skipped (`tests/` tree below):
 ```
 tests/
 ├── unit/          # core client, auth, SSE parsing, event models

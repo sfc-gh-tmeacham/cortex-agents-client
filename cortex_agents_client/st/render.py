@@ -31,7 +31,6 @@ from cortex_agents_client.models.events import (
     ChartEvent,
     ErrorEvent,
     MetadataEvent,
-    ResponseEvent,
     SSEEvent,
     StatusEvent,
     TableEvent,

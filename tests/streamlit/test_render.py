@@ -125,6 +125,15 @@ class TestRenderStreamingResponse:
         )
         container.expander.assert_called_once()
 
+    def test_streaming_default_show_thinking_false_suppresses_expander(self):
+        """render_streaming_response default show_thinking=False suppresses thinking expander."""
+        container = make_container()
+        thinking = ThinkingEvent._from_payload(
+            {"content_index": 1, "text": "Hidden...", "signature": ""}
+        )
+        render_streaming_response(event_stream(thinking), container)  # default show_thinking=False
+        container.expander.assert_not_called()
+
     def test_warning_event_stored_and_rendered(self):
         """WarningEvent → stored in warnings and rendered via container.warning."""
         container = make_container()
@@ -412,15 +421,6 @@ class TestRenderStoredMessage:
         msg = StoredMessage(role="assistant", text="", thinking="Hidden reasoning.")
 
         render_stored_message(msg, container)  # no show_thinking arg
-        container.expander.assert_not_called()
-
-    def test_streaming_default_show_thinking_false_suppresses_expander(self):
-        """render_streaming_response default show_thinking=False suppresses thinking expander."""
-        container = make_container()
-        thinking = ThinkingEvent._from_payload(
-            {"content_index": 1, "text": "Hidden...", "signature": ""}
-        )
-        render_streaming_response(event_stream(thinking), container)  # default show_thinking=False
         container.expander.assert_not_called()
 
     def test_elicitation_renders_info_not_markdown(self):
