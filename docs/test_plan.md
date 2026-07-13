@@ -30,7 +30,17 @@ tests/
 │   ├── test_chatbot.py          # StreamlitChatbot constructor + render dispatch
 │   └── test_render.py           # render_streaming_response + render_stored_message
 └── live/
-    └── __init__.py              # placeholder; no live tests (require real Snowflake account)
+    ├── conftest.py              # fixtures: live_client, agent_path_minimal, agent_path_full, live_thread
+    ├── test_auth.py             # PAT auth smoke; bad token → AuthError; missing agent → AgentNotFoundError
+    ├── test_threads.py          # create, get, list, delete, fork, latest_context
+    ├── test_runs.py             # streaming events, ResponseEvent, multi-turn, non-streaming run (minimal agent)
+    ├── test_runs_full.py        # ToolUseEvent, ToolResultEvent, TextAnnotationEvent (Cortex Search agent)
+    ├── README.md                # setup instructions, env vars, how to run
+    └── seed/
+        ├── 01_minimal_agent.sql       # LLM-only agent DDL
+        ├── 02_search_service.sql      # fixed corpus table + Cortex Search service
+        ├── 03_full_agent.sql          # Cortex Search agent DDL
+        └── cleanup_leaked_threads.py  # sweep origin_application='live_test' threads
 ```
 
 ---
@@ -325,9 +335,71 @@ Items not yet implemented — candidates for future test sprints:
 
 | Area | Description |
 |---|---|
-| Live integration | `tests/live/` — end-to-end tests against a real Snowflake account with a seeded agent. Requires env vars: `SNOWFLAKE_ACCOUNT_URL`, `SNOWFLAKE_PAT`, `AGENT_PATH`. |
 | HTTP connection errors | `httpx.ConnectError` → `CortexAgentError`; `httpx.TimeoutException` → `CortexTimeoutError`. Requires patching at transport level. |
 | `Thread.chat()` tool_choice body | Verify `tool_choice` dict is sent correctly in the run request body. |
 | `Thread.chat()` permission_decisions body | Verify `permission_decisions` content items are sent in the user message. |
 | `StreamlitChatbot` AppTest integration | Full headless browser-style test via `streamlit.testing.v1.AppTest` for a real render cycle (submit message → assert response appears in chat history). High complexity. |
 | Thread `update` 404 | `threads.update()` on a non-existent thread raises `ThreadNotFoundError`. |
+
+---
+
+## Live tests (`tests/live/`)
+
+Marked `@pytest.mark.live`. Skipped by default unless the required env vars are set.
+See [`tests/live/README.md`](../tests/live/README.md) for setup instructions.
+
+### Environment variables
+
+| Variable | Required for | Description |
+|---|---|---|
+| `SNOWFLAKE_ACCOUNT_URL` | All | `https://myorg-myaccount.snowflakecomputing.com` |
+| `SNOWFLAKE_PAT` | All | PAT token |
+| `LIVE_AGENT_MINIMAL` | All | Fully-qualified path to the minimal agent |
+| `LIVE_AGENT_FULL` | `test_runs_full.py` | Fully-qualified path to the Cortex Search agent |
+
+### `tests/live/test_auth.py`
+
+| Test | Description |
+|---|---|
+| `test_valid_pat_allows_agent_list` | Valid PAT — `agents.list()` succeeds |
+| `test_invalid_token_raises_auth_error` | Bad token → `AuthError` |
+| `test_nonexistent_agent_raises_agent_not_found` | Missing agent path → `AgentNotFoundError` |
+
+### `tests/live/test_threads.py`
+
+| Test | Description |
+|---|---|
+| `test_create_returns_metadata_with_thread_id` | `threads.create()` returns `ThreadMetadata` with `thread_id > 0` |
+| `test_get_thread_returns_correct_id` | `threads.get(id)` returns the same `thread_id` |
+| `test_get_nonexistent_thread_raises_not_found` | Non-existent id → `ThreadNotFoundError` |
+| `test_list_with_origin_filter_returns_own_threads` | `threads.list(origin_application=...)` includes test thread |
+| `test_delete_removes_thread` | After delete, `get()` raises `ThreadNotFoundError` |
+| `test_fork_creates_new_thread` | `thread.fork(at_message_id=...)` returns a thread with a different id |
+| `test_latest_context_returns_list` | `latest_context()` returns a list on a fresh thread |
+| `test_latest_context_after_chat_contains_messages` | After one chat turn, at least 2 messages in context |
+
+### `tests/live/test_runs.py` (minimal agent)
+
+| Test | Description |
+|---|---|
+| `test_streaming_yields_text_delta_events` | At least one `TextDeltaEvent` per turn |
+| `test_streaming_last_event_is_response_event_completed` | Final event is `ResponseEvent(status='completed')` |
+| `test_streaming_yields_text_event` | Non-empty `TextEvent` is emitted |
+| `test_streaming_emits_metadata_events_for_user_and_assistant` | Both user and assistant `MetadataEvent`s present |
+| `test_streaming_response_contains_token_usage` | `ResponseEvent.usage` has non-zero total tokens |
+| `test_run_returns_result_with_text` | `client.run()` returns `RunResult` with non-empty text |
+| `test_run_result_status_completed` | `RunResult.status == 'completed'` |
+| `test_second_turn_succeeds` | Second `thread.chat()` produces `TextDeltaEvent`s |
+| `test_parent_message_id_advances` | `parent_message_id` increments after each turn |
+
+### `tests/live/test_runs_full.py` (Cortex Search agent)
+
+| Test | Description |
+|---|---|
+| `test_tool_use_event_is_emitted` | `ToolUseEvent` with `type='cortex_search'` is yielded |
+| `test_tool_result_event_follows_tool_use` | Every `tool_use_id` has a matching `ToolResultEvent` |
+| `test_tool_result_status_is_success` | All `ToolResultEvent.status == 'success'` |
+| `test_text_annotation_events_are_emitted` | At least one `TextAnnotationEvent` per search query |
+| `test_annotation_has_doc_id_and_title` | Each annotation has non-empty `doc_id` and `doc_title` |
+| `test_response_event_completed` | Final `ResponseEvent(status='completed')` |
+| `test_text_is_non_empty` | Assembled text from deltas is non-empty |
