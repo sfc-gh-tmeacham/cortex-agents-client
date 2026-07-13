@@ -1,4 +1,4 @@
--- Cleanup script: delete all threads tagged origin_application='live_test'.
+-- Cleanup script: delete all threads tagged origin_application='cac_live'.
 --
 -- Run this after an interrupted test suite to remove leaked threads.
 -- Usage:
@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirna
 
 from cortex_agents_client import CortexAgentsClient
 
-ORIGIN_APP = "live_test"
+ORIGIN_APP = "cac_live"
 
 
 def main() -> None:

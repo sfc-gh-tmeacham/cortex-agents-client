@@ -10,11 +10,11 @@
 --
 -- Run BEFORE 05_analyst_agent.sql.
 
-CREATE DATABASE IF NOT EXISTS live_test_db;
-CREATE SCHEMA  IF NOT EXISTS live_test_db.live_test_schema;
+CREATE DATABASE IF NOT EXISTS cac_live_db;
+CREATE SCHEMA  IF NOT EXISTS cac_live_db.cac_live_schema;
 
 -- Fixed sales fact table
-CREATE TABLE IF NOT EXISTS live_test_db.live_test_schema.sales (
+CREATE TABLE IF NOT EXISTS cac_live_db.cac_live_schema.sales (
     sale_id     INT           NOT NULL  COMMENT 'Unique sale identifier',
     product     VARCHAR       NOT NULL  COMMENT 'Product name',
     region      VARCHAR       NOT NULL  COMMENT 'Sales region',
@@ -24,9 +24,9 @@ CREATE TABLE IF NOT EXISTS live_test_db.live_test_schema.sales (
 )
 COMMENT = 'Fixed sales test dataset for cortex-agents-client live integration tests.';
 
-TRUNCATE TABLE IF EXISTS live_test_db.live_test_schema.sales;
+TRUNCATE TABLE IF EXISTS cac_live_db.cac_live_schema.sales;
 
-INSERT INTO live_test_db.live_test_schema.sales
+INSERT INTO cac_live_db.cac_live_schema.sales
     (sale_id, product, region, sale_date, quantity, revenue)
 VALUES
   (1,  'Widget Alpha', 'North', '2024-01-15', 10, 990.00),
@@ -43,10 +43,10 @@ VALUES
   (12, 'Gadget Pro',   'South', '2024-06-30',  4, 1996.00);
 
 -- Semantic view over the sales table
-CREATE SEMANTIC VIEW IF NOT EXISTS live_test_db.live_test_schema.sales_view
+CREATE SEMANTIC VIEW IF NOT EXISTS cac_live_db.cac_live_schema.sales_view
 
   TABLES (
-    sales AS live_test_db.live_test_schema.sales
+    sales AS cac_live_db.cac_live_schema.sales
       PRIMARY KEY (sale_id)
       COMMENT = 'Sales transactions'
   )
@@ -78,5 +78,5 @@ CREATE SEMANTIC VIEW IF NOT EXISTS live_test_db.live_test_schema.sales_view
   COMMENT = 'Sales semantic view for cortex-agents-client live integration tests.';
 
 -- The agent's role needs REFERENCES and SELECT to use this view in Cortex Analyst
-GRANT REFERENCES, SELECT ON SEMANTIC VIEW live_test_db.live_test_schema.sales_view
+GRANT REFERENCES, SELECT ON SEMANTIC VIEW cac_live_db.cac_live_schema.sales_view
   TO ROLE app_owner_role;

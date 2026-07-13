@@ -6,25 +6,25 @@
 -- without depending on response text content.
 --
 -- Requires:
---   - A warehouse (default: live_test_wh) with USAGE granted to app_owner_role
+--   - A warehouse (default: cac_live_wh) with USAGE granted to app_owner_role
 --   - CREATE CORTEX SEARCH SERVICE privilege on the target schema
 --   - SNOWFLAKE.CORTEX_USER or SNOWFLAKE.CORTEX_EMBED_USER database role
 --     granted to the role creating the service (required for embedding functions)
 --
 -- Adjust names to match your test account.
 
-CREATE DATABASE  IF NOT EXISTS live_test_db;
-CREATE SCHEMA    IF NOT EXISTS live_test_db.live_test_schema;
-CREATE WAREHOUSE IF NOT EXISTS live_test_wh
+CREATE DATABASE  IF NOT EXISTS cac_live_db;
+CREATE SCHEMA    IF NOT EXISTS cac_live_db.cac_live_schema;
+CREATE WAREHOUSE IF NOT EXISTS cac_live_wh
   WAREHOUSE_SIZE = 'XSMALL'
   AUTO_SUSPEND   = 60
   AUTO_RESUME    = TRUE
   COMMENT = 'Warehouse used by cortex-agents-client live integration tests.';
 
-GRANT USAGE ON WAREHOUSE live_test_wh TO ROLE app_owner_role;
+GRANT USAGE ON WAREHOUSE cac_live_wh TO ROLE app_owner_role;
 
 -- Fixed corpus table
-CREATE TABLE IF NOT EXISTS live_test_db.live_test_schema.test_docs (
+CREATE TABLE IF NOT EXISTS cac_live_db.cac_live_schema.test_docs (
     doc_id   INT     NOT NULL COMMENT 'Unique document identifier',
     title    VARCHAR NOT NULL COMMENT 'Document title used as a citation label',
     body     VARCHAR NOT NULL COMMENT 'Document body text indexed by Cortex Search'
@@ -32,9 +32,9 @@ CREATE TABLE IF NOT EXISTS live_test_db.live_test_schema.test_docs (
 COMMENT = 'Fixed test corpus for cortex-agents-client live integration tests.';
 
 -- Truncate and repopulate so the script is idempotent
-TRUNCATE TABLE IF EXISTS live_test_db.live_test_schema.test_docs;
+TRUNCATE TABLE IF EXISTS cac_live_db.cac_live_schema.test_docs;
 
-INSERT INTO live_test_db.live_test_schema.test_docs (doc_id, title, body) VALUES
+INSERT INTO cac_live_db.cac_live_schema.test_docs (doc_id, title, body) VALUES
   (1,  'Widget Alpha overview',   'Widget Alpha is our flagship product. It features a durable aluminium casing and a 2-year warranty.'),
   (2,  'Widget Beta overview',    'Widget Beta is a compact version of Widget Alpha. It is 30 percent lighter and ships in 3 colours.'),
   (3,  'Gadget Pro overview',     'Gadget Pro targets enterprise customers. It includes 24/7 support and a 99.9 percent uptime SLA.'),
@@ -47,13 +47,13 @@ INSERT INTO live_test_db.live_test_schema.test_docs (doc_id, title, body) VALUES
   (10, 'Release notes v2.0',      'Version 2.0 introduced dark mode, improved search, and a new REST API. Released January 2025.');
 
 -- Cortex Search service over the corpus
-CREATE CORTEX SEARCH SERVICE IF NOT EXISTS live_test_db.live_test_schema.doc_search
+CREATE CORTEX SEARCH SERVICE IF NOT EXISTS cac_live_db.cac_live_schema.doc_search
   ON body
   ATTRIBUTES title
-  WAREHOUSE  = live_test_wh
+  WAREHOUSE  = cac_live_wh
   TARGET_LAG = '1 minute'
   AS SELECT doc_id, title, body
-     FROM live_test_db.live_test_schema.test_docs;
+     FROM cac_live_db.cac_live_schema.test_docs;
 
-GRANT USAGE ON CORTEX SEARCH SERVICE live_test_db.live_test_schema.doc_search
+GRANT USAGE ON CORTEX SEARCH SERVICE cac_live_db.cac_live_schema.doc_search
   TO ROLE app_owner_role;

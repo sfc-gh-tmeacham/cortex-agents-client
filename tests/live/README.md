@@ -58,7 +58,7 @@ is populated.
 |---|---|---|
 | `SNOWFLAKE_ACCOUNT_URL` | All tests | `https://myorg-myaccount.snowflakecomputing.com` |
 | `SNOWFLAKE_PAT` | All tests | PAT token for `app_owner_role` |
-| `LIVE_AGENT_MINIMAL` | All tests | Fully-qualified path to the minimal agent, e.g. `live_test_db.live_test_schema.minimal_agent` |
+| `LIVE_AGENT_MINIMAL` | All tests | Fully-qualified path to the minimal agent, e.g. `cac_live_db.cac_live_schema.minimal_agent` |
 | `LIVE_AGENT_FULL` | `test_runs_full.py` only | Fully-qualified path to the Cortex Search agent. Tests in that file are automatically skipped if this variable is absent. |
 | `LIVE_AGENT_ANALYST` | `test_runs_analyst.py` only | Fully-qualified path to the Cortex Analyst agent. Tests in that file are automatically skipped if absent. |
 | `LIVE_AGENT_WEB` | `test_runs_web.py` only | Fully-qualified path to the web search agent. Tests in that file are automatically skipped if absent. Requires web search enabled at account level. |
@@ -71,16 +71,16 @@ is populated.
 # Minimal tests only (test_auth, test_threads, test_runs)
 SNOWFLAKE_ACCOUNT_URL="https://myorg-myaccount.snowflakecomputing.com" \
 SNOWFLAKE_PAT="v2:..." \
-LIVE_AGENT_MINIMAL="live_test_db.live_test_schema.minimal_agent" \
+LIVE_AGENT_MINIMAL="cac_live_db.cac_live_schema.minimal_agent" \
   uv run pytest tests/live/ -m live -v
 
 # Full suite (includes Cortex Search, Cortex Analyst, and web search tests)
 SNOWFLAKE_ACCOUNT_URL="https://myorg-myaccount.snowflakecomputing.com" \
 SNOWFLAKE_PAT="v2:..." \
-LIVE_AGENT_MINIMAL="live_test_db.live_test_schema.minimal_agent" \
-LIVE_AGENT_FULL="live_test_db.live_test_schema.full_agent" \
-LIVE_AGENT_ANALYST="live_test_db.live_test_schema.analyst_agent" \
-LIVE_AGENT_WEB="live_test_db.live_test_schema.web_agent" \
+LIVE_AGENT_MINIMAL="cac_live_db.cac_live_schema.minimal_agent" \
+LIVE_AGENT_FULL="cac_live_db.cac_live_schema.full_agent" \
+LIVE_AGENT_ANALYST="cac_live_db.cac_live_schema.analyst_agent" \
+LIVE_AGENT_WEB="cac_live_db.cac_live_schema.web_agent" \
   uv run pytest tests/live/ -m live -v
 
 # Single file
@@ -97,7 +97,7 @@ uv run pytest tests/ -m "not live" -v
 
 ## Thread cleanup
 
-Each test creates threads tagged `origin_application='live_test'` and deletes them on
+Each test creates threads tagged `origin_application='cac_live'` and deletes them on
 teardown (best-effort). If a test run is interrupted (e.g. `Ctrl+C`), leaked threads
 can be swept with:
 

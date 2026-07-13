@@ -7,7 +7,7 @@ Requires the following environment variables:
   LIVE_AGENT_FULL        — (optional) fully-qualified path to the Cortex Search agent
 
 Tests that need LIVE_AGENT_FULL are skipped automatically if that variable is absent.
-All test threads are tagged with origin_application='live_test' and deleted on teardown.
+All test threads are tagged with origin_application='cac_live' and deleted on teardown.
 Any threads that leak (e.g. due to a keyboard interrupt) can be swept with:
 
     uv run python tests/live/seed/cleanup_leaked_threads.py
@@ -23,7 +23,7 @@ from cortex_agents_client.client import Thread
 
 # Tag applied to every thread created by live tests so leaked threads are
 # easy to identify and clean up.
-LIVE_ORIGIN_APP = "live_test"
+LIVE_ORIGIN_APP = "cac_live"
 
 
 def _require_env(name: str) -> str:
@@ -86,7 +86,7 @@ def agent_path_web() -> str:
 
 @pytest.fixture
 def live_thread(live_client: CortexAgentsClient) -> Thread:
-    """Creates a thread tagged 'live_test'; deletes it on teardown (best-effort)."""
+    """Creates a thread tagged 'cac_live'; deletes it on teardown (best-effort)."""
     thread = live_client.create_thread(origin_application=LIVE_ORIGIN_APP)
     yield thread
     try:

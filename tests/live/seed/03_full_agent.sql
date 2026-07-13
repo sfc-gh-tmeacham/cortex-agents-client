@@ -5,7 +5,7 @@
 --
 -- Adjust names to match your test account.
 
-CREATE AGENT IF NOT EXISTS live_test_db.live_test_schema.full_agent
+CREATE AGENT IF NOT EXISTS cac_live_db.cac_live_schema.full_agent
   COMMENT = 'Search-enabled agent used by cortex-agents-client full live integration tests.'
   FROM SPECIFICATION
   $$
@@ -20,11 +20,11 @@ CREATE AGENT IF NOT EXISTS live_test_db.live_test_schema.full_agent
 
   tool_resources:
     DocSearch:
-      name: live_test_db.live_test_schema.doc_search
+      name: cac_live_db.cac_live_schema.doc_search
       title_column: title
       id_column: doc_id
       max_results: '3'
   $$;
 
-GRANT USAGE ON AGENT live_test_db.live_test_schema.full_agent
+GRANT USAGE ON AGENT cac_live_db.cac_live_schema.full_agent
   TO ROLE app_owner_role;

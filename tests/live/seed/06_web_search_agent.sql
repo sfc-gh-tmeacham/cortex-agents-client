@@ -6,7 +6,7 @@
 -- No additional resources are needed — web_search is a built-in tool.
 -- Adjust names to match your test account.
 
-CREATE AGENT IF NOT EXISTS live_test_db.live_test_schema.web_agent
+CREATE AGENT IF NOT EXISTS cac_live_db.cac_live_schema.web_agent
   COMMENT = 'Web search agent used by cortex-agents-client live integration tests.'
   FROM SPECIFICATION
   $$
@@ -20,5 +20,5 @@ CREATE AGENT IF NOT EXISTS live_test_db.live_test_schema.web_agent
         description: 'Searches the web for current information, news, and real-time data.'
   $$;
 
-GRANT USAGE ON AGENT live_test_db.live_test_schema.web_agent
+GRANT USAGE ON AGENT cac_live_db.cac_live_schema.web_agent
   TO ROLE app_owner_role;

@@ -3,10 +3,10 @@
 -- Run AFTER 04_semantic_view.sql — the semantic view must exist before
 -- the agent can reference it in tool_resources.
 --
--- Requires live_test_wh to exist (created by 02_search_service.sql).
+-- Requires cac_live_wh to exist (created by 02_search_service.sql).
 -- Adjust names to match your test account.
 
-CREATE AGENT IF NOT EXISTS live_test_db.live_test_schema.analyst_agent
+CREATE AGENT IF NOT EXISTS cac_live_db.cac_live_schema.analyst_agent
   COMMENT = 'Cortex Analyst agent used by cortex-agents-client live integration tests.'
   FROM SPECIFICATION
   $$
@@ -21,11 +21,11 @@ CREATE AGENT IF NOT EXISTS live_test_db.live_test_schema.analyst_agent
 
   tool_resources:
     SalesAnalyst:
-      semantic_view: live_test_db.live_test_schema.sales_view
+      semantic_view: cac_live_db.cac_live_schema.sales_view
       execution_environment:
         type: warehouse
-        warehouse: live_test_wh
+        warehouse: cac_live_wh
   $$;
 
-GRANT USAGE ON AGENT live_test_db.live_test_schema.analyst_agent
+GRANT USAGE ON AGENT cac_live_db.cac_live_schema.analyst_agent
   TO ROLE app_owner_role;

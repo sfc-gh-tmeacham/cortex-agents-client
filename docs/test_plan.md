@@ -45,7 +45,7 @@ tests/
         ├── 04_semantic_view.sql       # sales table + semantic view DDL
         ├── 05_analyst_agent.sql       # Cortex Analyst agent DDL
         ├── 06_web_search_agent.sql    # web search agent DDL
-        └── cleanup_leaked_threads.py  # sweep origin_application='live_test' threads
+        └── cleanup_leaked_threads.py  # sweep origin_application='cac_live' threads
 ```
 
 ---

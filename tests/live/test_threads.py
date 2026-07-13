@@ -58,7 +58,7 @@ class TestThreadList:
         live_client: CortexAgentsClient,
         live_thread: Thread,
     ) -> None:
-        """Listing with origin_application='live_test' includes the test thread."""
+        """Listing with origin_application='cac_live' includes the test thread."""
         threads = live_client.threads.list(origin_application=LIVE_ORIGIN_APP)
         thread_ids = [t.thread_id for t in threads]
         assert live_thread.thread_id in thread_ids
