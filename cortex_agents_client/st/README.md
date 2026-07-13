@@ -35,14 +35,15 @@ if you need a newer version than the image provides.
 Container runtime apps cannot make outbound network calls without an EAI. You
 need **two**:
 
-**1 — Cortex Agents API** (allows the app to call the Agents REST API):
+**1 — Cortex Agents API** (allows the app to call the Agents REST API). Requires ACCOUNTADMIN:
 
 ```sql
--- Replace 'myorg-myaccount' with your account identifier (SELECT CURRENT_ACCOUNT())
+USE ROLE ACCOUNTADMIN;
+
 CREATE OR REPLACE NETWORK RULE cortex_agents_api_rule
   TYPE       = HOST_PORT
   MODE       = EGRESS
-  VALUE_LIST = ('myorg-myaccount.snowflakecomputing.com');
+  VALUE_LIST = ('myorg-myaccount.snowflakecomputing.com'); -- replace with your account identifier
 
 CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION cortex_agents_api_eai
   ALLOWED_NETWORK_RULES = (cortex_agents_api_rule)
@@ -60,13 +61,11 @@ GRANT USAGE ON INTEGRATION cortex_agents_api_eai TO ROLE my_role;
 > );
 > ```
 
-**2 — PyPI** (allows uv to install packages from PyPI at deploy time):
-
-Snowflake provides a managed network rule for PyPI. Ask your account admin to
-create the EAI and grant your role access:
+**2 — PyPI** (allows uv to install packages from PyPI at deploy time). Snowflake provides a managed network rule. Requires ACCOUNTADMIN:
 
 ```sql
--- Run as ACCOUNTADMIN
+USE ROLE ACCOUNTADMIN;
+
 CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION pypi_eai
   ALLOWED_NETWORK_RULES = (snowflake.external_access.pypi_rule)
   ENABLED = TRUE;
