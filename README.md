@@ -427,7 +427,7 @@ SNOWFLAKE_PAT = "v2:..."
 ```python
 import streamlit as st
 from cortex_agents_client.st.session import init_session, get_messages, append_message, reset_thread
-from cortex_agents_client.st.render import render_stored_message, render_streaming_response, _escape_dollars
+from cortex_agents_client.st.render import render_stored_message, render_streaming_response, escape_dollars
 from cortex_agents_client.models.thread import StoredMessage
 
 client, thread = init_session(
@@ -442,13 +442,13 @@ if st.sidebar.button("New conversation", type="primary"):
 for msg in get_messages():
     with st.chat_message(msg.role):
         if msg.role == "user":
-            st.markdown(_escape_dollars(msg.text))
+            st.markdown(escape_dollars(msg.text))
         else:
             render_stored_message(msg, st, show_thinking=False)
 
 if prompt := st.chat_input("Ask a question..."):
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(escape_dollars(prompt))
     append_message(StoredMessage(role="user", text=prompt))
 
     with st.chat_message("assistant"):
@@ -652,7 +652,7 @@ Use `sis_init_session()` in place of `init_session()` for the same idempotent se
 
 ```python
 from cortex_agents_client.st.session import sis_init_session, get_messages, append_message, reset_thread
-from cortex_agents_client.st.render import render_stored_message, render_streaming_response, _escape_dollars
+from cortex_agents_client.st.render import render_stored_message, render_streaming_response, escape_dollars
 from cortex_agents_client.models.thread import StoredMessage
 import streamlit as st
 
@@ -665,13 +665,13 @@ if st.sidebar.button("New conversation", type="primary"):
 for msg in get_messages():
     with st.chat_message(msg.role):
         if msg.role == "user":
-            st.markdown(_escape_dollars(msg.text))
+            st.markdown(escape_dollars(msg.text))
         else:
             render_stored_message(msg, st, show_thinking=False)
 
 if prompt := st.chat_input("Ask a question..."):
     with st.chat_message("user"):
-        st.markdown(prompt)
+        st.markdown(escape_dollars(prompt))
     append_message(StoredMessage(role="user", text=prompt))
 
     with st.chat_message("assistant"):
@@ -738,7 +738,7 @@ cortex_agents_client/
 │   └── runs.py       RunsResource (stream, run, stream_and_collect)
 └── st/
     ├── session.py    init_session(), sis_init_session(), reset_thread(), get_messages()
-    ├── render.py     render_streaming_response(), render_stored_message()
+    ├── render.py     render_streaming_response(), render_stored_message(), result_set_to_dataframe(), escape_dollars()
     └── chatbot.py    StreamlitChatbot (drop-in component)
 ```
 

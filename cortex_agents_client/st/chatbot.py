@@ -240,7 +240,7 @@ class StreamlitChatbot:
         """
         import streamlit as st
 
-        from cortex_agents_client.st.render import render_stored_message, _escape_dollars
+        from cortex_agents_client.st.render import render_stored_message, escape_dollars
 
         for msg in get_messages_fn(self._messages_key):
             with st.chat_message(msg.role):
@@ -255,7 +255,7 @@ class StreamlitChatbot:
                         elif att_type:
                             st.write(f":material/attach_file: {att.name}")
                     if msg.text:
-                        st.markdown(_escape_dollars(msg.text))
+                        st.markdown(escape_dollars(msg.text))
                 else:
                     render_stored_message(msg, st, show_thinking=self._show_thinking)
 
@@ -294,7 +294,7 @@ class StreamlitChatbot:
         """
         import streamlit as st
 
-        from cortex_agents_client.st.render import render_streaming_response
+        from cortex_agents_client.st.render import render_streaming_response, escape_dollars
 
         # Unwrap plain string vs attach-enabled chat_input result
         if isinstance(raw, str):
@@ -318,7 +318,7 @@ class StreamlitChatbot:
                 elif att_type:
                     st.write(f":material/attach_file: {att.name}")
             if prompt_text:
-                st.markdown(_escape_dollars(prompt_text))
+                st.markdown(escape_dollars(prompt_text))
 
         append_message_fn(
             StoredMessage(role="user", text=prompt_text, attachments=attachments),

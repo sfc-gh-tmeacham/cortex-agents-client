@@ -27,7 +27,7 @@ from cortex_agents_client.models.events import (
     WarningEvent,
 )
 from cortex_agents_client.models.thread import StoredMessage
-from cortex_agents_client.st.render import render_stored_message, render_streaming_response, _escape_dollars
+from cortex_agents_client.st.render import render_stored_message, render_streaming_response, escape_dollars
 from tests.fixtures.sse_streams import (
     ANALYST_DELTA_PAYLOAD,
     CHART_PAYLOAD,
@@ -143,7 +143,7 @@ class TestRenderStreamingResponse:
 
         assert len(stored.warnings) == 1
         container.warning.assert_called_once_with(
-            _escape_dollars(WARNING_PAYLOAD["message"]),
+            escape_dollars(WARNING_PAYLOAD["message"]),
             icon=":material/warning:",
             title="Warning",
         )
