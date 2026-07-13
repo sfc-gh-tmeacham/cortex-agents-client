@@ -145,7 +145,7 @@ class TestResultSetToDataframe:
             [["Alice"], ["Bob"]],
         )
         df = result_set_to_dataframe(event)
-        assert df["NAME"].dtype.name == "object"
+        assert df["NAME"].dtype.name in ("object", "str")  # 'object' pre-pandas 3, 'str' from pandas 3+
 
     def test_empty_result_set_returns_empty_dataframe(self, table_event_factory):
         """Empty result set returns DataFrame with correct columns but no rows."""

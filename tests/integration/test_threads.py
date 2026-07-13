@@ -10,6 +10,15 @@ from pytest_httpx import HTTPXMock
 from cortex_agents_client.exceptions import ThreadNotFoundError
 from tests.fixtures.api_responses import THREAD_CREATE_RESPONSE, THREAD_DESCRIBE_RESPONSE
 
+# Single-page list_messages response (< page_size → treated as last page)
+_SINGLE_PAGE_MESSAGES = {
+    "metadata": THREAD_DESCRIBE_RESPONSE["metadata"],
+    "messages": [
+        {"message_id": 1, "parent_id": None, "created_on": 1000, "role": "user",
+         "message_payload": "hello", "request_id": "r1", "message_type": "conversation"},
+    ],
+}
+
 
 class TestCreateThread:
     """Tests for threads.create()."""
@@ -210,3 +219,48 @@ class TestListThreads:
         httpx_mock.add_callback(responder)
         ca_client.threads.list(origin_application="my_app")
         assert "origin_application=my_app" in captured[0]
+
+
+class TestClientGetThread:
+    """Tests for CortexAgentsClient.get_thread() convenience method."""
+
+    def test_get_thread_returns_thread_with_correct_thread_id(self, ca_client):
+        """get_thread(id) returns a Thread with the given thread_id."""
+        thread = ca_client.get_thread(1234567890)
+        assert thread.thread_id == 1234567890
+        assert thread.parent_message_id == 0
+
+    def test_get_thread_with_explicit_parent_message_id(self, ca_client):
+        """get_thread(id, parent_message_id=...) passes the value through."""
+        thread = ca_client.get_thread(1234567890, parent_message_id=42)
+        assert thread.thread_id == 1234567890
+        assert thread.parent_message_id == 42
+
+
+class TestThreadWrapperMethods:
+    """Tests for Thread.list_messages(), latest_context(), and get_history() wrappers."""
+
+    def test_list_messages_delegates_to_resource(self, ca_client, httpx_mock: HTTPXMock):
+        """Thread.list_messages() delegates to threads.list_messages(thread_id)."""
+        httpx_mock.add_response(json=_SINGLE_PAGE_MESSAGES)
+        thread = ca_client.get_thread(1234567890)
+        messages = thread.list_messages()
+        assert len(messages) == 1
+        assert messages[0].message_id == 1
+
+    def test_latest_context_delegates_to_resource(self, ca_client, httpx_mock: HTTPXMock):
+        """Thread.latest_context() delegates to threads.latest_context(thread_id)."""
+        # latest_context() makes two requests: one for compaction, one for conversation
+        httpx_mock.add_response(json=_SINGLE_PAGE_MESSAGES)
+        httpx_mock.add_response(json=_SINGLE_PAGE_MESSAGES)
+        thread = ca_client.get_thread(1234567890)
+        messages = thread.latest_context()
+        assert isinstance(messages, list)
+
+    def test_get_history_emits_deprecation_warning(self, ca_client, httpx_mock: HTTPXMock):
+        """Thread.get_history() emits DeprecationWarning and delegates to list_messages()."""
+        httpx_mock.add_response(json=_SINGLE_PAGE_MESSAGES)
+        thread = ca_client.get_thread(1234567890)
+        with pytest.warns(DeprecationWarning, match="list_messages"):
+            messages = thread.get_history()
+        assert len(messages) == 1

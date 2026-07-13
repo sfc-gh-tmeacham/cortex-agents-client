@@ -194,5 +194,5 @@ When running in container runtime, use `SiSContainerAuth()` — credentials are 
 |---|---|
 | Single-page app, one conversation per session | `init_session()` creates thread once; same thread persists for the session lifetime |
 | Multi-conversation app | Call `reset_thread()` to clear history and create a new thread |
-| Resuming a previous conversation | Store `thread.thread_id` in a persistent store; use `client.threads.get(thread_id)` + construct `Thread(client, thread_id, parent_message_id=last_assistant_id)` |
+| Resuming a previous conversation | Store `thread.thread_id` in a persistent store; use `client.get_thread(thread_id, parent_message_id=last_assistant_id)` |
 | Branching conversation | `thread.fork(at_message_id=N)` creates a new Thread branched from message N |

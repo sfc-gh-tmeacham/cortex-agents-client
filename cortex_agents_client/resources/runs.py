@@ -414,6 +414,7 @@ class RunsResource:
         # Try non-streaming request first.
         data = self._http.request("POST", api_path, json=body, resource="agent")
         result = _parse_non_streaming_response(data)
+
         if result.error:
             raise RunError(
                 result.error.message,
@@ -444,16 +445,20 @@ class RunsResource:
                 error event.
         """
         result = RunResult()
+        accumulated_text = ""
+        accumulated_thinking = ""
 
         for event in self.stream(messages, **kwargs):
             if isinstance(event, TextDeltaEvent):
-                pass  # Accumulated by TextEvent
+                accumulated_text += event.text  # fallback if no TextEvent arrives
             elif isinstance(event, TextEvent):
                 result.text += event.text
+                accumulated_text = ""  # consumed by the summary event
             elif isinstance(event, ThinkingDeltaEvent):
-                pass  # Accumulated by ThinkingEvent
+                accumulated_thinking += event.text  # fallback if no ThinkingEvent arrives
             elif isinstance(event, ThinkingEvent):
                 result.thinking = (result.thinking or "") + event.text
+                accumulated_thinking = ""  # consumed by the summary event
             elif isinstance(event, TextAnnotationEvent):
                 result.annotations.append(event)
             elif isinstance(event, ToolUseEvent):

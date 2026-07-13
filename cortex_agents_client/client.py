@@ -238,11 +238,13 @@ class Thread:
         if client_tool_result is not None:
             # Restart the run with the tool result embedded in the user message.
             # Recursion handles any further client-side tools in the same turn.
+            merged_extra = list(extra_content) if extra_content else []
+            merged_extra.append(client_tool_result)
             yield from self.chat(
                 agent_path,
                 message,
                 tool_choice=tool_choice,
-                extra_content=[client_tool_result],
+                extra_content=merged_extra,
                 tool_executor=tool_executor,
             )
             return  # parent_message_id is updated by the recursive call.
@@ -389,6 +391,7 @@ class CortexAgentsClient:
             default_schema: Default schema.
             origin_application: Default origin application label for threads.
         """
+        self._account_url = account_url
         self._http = HttpClient(
             base_url=account_url,
             auth=_coerce_auth(auth),
@@ -400,7 +403,7 @@ class CortexAgentsClient:
         self.runs = RunsResource(self._http, default_database, default_schema)
 
     def __repr__(self) -> str:
-        return f"CortexAgentsClient(account_url={self._http._base_url!r})"
+        return f"CortexAgentsClient(account_url={self._account_url!r})"
 
     def create_thread(
         self, *, origin_application: str | None = None

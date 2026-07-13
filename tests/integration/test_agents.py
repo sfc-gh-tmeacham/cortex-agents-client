@@ -67,7 +67,7 @@ class TestGetAgent:
             ca_client.agents.get("NONEXISTENT")
 
     def test_get_403_raises_permission_error(self, ca_client, httpx_mock: HTTPXMock):
-        """HTTP 403 raises PermissionError."""
+        """HTTP 403 raises CortexPermissionError."""
         httpx_mock.add_response(status_code=403, json={"message": "Insufficient privileges"})
         with pytest.raises(CortexPermissionError):
             ca_client.agents.get("MY_AGENT")

@@ -983,6 +983,21 @@ class MockThread:
         gen_fn = SCENARIOS.get(self.scenario, _scenario_simple_text)
         yield from gen_fn(prompt)
 
+    def list_messages(self) -> list:
+        """Stub — returns empty list (no persisted history in mock mode)."""
+        return []
+
+    def latest_context(self) -> list:
+        """Stub — returns empty list (no compaction state in mock mode)."""
+        return []
+
+    def fork(self, at_message_id: int) -> "MockThread":
+        """Stub — returns a new MockThread for the same scenario."""
+        return MockThread(self.scenario)
+
+    def delete(self) -> None:
+        """Stub — no-op in mock mode."""
+
 
 class MockClient:
     """A CortexAgentsClient stub whose :meth:`create_thread` returns a MockThread.

@@ -162,7 +162,7 @@ POST /api/v2/databases/{database}/schemas/{schema}/agents/{name}:feedback
   "positive": true,
   "feedback_message": "Great answer!",
   "categories": ["accurate", "helpful"],
-  "thread_id": "1234567890"
+  "thread_id": 1234567890
 }
 ```
 

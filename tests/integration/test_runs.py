@@ -158,6 +158,7 @@ class TestNonStreamingRun:
         result = ca_client.runs.run(messages, agent_path="DB.SC.AGENT")
         assert result.text == "The revenue was $4.2B."
         assert len(result.tables) == 1
+        assert result.thinking is None  # no thinking content in response
 
     def test_run_non_streaming_error_raises(self, ca_client, httpx_mock: HTTPXMock):
         """Non-streaming response with error → RunError raised."""
@@ -218,7 +219,7 @@ class TestHttpErrors:
             list(ca_client.runs.stream(messages, agent_path="DB.SC.A"))
 
     def test_http_403_raises_permission_error(self, ca_client, httpx_mock: HTTPXMock):
-        """HTTP 403 raises PermissionError."""
+        """HTTP 403 raises CortexPermissionError."""
         from cortex_agents_client.exceptions import CortexPermissionError
         httpx_mock.add_response(
             status_code=403,
@@ -323,3 +324,39 @@ class TestThreadClass:
         assert thread.parent_message_id == 0
         list(thread.chat("DB.SC.AGENT", "Hello"))
         assert thread.parent_message_id == 0  # unchanged
+
+
+class TestNotFoundErrorHierarchy:
+    """Tests that NotFoundError is a catch-all for agent/thread not-found variants."""
+
+    def test_agent_not_found_catchable_as_not_found_error(self, ca_client, httpx_mock: HTTPXMock):
+        """HTTP 404 on an agent endpoint raises AgentNotFoundError, catchable as NotFoundError."""
+        from cortex_agents_client.exceptions import NotFoundError
+        httpx_mock.add_response(
+            status_code=404,
+            json={"message": "Agent not found", "request_id": "r1"},
+        )
+        with pytest.raises(NotFoundError):
+            ca_client.agents.get("MISSING_AGENT")
+
+    def test_thread_not_found_catchable_as_not_found_error(self, ca_client, httpx_mock: HTTPXMock):
+        """HTTP 404 on a thread endpoint raises ThreadNotFoundError, catchable as NotFoundError."""
+        from cortex_agents_client.exceptions import NotFoundError, ThreadNotFoundError
+        httpx_mock.add_response(
+            status_code=404,
+            json={"message": "Thread not found", "request_id": "r1"},
+        )
+        with pytest.raises(NotFoundError):
+            ca_client.threads.get(9999999999)
+
+
+class TestCortexTimeoutError:
+    """Tests that httpx timeouts map to CortexTimeoutError."""
+
+    def test_request_timeout_raises_cortex_timeout_error(self, ca_client, httpx_mock: HTTPXMock):
+        """httpx.TimeoutException propagates as CortexTimeoutError."""
+        from cortex_agents_client.exceptions import CortexTimeoutError
+        httpx_mock.add_exception(httpx.TimeoutException("connection timed out"))
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        with pytest.raises(CortexTimeoutError):
+            list(ca_client.runs.stream(messages, agent_path="DB.SC.AGENT"))

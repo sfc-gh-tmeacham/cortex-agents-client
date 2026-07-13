@@ -11,7 +11,10 @@ high-level Streamlit chatbot component (`cortex_agents_client.st`).
 cortex_agents_client/
 ├── auth.py            # PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth
 ├── client.py          # CortexAgentsClient, Thread (primary entry points)
-├── exceptions.py      # CortexAgentError, RunError
+├── exceptions.py      # CortexAgentError, AuthError, CortexPermissionError, CortexTimeoutError,
+│                      # NotFoundError, AgentNotFoundError, ThreadNotFoundError,
+│                      # RateLimitError, ServerError, RunError;
+│                      # deprecated aliases: PermissionError, TimeoutError
 ├── http.py            # HttpClient (httpx-based, auth header injection)
 ├── sse.py             # SSE stream parser, event_from_sse() factory
 ├── models/
@@ -162,3 +165,4 @@ via `account_url_from_env()`.
 | `examples/embedded_chat.py` | Column layout + dialog overlay patterns |
 | `examples/multi_turn.py` | Programmatic multi-turn conversation |
 | `examples/sis_app.py` | Streamlit-in-Snowflake container deployment |
+| `examples/SIS_QUICKSTART.md` | SiS quickstart — full-page, embedded, and dialog patterns with EAI setup |

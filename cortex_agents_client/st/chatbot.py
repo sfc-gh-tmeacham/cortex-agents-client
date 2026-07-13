@@ -256,7 +256,7 @@ class StreamlitChatbot:
                     if msg.text:
                         st.markdown(msg.text)
                 else:
-                    render_stored_message(msg, st)
+                    render_stored_message(msg, st, show_thinking=self._show_thinking)
 
     def _process_prompt(self, raw: Any, thread, append_message_fn) -> None:
         """Sends a prompt to the agent and renders the response.

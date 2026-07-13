@@ -463,7 +463,7 @@ def _render_annotations_expander(
             exp.caption(f'"{ann.text}"')
 
 
-def render_stored_message(msg: StoredMessage, container: Any) -> None:
+def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: bool = True) -> None:
     """Renders a stored message from session state into Streamlit elements.
 
     Produces output identical to :func:`render_streaming_response` for the
@@ -474,6 +474,10 @@ def render_stored_message(msg: StoredMessage, container: Any) -> None:
             session state.
         container: Streamlit container (e.g. ``st`` or the return value of
             ``st.chat_message()``).
+        show_thinking: If ``True`` (default), render agent reasoning in a
+            collapsible expander. Set to ``False`` to hide it on replay,
+            matching the ``show_thinking`` flag passed to
+            :func:`render_streaming_response`.
 
     Raises:
         ImportError: If ``streamlit`` or ``pandas`` is not installed
@@ -483,9 +487,9 @@ def render_stored_message(msg: StoredMessage, container: Any) -> None:
 
         for msg in get_messages():
             with st.chat_message(msg.role):
-                render_stored_message(msg, st)
+                render_stored_message(msg, st, show_thinking=True)
     """
-    if msg.thinking:
+    if show_thinking and msg.thinking:
         exp = container.expander(
             "Reasoning",
             icon=":material/psychology:",

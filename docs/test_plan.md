@@ -303,7 +303,7 @@ Items not yet implemented — candidates for future test sprints:
 | Area | Description |
 |---|---|
 | Live integration | `tests/live/` — end-to-end tests against a real Snowflake account with a seeded agent. Requires env vars: `SNOWFLAKE_ACCOUNT_URL`, `SNOWFLAKE_PAT`, `AGENT_PATH`. |
-| HTTP connection errors | `httpx.ConnectError` → `CortexAgentError`; `httpx.TimeoutException` → `TimeoutError`. Requires patching at transport level. |
+| HTTP connection errors | `httpx.ConnectError` → `CortexAgentError`; `httpx.TimeoutException` → `CortexTimeoutError`. Requires patching at transport level. |
 | `Thread.chat()` tool_choice body | Verify `tool_choice` dict is sent correctly in the run request body. |
 | `Thread.chat()` permission_decisions body | Verify `permission_decisions` content items are sent in the user message. |
 | `StreamlitChatbot` AppTest integration | Full headless browser-style test via `streamlit.testing.v1.AppTest` for a real render cycle (submit message → assert response appears in chat history). High complexity. |

@@ -116,6 +116,15 @@ class TestAgent:
         assert len(agent.tools) == 1
         assert agent.tools[0].tool_spec.name == "S1"
 
+    def test_path_property(self):
+        """Agent.path returns fully-qualified DB.SCHEMA.NAME string."""
+        agent = Agent.from_dict({
+            "name": "MY_AGENT",
+            "database": "DB",
+            "schema": "SC",
+        })
+        assert agent.path == "DB.SC.MY_AGENT"
+
 
 class TestThreadMetadata:
     """Tests for ThreadMetadata model."""

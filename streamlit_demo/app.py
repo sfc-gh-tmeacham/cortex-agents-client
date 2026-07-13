@@ -52,7 +52,7 @@ from mock_thread import (  # noqa: E402 — sys.path must be set first
     MockThread,
 )
 
-from cortex_agents_client.st.chatbot import StreamlitChatbot
+from cortex_agents_client.st import StreamlitChatbot
 
 # ---------------------------------------------------------------------------
 # Page configuration

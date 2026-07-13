@@ -164,20 +164,26 @@ st.dataframe(
     use_container_width=True,
 )
 
-# Dialog trigger
-if st.button("Ask the agent", icon=":material/chat:", type="primary"):
-    @st.dialog("Cortex Agent", width="large")
-    def _chat() -> None:
-        StreamlitChatbot(
-            account_url=account_url_from_env(),
-            auth=SiSContainerAuth(),
-            agent_path=AGENT_PATH,
-            mode="embedded",
-            height=450,
-            session_key_prefix="_ca_dlg",
-            origin_application="sis_dialog",
-        ).render()
+# Define the dialog at module scope so it persists across reruns
+@st.dialog("Cortex Agent", width="large")
+def _chat() -> None:
+    StreamlitChatbot(
+        account_url=account_url_from_env(),
+        auth=SiSContainerAuth(),
+        agent_path=AGENT_PATH,
+        mode="embedded",
+        height=450,
+        session_key_prefix="_ca_dlg",
+        origin_application="sis_dialog",
+    ).render()
 
+if "dialog_open" not in st.session_state:
+    st.session_state.dialog_open = False
+
+if st.button("Ask the agent", icon=":material/chat:", type="primary"):
+    st.session_state.dialog_open = True
+
+if st.session_state.dialog_open:
     _chat()
 ```
 

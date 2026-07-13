@@ -21,9 +21,12 @@ Complete text block after all deltas have been sent. Always follows a series of 
 ```json
 {
   "content_index": 0,
-  "text": "The total revenue for 2025 was $4.2 billion, up 5% from 2024 [^1]."
+  "text": "The total revenue for 2025 was $4.2 billion, up 5% from 2024 [^1].",
+  "is_elicitation": false
 }
 ```
+
+> **`is_elicitation`**: `true` when the agent is asking the user a clarifying question rather than delivering an answer. Render with `st.info()` instead of `st.markdown()` to visually distinguish the prompt.
 
 **Streamlit rendering:** `st.markdown(text)` — supports inline citation markers like `[^1]`.
 
@@ -36,7 +39,8 @@ Token-by-token text streaming. Accumulate deltas in order of `content_index` to 
 ```json
 {
   "content_index": 0,
-  "text": "The total"
+  "text": "The total",
+  "is_elicitation": false
 }
 ```
 
@@ -430,4 +434,7 @@ data: {"metadata": {"role": "user", "message_id": 123, "run_id": "run_001"}}
 
 event: metadata
 data: {"metadata": {"role": "assistant", "message_id": 456, "run_id": "run_001"}}
+
+event: response
+data: {"role": "assistant", "content": [...], "status": "", "metadata": {"usage": [...], "run_id": "run_001"}}
 ```

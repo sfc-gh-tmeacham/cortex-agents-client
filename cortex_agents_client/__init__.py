@@ -51,7 +51,9 @@ from cortex_agents_client.models.events import (
     AnalystDeltaEvent,
     ChartEvent,
     ErrorEvent,
+    InputTokens,
     MetadataEvent,
+    OutputTokens,
     ResponseEvent,
     SSEEvent,
     StatusEvent,
@@ -61,6 +63,7 @@ from cortex_agents_client.models.events import (
     TextEvent,
     ThinkingDeltaEvent,
     ThinkingEvent,
+    TokensConsumed,
     ToolResultEvent,
     ToolResultStatusEvent,
     ToolUseEvent,
@@ -118,4 +121,8 @@ __all__ = [
     "MetadataEvent",
     "ResponseEvent",
     "UnknownEvent",
+    # ResponseEvent usage models
+    "TokensConsumed",
+    "InputTokens",
+    "OutputTokens",
 ]

@@ -20,6 +20,7 @@ from cortex_agents_client.exceptions import (
     CortexAgentError,
     CortexPermissionError,
     CortexTimeoutError,
+    NotFoundError,
     RateLimitError,
     RunError,
     ServerError,
@@ -73,7 +74,7 @@ def _raise_for_status(response: httpx.Response, *, resource: str = "resource") -
             raise AgentNotFoundError(f"Agent not found: {message}", **kwargs)
         if resource == "thread":
             raise ThreadNotFoundError(f"Thread not found: {message}", **kwargs)
-        raise CortexAgentError(f"Not found: {message}", **kwargs)
+        raise NotFoundError(f"Not found: {message}", **kwargs)
     if response.status_code == 429:
         raise RateLimitError(f"Rate limit exceeded: {message}", **kwargs)
     if response.status_code >= 500:

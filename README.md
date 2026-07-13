@@ -302,9 +302,10 @@ agent = client.agents.create(
     },
 )
 
-# List agents
+# List agents — agent.path gives the fully-qualified name for use in thread.chat()
 for agent in client.agents.list():
-    print(f"{agent.name}: {agent.profile.display_name}")
+    print(f"{agent.path}: {agent.profile.display_name}")
+    # agent.path == "MY_DB.MY_SCHEMA.MY_AGENT"
 
 # Update
 client.agents.update("MY_AGENT", comment="Updated for Q3")
@@ -320,10 +321,16 @@ client.agents.delete("MY_AGENT", if_exists=True)
 thread_meta = client.threads.create(origin_application="my_app")
 threads = client.threads.list(origin_application="my_app")
 
-# Get message history
-messages = client.threads.list_messages(thread_meta.thread_id)
+# Resume a previously stored conversation (preferred convenience method)
+thread = client.get_thread(thread_meta.thread_id, parent_message_id=last_assistant_id)
 
-# Compaction-aware context (for resuming long conversations)
+# Get message history via the Thread object
+messages = thread.list_messages()
+
+# Compaction-aware context via the Thread object (for resuming long conversations)
+context = thread.latest_context()
+
+# Or via the resource layer directly (equivalent)
 context = client.threads.latest_context(thread_meta.thread_id)
 
 # Delete
@@ -337,6 +344,41 @@ client.threads.delete(thread_meta.thread_id)
 fork = thread.fork(at_message_id=456)
 for event in fork.chat("MY_AGENT", "What about revenue by region instead?"):
     ...
+```
+
+## Exception handling
+
+All exceptions inherit from `CortexAgentError`. Import the specific classes you need:
+
+```python
+from cortex_agents_client import (
+    AuthError,
+    CortexPermissionError,
+    CortexTimeoutError,
+    AgentNotFoundError,
+    ThreadNotFoundError,
+    NotFoundError,       # base class — catches both Agent and Thread variants
+    RateLimitError,
+    ServerError,
+)
+
+try:
+    for event in thread.chat("MY_AGENT", "Summarise Q3 revenue"):
+        ...
+except AgentNotFoundError:
+    print("Agent not found — check DB.SCHEMA.AGENT_NAME")
+except NotFoundError:
+    print("Resource not found")          # catches AgentNotFoundError + ThreadNotFoundError
+except CortexPermissionError:
+    print("Insufficient privileges — check USAGE on the agent and its resources")
+except AuthError:
+    print("Token invalid or expired")
+except CortexTimeoutError:
+    print("Request exceeded timeout")
+except RateLimitError:
+    print("Rate limit hit — back off and retry")
+except ServerError as exc:
+    print(f"Snowflake server error: {exc}")
 ```
 
 ## Streamlit integration
