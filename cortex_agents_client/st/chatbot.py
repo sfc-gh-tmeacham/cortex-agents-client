@@ -259,6 +259,22 @@ class StreamlitChatbot:
                 else:
                     render_stored_message(msg, st, show_thinking=self._show_thinking)
 
+    def _render_last_suggestions(self, get_messages_fn) -> None:
+        """Renders suggestion buttons for the last assistant message if it has any."""
+        from cortex_agents_client.st.render import _render_suggested_queries
+        import streamlit as st
+
+        # Don't render if a suggestion click is about to be processed.
+        if "_ca_pending_suggestion" in st.session_state:
+            return
+
+        messages = get_messages_fn(self._messages_key)
+        if not messages:
+            return
+        last = messages[-1]
+        if last.role == "assistant" and last.suggested_queries:
+            _render_suggested_queries(last.suggested_queries, st)
+
     def _process_prompt(self, raw: Any, thread, append_message_fn) -> None:
         """Sends a prompt to the agent and renders the response.
 
@@ -372,6 +388,9 @@ class StreamlitChatbot:
                 stored.message_id,
             )
         append_message_fn(stored, key=self._messages_key)
+        # Rerun so _render_last_suggestions picks up the new message's
+        # suggested_queries (it already ran earlier in the render cycle).
+        st.rerun()
 
     def _render_permission_ui(self, thread, append_message_fn) -> None:
         """Shows the permission approval UI when a tool requires user consent.
@@ -468,6 +487,9 @@ class StreamlitChatbot:
 
         self._render_message_history(get_messages)
 
+        # Show suggestion buttons for the last assistant message (if any).
+        self._render_last_suggestions(get_messages)
+
         if self._pending_permission_key in st.session_state:
             self._render_permission_ui(thread, append_message)
         elif "_ca_pending_suggestion" in st.session_state:
@@ -530,6 +552,9 @@ class StreamlitChatbot:
         chat_area = st.container(height=self._height, autoscroll=True)
         with chat_area:
             self._render_message_history(get_messages)
+
+        # Show suggestion buttons for the last assistant message (if any).
+        self._render_last_suggestions(get_messages)
 
         # st.chat_input works inline in any container (Streamlit ≥ 1.59).
         # The explicit key keeps it stable across reruns when the widget

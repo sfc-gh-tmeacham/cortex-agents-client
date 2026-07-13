@@ -410,8 +410,8 @@ def render_streaming_response(
     if stored.annotations:
         _render_annotations_expander(stored.annotations, container)
 
-    if stored.suggested_queries:
-        _render_suggested_queries(stored.suggested_queries, container)
+    # Suggestions are rendered during history replay for the last message only
+    # (via chatbot.py), not here — the streaming render is ephemeral.
 
     return stored
 
@@ -494,11 +494,11 @@ def _render_suggested_queries(queries: list[str], container: Any) -> None:
         return
 
     cols = container.columns(len(queries))
-    for col, query in zip(cols, queries):
+    for i, (col, query) in enumerate(zip(cols, queries)):
         if col.button(
             query,
             icon=":material/arrow_forward:",
-            use_container_width=True,
+            key=f"_ca_suggestion_{hash(query)}_{i}",
         ):
             st.session_state["_ca_pending_suggestion"] = query
             st.rerun()
@@ -583,8 +583,9 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
     if msg.error:
         container.error(escape_dollars(msg.error.message), icon=":material/error:", title=f"Error {msg.error.code}")
 
-    if msg.suggested_queries:
-        _render_suggested_queries(msg.suggested_queries, container)
+    # Suggested queries are NOT rendered during history replay — they are only
+    # shown live after the most recent streaming response (via render_streaming_response).
+    # Old suggestions become stale once the conversation continues.
 
     if msg.pending_permission:
         container.warning(
