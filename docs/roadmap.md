@@ -59,13 +59,14 @@ def sis_init_session_per_viewer(
 **Metadata table DDL:**
 
 ```sql
-CREATE TABLE IF NOT EXISTS my_db.my_schema.agent_threads (
-    viewer_login    VARCHAR       NOT NULL,
-    app_name        VARCHAR       NOT NULL,
-    thread_id       VARCHAR       NOT NULL,
-    created_at      TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+CREATE HYBRID TABLE IF NOT EXISTS my_db.my_schema.agent_threads (
+    viewer_login    VARCHAR       NOT NULL COMMENT 'Snowflake login name of the app viewer (st.context.user.login_name)',
+    app_name        VARCHAR       NOT NULL COMMENT 'Application identifier — use the origin_application value or a hardcoded app name',
+    thread_id       VARCHAR       NOT NULL COMMENT 'Cortex Agents thread ID returned by client.create_thread()',
+    created_at      TIMESTAMP_NTZ NOT NULL DEFAULT CURRENT_TIMESTAMP() COMMENT 'UTC timestamp when the thread was first created for this viewer',
     PRIMARY KEY (viewer_login, app_name)
-);
+)
+COMMENT = 'Per-viewer Cortex Agents thread registry. Maps each (viewer, app) pair to a persistent thread ID so conversations can be resumed across browser sessions.';
 ```
 
 The table is queried and written using the owner's rights SQL connection
