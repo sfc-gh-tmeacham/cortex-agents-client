@@ -403,7 +403,7 @@ set two env vars **inline in the shell command** before Python loads:
 ```bash
 ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 streamlit run app.py
 # or with uv:
-ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZERO=0 uv run streamlit run app.py
+ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run app.py
 ```
 
 > **Note:** Streamlit 1.59 removed support for the `[env]` section in
@@ -411,4 +411,6 @@ ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZERO=0 uv run streamlit run app.py
 > code is too late because PyArrow is already loaded by that point.
 
 This is a known PyArrow mimalloc allocator issue on macOS ARM64 and has no
-impact on deployed apps running on Linux.
+impact on deployed apps running on Linux. See upstream issues:
+[microsoft/mimalloc#343](https://github.com/microsoft/mimalloc/issues/343),
+[apache/arrow#41696](https://github.com/apache/arrow/issues/41696).

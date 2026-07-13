@@ -81,6 +81,10 @@ ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run streaml
 
 These are no-ops on other platforms and do not affect correctness.
 
+**Upstream issues:**
+- [microsoft/mimalloc#343](https://github.com/microsoft/mimalloc/issues/343) — root cause: mimalloc `mi_tls_slot()` segfault on ARM64
+- [apache/arrow#41696](https://github.com/apache/arrow/issues/41696) — PyArrow tracking issue; `ARROW_DEFAULT_MEMORY_POOL=system` suggested by maintainers as the workaround
+
 ---
 
 ## Known bugs fixed this session
