@@ -212,6 +212,8 @@ All four items below were implemented and are no longer deferred.
   `StoredMessage.thinking`. Accumulation logic updated in `_parse_non_streaming_response`
   and `stream_and_collect`.
 
+### Attachment and media enhancements (pending)
+
 - **Image pasting** — CoWork supports pasting images directly from the clipboard; this
   would follow the same stage-upload pattern as file attachments.
 - **Voice-to-text preview** — Show a transcript of recorded audio in the user bubble
