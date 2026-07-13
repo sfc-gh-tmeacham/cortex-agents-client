@@ -70,6 +70,16 @@ def agent_path_analyst() -> str:
     return _require_env("LIVE_AGENT_ANALYST")
 
 
+@pytest.fixture(scope="session")
+def agent_path_web() -> str:
+    """Fully-qualified path to the web search test agent.
+
+    Tests using this fixture are skipped if LIVE_AGENT_WEB is not set.
+    Requires web search to be enabled at the account level by an ACCOUNTADMIN.
+    """
+    return _require_env("LIVE_AGENT_WEB")
+
+
 # ---------------------------------------------------------------------------
 # Function-scoped fixtures (created fresh for each test)
 # ---------------------------------------------------------------------------
