@@ -64,7 +64,7 @@ Required for:
 ### LaTeX rendering of dollar signs (`render.py`)
 Streamlit's markdown renderer treats `$...$` as inline LaTeX delimiters.
 Agent responses with currency amounts like `$452K ... $381K` would render as
-italicised math. Fix: `_escape_dollars()` regex `\$(?=\d)` escapes `$` before
+italicised math. Fix: `escape_dollars()` regex `\$(?=\d)` escapes `$` before
 digits at all `st.markdown()` call sites for agent text. Does NOT affect genuine
 LaTeX (which starts with letters or `\`).
 

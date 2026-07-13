@@ -457,7 +457,7 @@ def _render_annotations_expander(
             exp.markdown(
                 f"**[{ann.index}]** "
                 f'<a href="{ann.doc_id}" target="_blank" rel="noopener noreferrer">'
-                f"{label}</a>",
+                f"{escape_dollars(label)}</a>",
                 unsafe_allow_html=True,
             )
         else:

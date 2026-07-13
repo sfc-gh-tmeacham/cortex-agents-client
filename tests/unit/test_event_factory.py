@@ -1,7 +1,6 @@
 """Unit tests for the SSE event factory."""
 from __future__ import annotations
 
-import pytest
 
 from cortex_agents_client.models.events import (
     AnalystDeltaEvent,
