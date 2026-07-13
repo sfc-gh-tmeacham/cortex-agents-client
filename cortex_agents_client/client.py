@@ -53,8 +53,15 @@ class Thread:
     assistant message ID after the response is complete.
 
     Threads are typically created via
-    :meth:`CortexAgentsClient.create_thread` or retrieved by constructing
-    ``Thread(client, thread_id)`` with a previously stored thread ID.
+    :meth:`CortexAgentsClient.create_thread` or resumed via
+    :meth:`CortexAgentsClient.get_thread`.
+
+    Key methods:
+    - :meth:`chat` — stream events for a new user message.
+    - :meth:`list_messages` — full paginated message history.
+    - :meth:`latest_context` — compaction-aware context for long threads.
+    - :meth:`fork` — branch from a specific assistant message.
+    - :meth:`delete` — delete the thread.
 
     Args:
         client: The parent :class:`CortexAgentsClient` instance.
@@ -68,7 +75,7 @@ class Thread:
         thread = client.create_thread()
         for event in thread.chat("DB.SCHEMA.MY_AGENT", "Hello!"):
             if isinstance(event, TextDeltaEvent):
-                print(event.delta, end="")
+                print(event.text, end="")
         # Next turn uses the correct parent_message_id automatically
         for event in thread.chat("DB.SCHEMA.MY_AGENT", "What about 2024?"):
             ...
@@ -337,7 +344,9 @@ class CortexAgentsClient:
 
     Provides access to agent management, thread management, and run
     operations via the :attr:`agents`, :attr:`threads`, and :attr:`runs`
-    resource objects. Also exposes convenience methods for common workflows.
+    resource objects. Also exposes convenience methods for common workflows:
+    :meth:`create_thread`, :meth:`get_thread`, :meth:`stream`, and
+    :meth:`run`.
 
     Passing a plain string as ``auth`` wraps it automatically as
     :class:`~cortex_agents_client.auth.PATAuth`.

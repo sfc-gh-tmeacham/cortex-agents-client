@@ -1,14 +1,15 @@
 """Streamlit rendering functions for Cortex Agent SSE events.
 
-Provides two rendering code paths that produce identical output:
+Provides two rendering code paths that produce equivalent content:
 
 1. :func:`render_streaming_response`: Used during live streaming of a new
    assistant turn. Renders each event type as it arrives and returns a
    :class:`~cortex_agents_client.models.thread.StoredMessage` for session state.
+   Transient elements (tool-execution spinners) are shown here but not stored.
 
 2. :func:`render_stored_message`: Used on every Streamlit rerun to replay
-   stored messages from ``st.session_state``. Produces the same visual
-   output as path 1.
+   stored messages from ``st.session_state``. Reproduces the final content
+   of path 1; transient spinners are not replayed.
 
 Also provides :func:`result_set_to_dataframe` for converting Snowflake
 ``jsonv2`` result sets to pandas DataFrames.
@@ -55,6 +56,8 @@ _SNOWFLAKE_DTYPE_MAP: dict[str, str] = {
     "INT": "Int64",
     "BIGINT": "Int64",
     "SMALLINT": "Int64",
+    "TINYINT": "Int64",
+    "BYTEINT": "Int64",
     "REAL": "float64",
     "FLOAT": "float64",
     "FLOAT4": "float64",
@@ -62,11 +65,13 @@ _SNOWFLAKE_DTYPE_MAP: dict[str, str] = {
     "DOUBLE": "float64",
     "DECIMAL": "float64",
     "NUMERIC": "float64",
+    "NUMBER": "float64",       # generic Snowflake numeric (float64 is safe regardless of scale)
     "BOOLEAN": "boolean",      # nullable boolean
     "TIMESTAMP_NTZ": "datetime64[ns]",
     "TIMESTAMP_LTZ": "datetime64[ns]",
     "TIMESTAMP_TZ": "datetime64[ns]",
     "DATE": "datetime64[ns]",
+    # TIME is intentionally absent — stays as object string (no pandas time type)
 }
 
 
@@ -164,7 +169,7 @@ def render_streaming_response(
         container: A Streamlit container (e.g. ``st``, or the return value
             of ``st.chat_message()``). Must support ``empty()``,
             ``markdown()``, ``dataframe()``, ``vega_lite_chart()``,
-            ``expander()``, ``warning()``, and ``error()`` methods.
+            ``expander()``, ``warning()``, ``error()``, ``info()``, ``status()``, and ``caption()`` methods.
         show_thinking: If ``True``, renders thinking content in an
             expander. Thinking is always captured in the returned
             :class:`~cortex_agents_client.models.thread.StoredMessage` regardless
@@ -306,7 +311,7 @@ def render_streaming_response(
             if text_parts:
                 result_text = "\n\n".join(text_parts)
                 stored.tool_result_text[event.tool_use_id] = result_text
-                container.markdown(result_text)
+                container.markdown(_escape_dollars(result_text))
             if show_tool_status and event.tool_use_id in tool_status_contexts:
                 ctx = tool_status_contexts.pop(event.tool_use_id)
                 if event.status == "success":
@@ -349,8 +354,8 @@ def render_streaming_response(
             stored.charts.append(event)
             try:
                 spec = json.loads(event.chart_spec)
-                container.vega_lite_chart(spec)
-            except (json.JSONDecodeError, Exception):
+                container.vega_lite_chart(spec, use_container_width=True)
+            except Exception:
                 logger.warning("Failed to render chart event.", exc_info=True)
 
         elif isinstance(event, StatusEvent):
@@ -359,7 +364,7 @@ def render_streaming_response(
 
         elif isinstance(event, WarningEvent):
             stored.warnings.append(event)
-            container.warning(event.message, icon=":material/warning:", title="Warning")
+            container.warning(_escape_dollars(event.message), icon=":material/warning:", title="Warning")
 
         elif isinstance(event, ErrorEvent):
             stored.error = event
@@ -460,24 +465,25 @@ def _render_annotations_expander(
         else:
             exp.markdown(f"**[{ann.index}]** {label}")
         if ann.text:
-            exp.caption(f'"{ann.text}"')
+            exp.caption(f'"{_escape_dollars(ann.text)}"')
 
 
-def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: bool = True) -> None:
+def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: bool = False) -> None:
     """Renders a stored message from session state into Streamlit elements.
 
-    Produces output identical to :func:`render_streaming_response` for the
+    Produces equivalent content to :func:`render_streaming_response` for the
     same message content. Called on every Streamlit rerun to replay history.
+    Transient elements such as tool-execution spinners are not replayed.
 
     Args:
         msg: A :class:`~cortex_agents_client.models.thread.StoredMessage` from
             session state.
         container: Streamlit container (e.g. ``st`` or the return value of
             ``st.chat_message()``).
-        show_thinking: If ``True`` (default), render agent reasoning in a
-            collapsible expander. Set to ``False`` to hide it on replay,
-            matching the ``show_thinking`` flag passed to
-            :func:`render_streaming_response`.
+        show_thinking: If ``True``, render agent reasoning in a collapsible
+            expander. Defaults to ``False`` — pass the same value you passed
+            to :func:`render_streaming_response` so the replay matches what
+            the user saw during streaming.
 
     Raises:
         ImportError: If ``streamlit`` or ``pandas`` is not installed
@@ -487,7 +493,7 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
 
         for msg in get_messages():
             with st.chat_message(msg.role):
-                render_stored_message(msg, st, show_thinking=True)
+                render_stored_message(msg, st, show_thinking=False)
     """
     if show_thinking and msg.thinking:
         exp = container.expander(
@@ -502,7 +508,7 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
     for tool_use, _tool_result in msg.tool_executions:
         text = msg.tool_result_text.get(tool_use.tool_use_id)
         if text:
-            container.markdown(text)
+            container.markdown(_escape_dollars(text))
 
     if msg.text:
         if msg.is_elicitation:
@@ -531,18 +537,18 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
     for chart_event in msg.charts:
         try:
             spec = json.loads(chart_event.chart_spec)
-            container.vega_lite_chart(spec)
-        except (json.JSONDecodeError, Exception):
+            container.vega_lite_chart(spec, use_container_width=True)
+        except Exception:
             logger.warning("Failed to render stored chart.", exc_info=True)
 
     for warning in msg.warnings:
-        container.warning(warning.message, icon=":material/warning:", title="Warning")
+        container.warning(_escape_dollars(warning.message), icon=":material/warning:", title="Warning")
 
     if msg.error:
         container.error(msg.error.message, icon=":material/error:", title=f"Error {msg.error.code}")
 
     if msg.pending_permission:
-        container.info(
+        container.warning(
             f"Permission for **{msg.pending_permission.name}** was required during this turn.",
             icon=":material/security:",
         )

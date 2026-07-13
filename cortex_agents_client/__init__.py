@@ -29,7 +29,7 @@ Streamlit usage::
 """
 
 from cortex_agents_client.auth import JWTAuth, OAuthAuth, PATAuth, SiSContainerAuth
-from cortex_agents_client.auth import account_url_from_env
+from cortex_agents_client.auth import account_url_from_env, AuthProvider
 from cortex_agents_client.client import CortexAgentsClient, Thread
 from cortex_agents_client.exceptions import (
     AgentNotFoundError,
@@ -46,7 +46,7 @@ from cortex_agents_client.exceptions import (
     TimeoutError,      # deprecated alias for CortexTimeoutError
 )
 from cortex_agents_client.models.agent import Agent
-from cortex_agents_client.models.thread import StoredMessage, ThreadMessage, ThreadMetadata
+from cortex_agents_client.models.thread import StoredMessage, ThreadDetail, ThreadMessage, ThreadMetadata
 from cortex_agents_client.models.events import (
     AnalystDeltaEvent,
     ChartEvent,
@@ -82,6 +82,7 @@ __all__ = [
     "OAuthAuth",
     "SiSContainerAuth",
     "account_url_from_env",
+    "AuthProvider",
     # Exceptions
     "CortexAgentError",
     "AuthError",
@@ -99,6 +100,7 @@ __all__ = [
     # Models
     "Agent",
     "StoredMessage",
+    "ThreadDetail",
     "ThreadMessage",
     "ThreadMetadata",
     "RunResult",

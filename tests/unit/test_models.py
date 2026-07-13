@@ -195,3 +195,31 @@ class TestStoredMessage:
         assert msg.thinking is None
         assert msg.analyst_sql == {}
         assert msg.message_id is None
+
+
+class TestRepr:
+    """Tests for __repr__ implementations."""
+
+    def test_cortex_agents_client_repr(self):
+        """CortexAgentsClient repr shows account_url."""
+        from cortex_agents_client import CortexAgentsClient
+        client = CortexAgentsClient(
+            "https://myorg-myaccount.snowflakecomputing.com",
+            "v2:test_token",
+        )
+        r = repr(client)
+        assert "CortexAgentsClient" in r
+        assert "myorg-myaccount" in r
+
+    def test_thread_repr(self):
+        """Thread repr shows thread_id and parent_message_id."""
+        from cortex_agents_client import CortexAgentsClient, Thread
+        client = CortexAgentsClient(
+            "https://myorg-myaccount.snowflakecomputing.com",
+            "v2:test_token",
+        )
+        thread = client.get_thread(42, parent_message_id=7)
+        r = repr(thread)
+        assert "Thread" in r
+        assert "42" in r
+        assert "7" in r

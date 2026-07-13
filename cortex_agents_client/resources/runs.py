@@ -41,9 +41,10 @@ class RunResult:
     """The assembled result of a non-streaming agent run.
 
     Contains all content types emitted during the run, fully accumulated.
-    Raised errors are represented as :attr:`error` (``stream=False`` runs
-    do not raise :class:`~cortex_agents_client.exceptions.RunError` — check
-    ``result.error`` instead).
+    If the agent returns a fatal error event, :meth:`RunsResource.run` and
+    :meth:`RunsResource.stream_and_collect` both raise
+    :class:`~cortex_agents_client.exceptions.RunError`; :attr:`error` holds
+    the underlying event if you catch the exception and need more detail.
 
     Attributes:
         text: Final assembled text from all ``response.text`` events.
@@ -141,7 +142,7 @@ class RunsResource:
             messages=[{"role": "user", "content": [{"type": "text", "text": "Hello"}]}],
         ):
             if isinstance(event, TextDeltaEvent):
-                print(event.delta, end="")
+                print(event.text, end="")
     """
 
     def __init__(
@@ -328,7 +329,7 @@ class RunsResource:
                 }],
             ):
                 if isinstance(event, TextDeltaEvent):
-                    print(event.delta, end="")
+                    print(event.text, end="")
         """
         path = self._resolve_path(agent_path, database, schema, agent)
         api_path = path or "/api/v2/cortex/agent:run"
@@ -479,6 +480,13 @@ class RunsResource:
             elif isinstance(event, ErrorEvent):
                 result.error = event
                 break
+
+        # Commit fallback accumulators — used when the server sends only deltas
+        # without a final summary TextEvent/ThinkingEvent.
+        if accumulated_text and not result.text:
+            result.text = accumulated_text
+        if accumulated_thinking and not result.thinking:
+            result.thinking = accumulated_thinking
 
         if result.error:
             raise RunError(

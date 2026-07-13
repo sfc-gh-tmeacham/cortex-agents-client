@@ -74,7 +74,7 @@ append_message(stored)
 
 Internal implementation:
 1. Create `text_placeholder = container.empty()`.
-2. Accumulate `TextDeltaEvent.delta` strings → update `text_placeholder.markdown(text + "▌")`.
+2. Accumulate `TextDeltaEvent.text` strings → update `text_placeholder.markdown(accumulated_text + " :shimmer[▌]")`.
 3. On `TextEvent`: replace placeholder with final text (removes cursor).
 4. On `ThinkingDeltaEvent` (if `show_thinking=True`): write into expander.
 5. On `ToolUseEvent`: open `st.status(f"Using {name}...")`.
@@ -98,12 +98,15 @@ for msg in get_messages():
 ```
 
 `render_stored_message()` applies the same elements in the same order:
-1. Thinking expander (if `thinking` is set).
-2. `st.markdown(text)`.
-3. Tables via `st.dataframe()`.
-4. Charts via `st.vega_lite_chart()`.
-5. Warnings via `st.warning()`.
-6. Error via `st.error()`.
+1. Thinking expander (if `thinking` is set and `show_thinking=True`).
+2. Tool result text for each tool execution (if any).
+3. Main text via `st.markdown(text)`, or `st.info(text)` when `is_elicitation=True`.
+4. Citations / Sources expander (if annotations present).
+5. Tables via `st.dataframe()`.
+6. Charts via `st.vega_lite_chart()`.
+7. Warnings via `st.warning()`.
+8. Error via `st.error()`.
+9. Pending permission notice via `st.warning()` (if a tool required approval).
 
 ---
 

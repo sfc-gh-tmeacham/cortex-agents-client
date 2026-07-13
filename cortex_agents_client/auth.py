@@ -202,7 +202,7 @@ class JWTAuth(AuthProvider):
         """Returns JWT authentication headers with a freshly generated token.
 
         Returns:
-            Dict with ``Authorization`` and optional token-type headers.
+            Dict with ``Authorization`` and ``X-Snowflake-Authorization-Token-Type`` headers.
         """
         return {
             "Authorization": f"Bearer {self._generate_jwt()}",

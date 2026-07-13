@@ -208,7 +208,11 @@ from cortex_agents_client.models.events import (
 
 for event in thread.chat("MY_AGENT", "Show me the top 5 customers by revenue"):
     if isinstance(event, TextDeltaEvent):
-        print(event.delta, end="", flush=True)
+        print(event.text, end="", flush=True)
+
+    elif isinstance(event, TextEvent):
+        # Full text after all deltas — use for non-streaming assembly
+        pass  # already printed via TextDeltaEvent above
 
     elif isinstance(event, TableEvent):
         # Snowflake SQL result in jsonv2 format
@@ -228,6 +232,15 @@ for event in thread.chat("MY_AGENT", "Show me the top 5 customers by revenue"):
         if event.permission_options:
             # Tool requires user approval
             print(f"  Permission required: {event.permission_options}")
+
+    elif isinstance(event, ToolResultEvent):
+        # Tool execution finished — status is 'success' or 'error'
+        print(f"\n[Tool {event.tool_use_id} completed: {event.status}]")
+
+    elif isinstance(event, AnalystDeltaEvent):
+        # Streaming SQL from Cortex Analyst — accumulate via tool_use_id
+        if event.sql:
+            print(f"\n[SQL]: {event.sql[:120]}")
 
     elif isinstance(event, WarningEvent):
         print(f"\n[Warning {event.code}]: {event.message}")
@@ -430,7 +443,7 @@ for msg in get_messages():
         if msg.role == "user":
             st.markdown(msg.text)
         else:
-            render_stored_message(msg, st)
+            render_stored_message(msg, st, show_thinking=False)
 
 if prompt := st.chat_input("Ask a question..."):
     with st.chat_message("user"):
@@ -653,7 +666,7 @@ for msg in get_messages():
         if msg.role == "user":
             st.markdown(msg.text)
         else:
-            render_stored_message(msg, st)
+            render_stored_message(msg, st, show_thinking=False)
 
 if prompt := st.chat_input("Ask a question..."):
     with st.chat_message("user"):
@@ -711,8 +724,8 @@ uv run streamlit run streamlit_demo/app.py
 cortex_agents_client/
 ├── client.py         CortexAgentsClient (top-level facade), Thread (stateful)
 ├── auth.py           PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, account_url_from_env
-├── http.py           _HttpClient (httpx wrapper, error mapping)
-├── sse.py            SSE parser + event factory (all 16 types)
+├── http.py           HttpClient (httpx wrapper, error mapping)
+├── sse.py            SSE parser + event factory (16 API types + UnknownEvent)
 ├── exceptions.py     Typed exceptions
 ├── models/
 │   ├── agent.py      Agent, Tool, ToolSpec, etc.

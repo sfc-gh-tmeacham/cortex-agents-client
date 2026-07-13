@@ -1,8 +1,12 @@
 """Typed dataclasses for all Cortex Agents SSE event types.
 
-All 17 event type dataclasses (16 emitted by the ``agent:run`` endpoint + ``UnknownEvent`` catch-all) are represented
-as dataclasses with fully typed fields. Each class has a ``_from_payload``
-class method that constructs the instance from the raw SSE JSON dict.
+16 event dataclasses (emitted by the ``agent:run`` endpoint) plus
+``UnknownEvent`` (catch-all for unknown types) and three token-usage models
+(``InputTokens``, ``OutputTokens``, ``TokensConsumed``) used by
+``ResponseEvent.usage``.
+
+Each event class has a ``_from_payload`` class method that constructs the
+instance from the raw SSE JSON dict.
 
 The factory function :func:`cortex_agents_client.sse.event_from_sse` uses these
 classes to dispatch events by type string.
@@ -722,6 +726,7 @@ class InputTokens:
 
     @classmethod
     def _from_dict(cls, d: dict[str, Any]) -> InputTokens:
+        """Constructs from a raw input_tokens dict."""
         return cls(
             total=int(d.get("total", 0)),
             cache_read=int(d.get("cache_read", 0)),
@@ -742,6 +747,7 @@ class OutputTokens:
 
     @classmethod
     def _from_dict(cls, d: dict[str, Any]) -> OutputTokens:
+        """Constructs from a raw output_tokens dict."""
         return cls(total=int(d.get("total", 0)))
 
 
@@ -766,6 +772,7 @@ class TokensConsumed:
 
     @classmethod
     def _from_dict(cls, d: dict[str, Any]) -> TokensConsumed:
+        """Constructs from a raw tokens_consumed dict."""
         return cls(
             model_name=d.get("model_name", ""),
             input_tokens=InputTokens._from_dict(d.get("input_tokens") or {}),

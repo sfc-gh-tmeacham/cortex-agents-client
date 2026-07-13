@@ -158,6 +158,7 @@ class StreamlitChatbot:
                 or ``"directory"``).
             accept_audio: Enable microphone / voice input.
             file_type: Allowed file types when ``accept_file`` is enabled.
+            tool_executor: Optional callable for ``client_side_execute=True`` tools.
         """
         self._account_url = account_url
         self._auth = auth

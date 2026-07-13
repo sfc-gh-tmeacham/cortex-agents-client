@@ -45,7 +45,7 @@ def _raise_for_status(response: httpx.Response, *, resource: str = "resource") -
         CortexPermissionError: On HTTP 403.
         AgentNotFoundError: On HTTP 404 when resource is ``"agent"``.
         ThreadNotFoundError: On HTTP 404 when resource is ``"thread"``.
-        CortexAgentError: On HTTP 404 for other resource types.
+        NotFoundError: On HTTP 404 for other resource types.
         RateLimitError: On HTTP 429.
         ServerError: On HTTP 5xx.
         CortexAgentError: On any other non-2xx status.
@@ -180,6 +180,7 @@ class HttpClient:
             CortexPermissionError: On HTTP 403.
             AgentNotFoundError: On HTTP 404 for agents.
             ThreadNotFoundError: On HTTP 404 for threads.
+            NotFoundError: On HTTP 404 for other resource types.
             RateLimitError: On HTTP 429.
             ServerError: On HTTP 5xx.
             CortexTimeoutError: On request timeout.

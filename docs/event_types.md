@@ -289,7 +289,7 @@ A Vega-Lite chart specification. Emitted by the "Data to Chart" tool after Analy
 
 `chart_spec` is a JSON string (not a dict) — parse with `json.loads()`.
 
-**Streamlit rendering:** `container.vega_lite_chart(json.loads(chart_spec), use_container_width=True)`
+**Streamlit rendering:** `container.vega_lite_chart(json.loads(chart_spec), use_container_width=True)  # or width="stretch" on Streamlit u22651.44`
 
 ---
 

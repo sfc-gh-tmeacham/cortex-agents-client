@@ -391,12 +391,28 @@ class TestRenderStoredMessage:
         container.vega_lite_chart.assert_called_once()
 
     def test_renders_thinking_expander(self):
-        """StoredMessage with thinking → expander created."""
+        """StoredMessage with thinking → expander created when show_thinking=True."""
         container = make_container()
         msg = StoredMessage(role="assistant", text="", thinking="Let me think.")
 
-        render_stored_message(msg, container)
+        render_stored_message(msg, container, show_thinking=True)
         container.expander.assert_called_once()
+
+    def test_does_not_render_thinking_when_show_thinking_false(self):
+        """StoredMessage with thinking → no expander when show_thinking=False (default)."""
+        container = make_container()
+        msg = StoredMessage(role="assistant", text="", thinking="Hidden reasoning.")
+
+        render_stored_message(msg, container, show_thinking=False)
+        container.expander.assert_not_called()
+
+    def test_default_show_thinking_is_false(self):
+        """render_stored_message default show_thinking=False matches render_streaming_response default."""
+        container = make_container()
+        msg = StoredMessage(role="assistant", text="", thinking="Hidden reasoning.")
+
+        render_stored_message(msg, container)  # no show_thinking arg
+        container.expander.assert_not_called()
 
     def test_renders_warning(self):
         """StoredMessage with warning → container.warning called."""
@@ -441,8 +457,8 @@ class TestRenderStoredMessage:
         render_stored_message(msg, container)
         container.markdown.assert_any_call("Top result: Snowflake Q4 report")
 
-    def test_pending_permission_renders_info(self):
-        """StoredMessage with pending_permission → container.info called."""
+    def test_pending_permission_renders_warning(self):
+        """StoredMessage with pending_permission → container.warning called."""
         container = make_container()
         perm_use = ToolUseEvent._from_payload({
             **TOOL_USE_PAYLOAD,
@@ -451,8 +467,8 @@ class TestRenderStoredMessage:
         msg = StoredMessage(role="assistant", pending_permission=perm_use)
 
         render_stored_message(msg, container)
-        container.info.assert_called_once()
-        call_kwargs = container.info.call_args
+        container.warning.assert_called()
+        call_kwargs = container.warning.call_args
         assert "Analyst1" in str(call_kwargs)
 
     def test_annotations_render_sources_expander_in_stored_message(self):

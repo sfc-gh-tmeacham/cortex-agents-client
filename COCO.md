@@ -113,7 +113,7 @@ Tests: 194 passing, 1 skipped (`tests/` tree below):
 tests/
 ├── unit/          # core client, auth, SSE parsing, event models
 ├── streamlit/     # StreamlitChatbot, render functions (mocked st)
-├── integration/   # round-trip tests against a real Snowflake account (mark: live)
+├── integration/   # mocked HTTP tests via pytest-httpx; no Snowflake account required
 └── fixtures/      # shared SSE event payloads
 ```
 

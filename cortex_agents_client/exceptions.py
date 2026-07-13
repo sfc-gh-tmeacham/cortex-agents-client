@@ -48,7 +48,11 @@ class RateLimitError(CortexAgentError):
 
 
 class CortexTimeoutError(CortexAgentError):
-    """Raised when a request exceeds the configured timeout."""
+    """Raised when a request exceeds the configured timeout.
+
+    Triggered by a transport-level ``httpx.TimeoutException``, not an HTTP
+    status code (there is no HTTP 408 equivalent in this API).
+    """
 
 
 class ServerError(CortexAgentError):
@@ -78,6 +82,10 @@ class ThreadNotFoundError(NotFoundError):
 
 class RunError(CortexAgentError):
     """Raised when an agent run terminates with a fatal error event.
+
+    Triggered by a fatal ``error`` event in the SSE stream, not by an HTTP
+    error status code. Raised by :meth:`~cortex_agents_client.RunsResource.run`
+    and :meth:`~cortex_agents_client.RunsResource.stream_and_collect`.
 
     Attributes:
         code: Snowflake error code from the error SSE event.

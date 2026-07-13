@@ -33,6 +33,8 @@ from tests.fixtures.sse_streams import (
     TABLE_PAYLOAD,
     TEXT_DELTA_PAYLOAD,
     TEXT_PAYLOAD,
+    THINKING_DELTA_PAYLOAD,
+    THINKING_PAYLOAD,
     TOOL_RESULT_PAYLOAD,
     TOOL_USE_PAYLOAD,
     WARNING_PAYLOAD,
@@ -360,3 +362,59 @@ class TestCortexTimeoutError:
         messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
         with pytest.raises(CortexTimeoutError):
             list(ca_client.runs.stream(messages, agent_path="DB.SC.AGENT"))
+
+
+class TestStreamAndCollectFallback:
+    """Tests that stream_and_collect accumulates delta events when no summary event arrives."""
+
+    def test_text_delta_fallback_when_no_text_event(self, ca_client, httpx_mock: HTTPXMock):
+        """stream_and_collect uses accumulated TextDeltaEvents if no TextEvent arrives."""
+        # Only send a delta — no final TextEvent
+        httpx_mock.add_response(
+            content=sse_response([("response.text.delta", TEXT_DELTA_PAYLOAD)]).content
+        )
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        result = ca_client.runs.stream_and_collect(messages, agent_path="DB.SC.AGENT")
+        assert result.text == TEXT_DELTA_PAYLOAD["text"]
+
+    def test_thinking_delta_fallback_when_no_thinking_event(self, ca_client, httpx_mock: HTTPXMock):
+        """stream_and_collect uses accumulated ThinkingDeltaEvents if no ThinkingEvent arrives."""
+        httpx_mock.add_response(
+            content=sse_response([("response.thinking.delta", THINKING_DELTA_PAYLOAD)]).content
+        )
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        result = ca_client.runs.stream_and_collect(messages, agent_path="DB.SC.AGENT")
+        assert result.thinking == THINKING_DELTA_PAYLOAD["text"]
+
+    def test_summary_event_takes_precedence_over_deltas(self, ca_client, httpx_mock: HTTPXMock):
+        """When both delta and summary TextEvent arrive, result.text uses the summary value."""
+        httpx_mock.add_response(
+            content=sse_response([
+                ("response.text.delta", TEXT_DELTA_PAYLOAD),
+                ("response.text", TEXT_PAYLOAD),
+            ]).content
+        )
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        result = ca_client.runs.stream_and_collect(messages, agent_path="DB.SC.AGENT")
+        assert result.text == TEXT_PAYLOAD["text"]
+
+
+class TestNonStreamingThinking:
+    """Tests for _parse_non_streaming_response thinking content branch."""
+
+    def test_run_with_thinking_content_in_response(self, ca_client, httpx_mock: HTTPXMock):
+        """Non-streaming response with a thinking content item populates result.thinking."""
+        response = {
+            "role": "assistant",
+            "content": [
+                {"type": "thinking", "thinking": {"text": "Let me reason through this."}},
+                {"type": "text", "text": "The answer is 42."},
+            ],
+            "status": "completed",
+            "error": None,
+        }
+        httpx_mock.add_response(json=response)
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        result = ca_client.runs.run(messages, agent_path="DB.SC.AGENT")
+        assert result.thinking == "Let me reason through this."
+        assert result.text == "The answer is 42."
