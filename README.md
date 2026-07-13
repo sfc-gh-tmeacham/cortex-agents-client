@@ -849,6 +849,63 @@ cortex_agents_client/
     └── README.md     Streamlit integration guide (travels with the folder when copied)
 ```
 
+**Component diagram**
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                     Application Layer                             │
+│  Streamlit app / Python script / Notebook                        │
+└──────────────────┬──────────────────────────────┬───────────────┘
+                   │                              │
+        ┌──────────▼──────────┐        ┌──────────▼──────────────┐
+        │  CortexAgentsClient │        │    StreamlitChatbot      │
+        │  (client.py)        │        │    (st/chatbot.py)       │
+        │  + Thread wrapper   │        │    fullpage / embedded   │
+        └─────────┬───────────┘        └──────────┬──────────────┘
+                  │                               │  uses session.py + render.py
+         ┌────────┼──────────┐                    │
+         ▼        ▼          ▼                    │
+  AgentsResource  ThreadsResource  RunsResource ◄─┘
+  (agents.py)   (threads.py)     (runs.py)
+         │        │          │
+         └────────┼──────────┘
+                  ▼
+           HttpClient (http.py)
+           ├── request() → JSON REST calls
+           └── stream()  → SSE streaming
+                  │
+           AuthProvider (auth.py)
+           ├── PATAuth
+           ├── JWTAuth
+           ├── OAuthAuth
+           └── SiSContainerAuth
+                  │
+                  ▼
+        Snowflake Cortex Agents REST API
+        (myorg-myaccount.snowflakecomputing.com)
+```
+
+**Design principles**
+
+- **Layered**: HTTP → resources → client facade → optional Streamlit layer
+- **Typed events**: 17 frozen dataclasses; `UnknownEvent` catches future API additions without breaking callers
+- **Stateful threads**: `Thread` tracks `parent_message_id` so callers never manage it manually; `fork()` enables branching
+- **Auth pluggability**: `AuthProvider` ABC with four concrete implementations; plain strings auto-wrap as `PATAuth`
+- **Two-path rendering**: live streaming path (`render_streaming_response`) and history replay path (`render_stored_message`) produce equivalent output
+- **No external dependencies for core**: only `httpx`; `cryptography`+`PyJWT` are optional for JWT auth; `streamlit`+`pandas` are optional for the UI layer
+
+**SSE event pipeline (streaming path)**
+
+```
+HTTP response body
+    → HttpClient.stream() → iter_lines()
+    → parse_sse_stream()  → (event_type, payload) tuples
+    → event_from_sse()    → typed SSEEvent subclasses
+    → RunsResource.stream() → Iterator[SSEEvent]
+    → Thread.chat()         → Iterator[SSEEvent] (+ parent_message_id tracking)
+    → render_streaming_response() → Streamlit UI elements + StoredMessage
+```
+
 ### Notes
 
 - **Timeout**: Default is 900 seconds (15 minutes), matching the Agents API maximum.
