@@ -338,7 +338,7 @@ def render_streaming_response(
             try:
                 df = result_set_to_dataframe(event)
                 if event.title:
-                    container.caption(event.title)
+                    container.caption(_escape_dollars(event.title))
                 container.dataframe(
                     df,
                     hide_index=True,
@@ -461,7 +461,7 @@ def _render_annotations_expander(
                 unsafe_allow_html=True,
             )
         else:
-            exp.markdown(f"**[{ann.index}]** {label}")
+            exp.markdown(f"**[{ann.index}]** {_escape_dollars(label)}")
         if ann.text:
             exp.caption(f'"{_escape_dollars(ann.text)}"')
 
@@ -522,7 +522,7 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
         try:
             df = result_set_to_dataframe(table_event)
             if table_event.title:
-                container.caption(table_event.title)
+                container.caption(_escape_dollars(table_event.title))
             container.dataframe(
                 df,
                 hide_index=True,
