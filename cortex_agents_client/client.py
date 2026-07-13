@@ -16,7 +16,6 @@ from collections.abc import Callable, Iterator
 from typing import Any
 
 from cortex_agents_client.auth import AuthProvider, PATAuth
-from cortex_agents_client.exceptions import CortexAgentError
 from cortex_agents_client.http import HttpClient
 from cortex_agents_client.models.events import MetadataEvent, SSEEvent, ToolResultEvent, ToolUseEvent
 from cortex_agents_client.models.thread import ThreadMessage

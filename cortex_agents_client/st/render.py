@@ -244,7 +244,7 @@ def render_streaming_response(
                     )
                     thinking_placeholder = thinking_expander.empty()
                 if thinking_placeholder is not None:
-                    thinking_placeholder.markdown(accumulated_thinking)
+                    thinking_placeholder.markdown(_escape_dollars(accumulated_thinking))
 
         elif isinstance(event, ThinkingEvent):
             accumulated_thinking = event.text
@@ -265,7 +265,7 @@ def render_streaming_response(
                             expanded=False,
                             type="compact",
                         )
-                    thinking_expander.markdown(event.text)
+                    thinking_expander.markdown(_escape_dollars(event.text))
 
         elif isinstance(event, ToolUseEvent):
             pending_tool_uses[event.tool_use_id] = event
@@ -366,7 +366,7 @@ def render_streaming_response(
 
         elif isinstance(event, ErrorEvent):
             stored.error = event
-            container.error(f"{event.message}", icon=":material/error:", title=f"Error {event.code}")
+            container.error(_escape_dollars(f"{event.message}"), icon=":material/error:", title=f"Error {event.code}")
             break
 
         elif isinstance(event, MetadataEvent):
@@ -500,7 +500,7 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
             expanded=False,
             type="compact",
         )
-        exp.markdown(msg.thinking)
+        exp.markdown(_escape_dollars(msg.thinking))
 
     # Tool result text appears before the main answer (tools execute first).
     for tool_use, _tool_result in msg.tool_executions:
@@ -543,7 +543,7 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
         container.warning(_escape_dollars(warning.message), icon=":material/warning:", title="Warning")
 
     if msg.error:
-        container.error(msg.error.message, icon=":material/error:", title=f"Error {msg.error.code}")
+        container.error(_escape_dollars(msg.error.message), icon=":material/error:", title=f"Error {msg.error.code}")
 
     if msg.pending_permission:
         container.warning(

@@ -17,7 +17,7 @@ tests/
 │   └── sse_streams.py           # per-event-type payloads + ALL_EVENT_TYPES + stream_of()
 ├── unit/
 │   ├── test_auth.py             # PATAuth, OAuthAuth, SiSContainerAuth, account_url_from_env, JWTAuth
-│   ├── test_event_factory.py    # one test per SSE event type (17 total)
+│   ├── test_event_factory.py    # 34 tests across 17 SSE event types
 │   ├── test_models.py           # Agent, ThreadMetadata, ThreadMessage, StoredMessage
 │   ├── test_sse_parser.py       # SSE wire-level parsing
 │   └── test_utils.py            # agent path resolution, result_set_to_dataframe, Thread.chat tool_executor
@@ -201,9 +201,8 @@ Tests `Thread.chat()` with client-side `tool_executor` callback:
 
 Fixtures (defined in `tests/integration/conftest.py`):
 - `ca_client` — `CortexAgentsClient` with `pytest-httpx`-intercepted transport
-- `pat_auth` — `PATAuth("v2:test_token_abc")`
-- `http_client` — raw `HttpClient`
 - `make_sse_response(events)` — builds SSE body string
+- `make_json_response(data, status_code)` — builds `httpx.Response` with JSON content
 - `make_sse_httpx_response(events)` — builds `httpx.Response` with SSE content
 
 ### `tests/integration/test_agents.py`
