@@ -143,3 +143,98 @@ class TestAccountUrlFromEnv:
         monkeypatch.setenv("MY_CUSTOM_HOST", "custom.snowflakecomputing.com")
         url = account_url_from_env(host_env="MY_CUSTOM_HOST")
         assert url == "https://custom.snowflakecomputing.com"
+
+
+# ---------------------------------------------------------------------------
+# JWTAuth — tests skipped when cryptography / PyJWT are not installed
+# ---------------------------------------------------------------------------
+
+cryptography = pytest.importorskip("cryptography", reason="cryptography not installed")
+jwt_lib = pytest.importorskip("jwt", reason="PyJWT not installed")
+
+
+@pytest.fixture
+def rsa_key_file(tmp_path):
+    """Generate a fresh 2048-bit RSA private key and write it to a temp PEM file."""
+    from cryptography.hazmat.backends import default_backend
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+        backend=default_backend(),
+    )
+    pem = private_key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption(),
+    )
+    key_file = tmp_path / "key.p8"
+    key_file.write_bytes(pem)
+    return key_file
+
+
+class TestJWTAuth:
+    """Tests for JWTAuth (requires cryptography + PyJWT)."""
+
+    def _make_auth(self, rsa_key_file, account="myorg-myaccount", user="myuser"):
+        from cortex_agents_client.auth import JWTAuth
+        return JWTAuth(account=account, user=user, private_key_path=rsa_key_file)
+
+    def _decode(self, token, rsa_key_file):
+        """Decode JWT without verifying expiry for claim inspection."""
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa as _rsa
+        from cryptography.hazmat.backends import default_backend
+
+        # Load the private key to derive the public key for verification
+        private_key = serialization.load_pem_private_key(
+            rsa_key_file.read_bytes(), password=None, backend=default_backend()
+        )
+        pub_pem = private_key.public_key().public_bytes(
+            serialization.Encoding.PEM,
+            serialization.PublicFormat.SubjectPublicKeyInfo,
+        )
+        return jwt_lib.decode(token, pub_pem, algorithms=["RS256"], options={"verify_exp": False})
+
+    def test_headers_include_authorization_and_keypair_jwt_type(self, rsa_key_file):
+        """headers() returns Authorization bearer token and KEYPAIR_JWT type header."""
+        auth = self._make_auth(rsa_key_file)
+        headers = auth.headers()
+        assert "Authorization" in headers
+        assert headers["Authorization"].startswith("Bearer ")
+        assert headers["X-Snowflake-Authorization-Token-Type"] == "KEYPAIR_JWT"
+
+    def test_jwt_claims_iss_format(self, rsa_key_file):
+        """iss claim is ACCOUNT.USER.SHA256:<fingerprint>."""
+        auth = self._make_auth(rsa_key_file, account="myorg-myaccount", user="myuser")
+        token = auth.headers()["Authorization"].split(" ", 1)[1]
+        claims = self._decode(token, rsa_key_file)
+        iss = claims["iss"]
+        # Format: ACCOUNT.USER.SHA256:<fingerprint>
+        assert iss.startswith("MYORG-MYACCOUNT.MYUSER.SHA256:")
+        assert len(iss.split(".")) >= 3
+
+    def test_jwt_claims_sub_format(self, rsa_key_file):
+        """sub claim is ACCOUNT.USER."""
+        auth = self._make_auth(rsa_key_file, account="myorg-myaccount", user="myuser")
+        token = auth.headers()["Authorization"].split(" ", 1)[1]
+        claims = self._decode(token, rsa_key_file)
+        assert claims["sub"] == "MYORG-MYACCOUNT.MYUSER"
+
+    def test_jwt_exp_within_one_hour(self, rsa_key_file):
+        """JWT expiry is at most 3600 seconds after issue time."""
+        auth = self._make_auth(rsa_key_file)
+        token = auth.headers()["Authorization"].split(" ", 1)[1]
+        claims = self._decode(token, rsa_key_file)
+        assert claims["exp"] - claims["iat"] <= 3600
+
+    def test_account_and_user_uppercased_in_claims(self, rsa_key_file):
+        """Lowercase account and user are uppercased in JWT claims."""
+        auth = self._make_auth(rsa_key_file, account="lowercase-org", user="lowercase_user")
+        token = auth.headers()["Authorization"].split(" ", 1)[1]
+        claims = self._decode(token, rsa_key_file)
+        assert "lowercase" not in claims["iss"]
+        assert "lowercase" not in claims["sub"]
+        assert "LOWERCASE-ORG.LOWERCASE_USER" in claims["sub"]

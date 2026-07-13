@@ -1,6 +1,8 @@
 """Integration tests for ThreadsResource using pytest-httpx."""
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 from pytest_httpx import HTTPXMock
@@ -164,3 +166,47 @@ class TestDeleteThread:
         httpx_mock.add_response(status_code=404, json={"message": "not found"})
         with pytest.raises(ThreadNotFoundError):
             ca_client.threads.delete(9999)
+
+
+class TestUpdateThread:
+    """Tests for threads.update() — renames a thread."""
+
+    def test_update_happy_path(self, ca_client, httpx_mock: HTTPXMock):
+        """Successful update returns without error."""
+        httpx_mock.add_response(method="POST", status_code=200, json={})
+        ca_client.threads.update(1234567890, thread_name="Renamed Thread")
+
+    def test_update_sends_correct_body(self, ca_client, httpx_mock: HTTPXMock):
+        """update() sends thread_name in the request body."""
+        captured: dict = {}
+
+        def responder(request: httpx.Request) -> httpx.Response:
+            captured["body"] = json.loads(request.content)
+            return httpx.Response(200, json={})
+
+        httpx_mock.add_callback(responder)
+        ca_client.threads.update(1234567890, thread_name="New Name")
+        assert captured["body"].get("thread_name") == "New Name"
+
+
+class TestListThreads:
+    """Tests for threads.list() — returns all threads."""
+
+    def test_list_returns_metadata_list(self, ca_client, httpx_mock: HTTPXMock):
+        """list() returns a list of ThreadMetadata objects."""
+        httpx_mock.add_response(json=[THREAD_CREATE_RESPONSE, THREAD_CREATE_RESPONSE])
+        threads = ca_client.threads.list()
+        assert len(threads) == 2
+        assert threads[0].thread_id == 1234567890
+
+    def test_list_with_origin_filter_sends_query_param(self, ca_client, httpx_mock: HTTPXMock):
+        """list(origin_application=...) includes the filter as a query parameter."""
+        captured: list[str] = []
+
+        def responder(request: httpx.Request) -> httpx.Response:
+            captured.append(str(request.url))
+            return httpx.Response(200, json=[])
+
+        httpx_mock.add_callback(responder)
+        ca_client.threads.list(origin_application="my_app")
+        assert "origin_application=my_app" in captured[0]

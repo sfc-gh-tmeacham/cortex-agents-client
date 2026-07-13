@@ -229,6 +229,30 @@ class TestHttpErrors:
         with pytest.raises(PermissionError):
             list(ca_client.runs.stream(messages, agent_path="DB.SC.A"))
 
+    def test_http_429_raises_rate_limit_error(self, ca_client, httpx_mock: HTTPXMock):
+        """HTTP 429 raises RateLimitError."""
+        from cortex_agents_client.exceptions import RateLimitError
+        httpx_mock.add_response(
+            status_code=429,
+            headers={"Content-Type": "application/json"},
+            json={"message": "Rate limit exceeded. Retry after 60 seconds."},
+        )
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        with pytest.raises(RateLimitError):
+            list(ca_client.runs.stream(messages, agent_path="DB.SC.A"))
+
+    def test_http_500_raises_server_error(self, ca_client, httpx_mock: HTTPXMock):
+        """HTTP 500 raises ServerError."""
+        from cortex_agents_client.exceptions import ServerError
+        httpx_mock.add_response(
+            status_code=500,
+            headers={"Content-Type": "application/json"},
+            json={"message": "Internal server error"},
+        )
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        with pytest.raises(ServerError):
+            list(ca_client.runs.stream(messages, agent_path="DB.SC.A"))
+
 
 class TestThreadClass:
     """Integration tests for the Thread convenience class."""
