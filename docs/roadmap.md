@@ -4,11 +4,88 @@ Planned features and known limitations for `cortex_agents_client`.
 
 ---
 
-## File and audio attachment support
+## Per-viewer thread isolation in SiS (container runtime)
 
 ### Current state
 
-`StreamlitChatbot` accepts `accept_file`, `accept_audio`, and `file_type` parameters
+In a SiS container runtime app using owner's rights (the default), all Cortex Agents API
+calls run as the **app owner**. Threads are owned by the app owner's identity, so
+`GET /api/v2/cortex/agents/threads` returns every thread created by every viewer of the
+app in the same flat namespace.
+
+For ephemeral (single-session) use, this is already fine — `sis_init_session()` stores
+the thread in `st.session_state`, which Streamlit isolates per browser session. The
+problem arises when threads need to persist across sessions: there is no built-in way to
+associate a stored `thread_id` with the viewer who created it.
+
+### Viewer identity
+
+`st.context.user.login_name` provides the viewer's Snowflake login name at the HTTP
+session level, even in owner's rights mode (it reads from the request, not the Snowflake
+token). This can be used as a stable key to store and look up per-viewer thread IDs.
+
+### Proposed implementation: `sis_init_session_per_viewer()`
+
+A new `sis_init_session_per_viewer()` session helper in `cortex_agents_client/st/session.py`
+that wraps `sis_init_session()` and adds automatic per-viewer thread persistence:
+
+1. On first call for a given viewer + `session_key_prefix`:
+   - Query a metadata table (`thread_store_table`) for an existing `thread_id` belonging to this viewer.
+   - If found, call `client.get_thread(thread_id)` to resume.
+   - If not found, call `client.create_thread()` and insert the new `thread_id` into the metadata table.
+2. On subsequent Streamlit reruns (same browser session): return the cached objects from `st.session_state` as normal.
+
+**Signature (proposed):**
+
+```python
+def sis_init_session_per_viewer(
+    agent_path: str,
+    *,
+    thread_store_table: str,        # fully-qualified: "DB.SCHEMA.TABLE"
+    viewer_key: str | None = None,  # defaults to st.context.user.login_name
+    origin_application: str | None = None,
+    session_key_prefix: str = "_ca",
+    **kwargs,
+) -> tuple[CortexAgentsClient, Thread]:
+    ...
+```
+
+**Metadata table DDL:**
+
+```sql
+CREATE TABLE IF NOT EXISTS my_db.my_schema.agent_threads (
+    viewer_login    VARCHAR     NOT NULL,
+    app_name        VARCHAR     NOT NULL,
+    thread_id       VARCHAR     NOT NULL,
+    created_at      TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    PRIMARY KEY (viewer_login, app_name)
+);
+```
+
+The table is queried and written using the owner's rights SQL connection
+(`st.connection("snowflake")`), which already has the necessary privileges.
+
+### `origin_application` as a soft namespace (interim)
+
+Until this helper is implemented, use `origin_application=f"app_{st.context.user.login_name}"`
+(truncated to 16 bytes) when calling `sis_init_session()`. This tags each thread with the
+viewer's identity and allows filtering by that tag when listing threads. It does not provide
+hard isolation — the owner can still list all threads — but it gives functional separation
+for most use cases.
+
+### Files to create / modify
+
+- `cortex_agents_client/st/session.py` — add `sis_init_session_per_viewer()`
+- `cortex_agents_client/st/__init__.py` — export new function
+- `tests/streamlit/test_session.py` — add tests covering first-visit, resume, and rerun paths
+
+---
+
+---
+
+## File and audio attachment support
+
+### Current state, `accept_audio`, and `file_type` parameters
 that enable the corresponding controls on `st.chat_input` (Streamlit ≥ 1.59). When a
 user uploads a file or records audio, those attachments are:
 

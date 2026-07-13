@@ -546,6 +546,18 @@ Since the REST API always runs as the app owner, per-viewer data isolation must 
 
 The cleanest governance pattern is to grant the app owner's role exactly the data access it should have on behalf of all viewers, and use the agent's tool configuration to control what data is returned.
 
+#### Thread isolation between viewers
+
+Since all API calls run as the app owner, threads are owned by the app owner's identity — not by individual viewers. `GET /api/v2/cortex/threads` returns all threads belonging to the app owner, meaning every viewer's threads are in the same namespace.
+
+**Ephemeral (single session)** — already isolated. `sis_init_session()` stores the thread in `st.session_state`, which Streamlit scopes to each individual browser session. Alice and Bob each get their own in-memory thread with no extra work. When the browser tab closes, the thread is gone.
+
+**Persistent (resume across sessions)** — requires application-level keying. The viewer's identity is available via `st.context.user.login_name` (Streamlit provides this from the HTTP session, independent of the Snowflake token). You can store `thread_id` keyed by viewer in a Snowflake metadata table (using the owner's rights connection for that SQL), then look it up on the next session.
+
+`origin_application` can be used as a soft namespace (e.g. `f"app_{viewer_login}"`), which filters thread listings by that tag — but it does not prevent the owner from seeing all threads if `origin_application` is omitted from the list call.
+
+A first-class `sis_init_session_per_viewer()` helper that handles this automatically is [on the roadmap](docs/roadmap.md).
+
 ---
 
 ## External Streamlit
