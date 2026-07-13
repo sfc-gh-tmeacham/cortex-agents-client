@@ -150,7 +150,7 @@ class JWTAuth(AuthProvider):
         except ImportError as exc:
             raise ImportError(
                 "JWT authentication requires 'cryptography'. "
-                "Install with: pip install "cortex-agents-client[jwt]""
+                "Install with: pip install 'cortex-agents-client[jwt]'"
             ) from exc
 
         key_data = self._private_key_path.read_bytes()
@@ -189,7 +189,7 @@ class JWTAuth(AuthProvider):
         except ImportError as exc:
             raise ImportError(
                 "JWT authentication requires 'PyJWT'. "
-                "Install with: pip install "cortex-agents-client[jwt]""
+                "Install with: pip install 'cortex-agents-client[jwt]'"
             ) from exc
 
         now = int(time.time())

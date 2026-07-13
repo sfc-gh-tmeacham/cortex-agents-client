@@ -39,7 +39,7 @@ class TestStreamlitChatbotInit:
         assert bot._agent_path == "DB.SC.AGENT"
         assert bot._mode == "fullpage"
         assert bot._height == 450
-        assert bot._show_thinking is False
+        assert bot._show_thinking is True
         assert bot._show_tool_status is True
         assert bot._new_conversation_button is True
         assert bot._input_placeholder == "Ask a question..."
