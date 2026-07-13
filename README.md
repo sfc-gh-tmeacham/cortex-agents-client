@@ -333,24 +333,27 @@ Container runtime apps cannot make outbound network calls without an EAI. You ne
 
 #### Cortex Agents API EAI
 
-Allows the app to call the Agents REST API. Requires ACCOUNTADMIN (or a role with `CREATE INTEGRATION` privilege). Replace `myorg-myaccount` with your account identifier (`SELECT CURRENT_ACCOUNT()`):
+Allows the app to call the Agents REST API. Requires ACCOUNTADMIN (or a role with `CREATE INTEGRATION` privilege). Replace `myorg-myaccount` with your account identifier (`SELECT CURRENT_ACCOUNT()`).
+
+Network rules are schema-level objects — store them in a dedicated schema. The example below uses `common_db.security`; substitute your own database and schema:
 
 ```sql
 USE ROLE ACCOUNTADMIN;
 
-CREATE OR REPLACE NETWORK RULE cortex_agents_api_rule
+CREATE OR REPLACE NETWORK RULE common_db.security.cortex_agents_api_rule
   TYPE       = HOST_PORT
   MODE       = EGRESS
   VALUE_LIST = ('myorg-myaccount.snowflakecomputing.com');
 
 CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION cortex_agents_api_eai
-  ALLOWED_NETWORK_RULES = (cortex_agents_api_rule)
+  ALLOWED_NETWORK_RULES = (common_db.security.cortex_agents_api_rule)
   ENABLED = TRUE;
 
 GRANT USAGE ON INTEGRATION cortex_agents_api_eai TO ROLE my_role;
 ```
 
-> **Multi-account setup**: if your app and agent live in different accounts, add both hosts to `VALUE_LIST`:
+> **Multi-account setup**: if your app and agent live in different accounts, add both hosts to
+> `VALUE_LIST`:
 >
 > ```sql
 > VALUE_LIST = (
