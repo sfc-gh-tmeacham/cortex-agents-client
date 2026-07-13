@@ -133,6 +133,7 @@ from cortex_agents_client.models.events import (
     MetadataEvent,
     ResponseEvent,
     StatusEvent,
+    SuggestedQueriesEvent,
     TableEvent,
     TextAnnotationEvent,
     TextDeltaEvent,
@@ -175,6 +176,8 @@ for event in thread.chat("MY_AGENT", "Show me the top 5 customers by revenue"):
         print(f"\n[Tool {event.tool_use_id} completed: {event.status}]")
 
     elif isinstance(event, AnalystDeltaEvent):
+        # Deprecated (Apr 2026) — SQL now arrives in ToolUseEvent.input["sql"]
+        # for events with type="system_execute_sql". Kept for backward compat.
         if event.sql:
             print(f"\n[SQL]: {event.sql[:120]}")
 
@@ -203,6 +206,9 @@ for event in thread.chat("MY_AGENT", "Show me the top 5 customers by revenue"):
         for usage in event.usage:
             print(f"\n[Tokens — {usage.model_name}: {usage.input_tokens.total} in / {usage.output_tokens.total} out]")
 
+    elif isinstance(event, SuggestedQueriesEvent):
+        print(f"\n[Suggested follow-ups: {event.queries}]")
+
     elif isinstance(event, UnknownEvent):
         # Forward-compatible catch-all — never raises
         print(f"\n[Unknown event type: {event.event_type}]")
@@ -216,6 +222,8 @@ print(result.text)
 print(result.status)  # "completed" | "cancelled"
 for table in result.tables:
     print(f"Table: {table.title}")
+if result.suggested_queries:
+    print(f"Suggestions: {result.suggested_queries}")
 ```
 
 ### Agent management (CRUD)
@@ -832,12 +840,12 @@ cortex_agents_client/
 ├── client.py         CortexAgentsClient (top-level facade), Thread (stateful)
 ├── auth.py           PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, AuthProvider, account_url_from_env
 ├── http.py           HttpClient (httpx wrapper, error mapping)
-├── sse.py            SSE parser + event factory (16 API types + UnknownEvent)
+├── sse.py            SSE parser + event factory (17 API types + UnknownEvent)
 ├── exceptions.py     Typed exceptions
 ├── models/
 │   ├── agent.py      Agent, Tool, ToolSpec, etc.
 │   ├── thread.py     ThreadMetadata, ThreadDetail, ThreadMessage, StoredMessage
-│   └── events.py     All 17 SSE event dataclasses (16 API types + UnknownEvent)
+│   └── events.py     All 18 SSE event dataclasses (17 API types + UnknownEvent)
 ├── resources/
 │   ├── agents.py     AgentsResource (CRUD + feedback)
 │   ├── threads.py    ThreadsResource (CRUD + pagination + compaction)

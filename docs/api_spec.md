@@ -395,8 +395,8 @@ Response: `{"success": true}`
 
 | `type` | Description |
 |---|---|
-| `cortex_analyst_text_to_sql` | Text-to-SQL via semantic view |
-| `cortex_analyst_sql_exec` | Direct SQL execution |
+| `cortex_analyst_text_to_sql` | Text-to-SQL via semantic view (agent definition type) |
+| `system_execute_sql` | Text-to-SQL execution (emitted in events since Apr 2026, replaces `cortex_analyst_text_to_sql` at runtime) |
 | `cortex_search` | Document retrieval |
 | `web_search` | Real-time web search |
 | `generic` | Custom UDF or stored procedure |

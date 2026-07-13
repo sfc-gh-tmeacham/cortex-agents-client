@@ -1,6 +1,6 @@
 # Cortex Agents SSE Event Types
 
-All 16 server-sent event types emitted by the `agent:run` endpoint.
+All 17 server-sent event types emitted by the `agent:run` endpoint.
 
 The streaming protocol is standard SSE (`text/event-stream`):
 
@@ -135,7 +135,9 @@ When permission is required:
 
 `client_side_execute: true` means the client is responsible for executing the tool and sending results back in the next request.
 
-**Tool types:** `cortex_analyst_text_to_sql`, `cortex_analyst_sql_exec`, `cortex_search`, `web_search`, `generic`, `code_execution`, `data_to_chart`, `agent_skill`, `mcp_connector`.
+**Tool types:** `system_execute_sql`, `cortex_search`, `web_search`, `generic`, `code_execution`, `data_to_chart`, `agent_skill`, `mcp_connector`.
+
+> **Note:** Prior to Apr 2026, Cortex Analyst emitted `cortex_analyst_text_to_sql`. This was replaced by `system_execute_sql` — the generated SQL is now in `input["sql"]`.
 
 **Streamlit rendering:** `with st.status(f"Using {name}...", expanded=False):` spinner.
 
@@ -190,6 +192,8 @@ In-progress status update for a running tool. Useful for showing progress spinne
 ---
 
 ## 9. `response.tool_result.analyst.delta`
+
+> **Deprecated (Apr 2026):** Cortex Analyst no longer emits this event type. SQL is now delivered in `ToolUseEvent.input["sql"]` for events with `type="system_execute_sql"`. This event type is still parsed for backward compatibility with older API versions.
 
 Streaming delta from the Cortex Analyst tool. Contains progressive SQL generation, execution, and result output.
 
@@ -401,6 +405,27 @@ Final aggregated response. **Always the last event in the stream.** Emitted once
 
 ---
 
+## 17. `response.suggested_queries`
+
+Suggested follow-up questions the agent recommends based on the conversation context. Not always emitted — depends on the agent configuration and whether the model generates suggestions.
+
+```json
+{
+  "content_index": 0,
+  "suggested_queries": [
+    {"query": "What regions have the highest revenue?"},
+    {"query": "Show me a chart of monthly trends"},
+    {"query": "How does Q1 compare to last year?"}
+  ]
+}
+```
+
+**Dataclass:** `SuggestedQueriesEvent` — fields: `content_index`, `queries` (list of query strings extracted from the payload).
+
+**Streamlit rendering:** Rendered as compact tertiary buttons below the last assistant message with a "Suggested follow-ups" caption. Clicking a button submits that query as the next user message.
+
+---
+
 ## Typical streaming event sequence
 
 ```
@@ -408,10 +433,10 @@ event: response.status
 data: {"status": "executing_tool", "message": "Executing tool `Analyst1`"}
 
 event: response.tool_use
-data: {"content_index": 0, "tool_use_id": "toolu_01", "type": "cortex_analyst_text_to_sql", "name": "Analyst1", "input": {...}, ...}
+data: {"content_index": 0, "tool_use_id": "toolu_01", "type": "system_execute_sql", "name": "Analyst1", "input": {...}, ...}
 
 event: response.tool_result.status
-data: {"tool_use_id": "toolu_01", "tool_type": "cortex_analyst_text_to_sql", "status": "Generating SQL", "message": "..."}
+data: {"tool_use_id": "toolu_01", "tool_type": "system_execute_sql", "status": "Generating SQL", "message": "..."}
 
 event: response.tool_result.analyst.delta
 data: {"content_index": 0, "tool_use_id": "toolu_01", ..., "delta": {"sql": "SELECT ...", "result_set": {...}}}

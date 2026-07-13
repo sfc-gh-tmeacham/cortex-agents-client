@@ -356,6 +356,14 @@ def my_executor(event: ToolUseEvent) -> list[dict]:
 bot = StreamlitChatbot(..., tool_executor=my_executor)
 ```
 
+### Suggested follow-up queries
+
+When the agent returns `response.suggested_queries` events, the chatbot automatically renders them as compact clickable buttons below the last assistant message. Clicking a suggestion submits it as the next user prompt.
+
+- Suggestions are only shown for the **most recent** assistant message (stale suggestions are hidden).
+- No configuration is needed — if the API returns suggestions, they appear automatically.
+- The session state key `_ca_pending_suggestion` is used internally to pass the clicked query.
+
 ---
 
 ## Session state helpers

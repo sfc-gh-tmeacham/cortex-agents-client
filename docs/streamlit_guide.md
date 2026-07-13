@@ -51,6 +51,7 @@ class StoredMessage:
     tool_result_text: dict[str, str]  # tool_use_id → plain-text result summary
     attachments: list[Any]         # Uploaded files / audio from the user turn
     pending_permission: ToolUseEvent | None  # Tool awaiting user approval
+    suggested_queries: list[str]   # Suggested follow-up questions from the agent
     message_id: int | None         # Thread message ID from metadata event
 ```
 
@@ -84,8 +85,9 @@ Internal implementation:
 9. On `ChartEvent`: `container.vega_lite_chart(json.loads(event.chart_spec))`.
 10. On `WarningEvent`: `container.warning(event.message)`.
 11. On `ErrorEvent`: `container.error(...)`, stop consuming.
-12. On `MetadataEvent`: store internally (not rendered).
-13. Return assembled `StoredMessage`.
+12. On `SuggestedQueriesEvent`: store queries on `StoredMessage` (rendered separately by chatbot).
+13. On `MetadataEvent`: store internally (not rendered).
+14. Return assembled `StoredMessage`.
 
 ### Path 2: History replay (rerun)
 
@@ -107,6 +109,16 @@ for msg in get_messages():
 7. Warnings via `st.warning()`.
 8. Error via `st.error()`.
 9. Pending permission notice via `st.warning()` (if a tool required approval).
+
+### Suggested follow-up queries
+
+Suggestion buttons are rendered **only for the last assistant message** and **outside** `st.chat_message()`. This is handled by `_render_last_suggestions()` in `chatbot.py`, not by the per-message rendering functions.
+
+- During streaming: `SuggestedQueriesEvent` is captured on `StoredMessage.suggested_queries`.
+- After streaming: `st.rerun()` triggers a fresh render cycle.
+- On rerun: `_render_last_suggestions()` checks the last message for suggestions and renders compact tertiary buttons with a "Suggested follow-ups" caption.
+- On click: the query text is stored in `st.session_state["_ca_pending_suggestion"]` and submitted as the next user message on rerun.
+- Stale suggestions from older messages are intentionally not shown.
 
 ---
 
