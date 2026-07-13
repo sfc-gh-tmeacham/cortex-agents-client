@@ -489,6 +489,8 @@ When the agent needs clarification it emits a `TextEvent` with `is_elicitation=T
 
 > **Container runtime is required.** The Cortex Agents API is not supported in warehouse runtime SiS apps.
 
+See also [`cortex_agents_client/st/README.md`](cortex_agents_client/st/README.md) — the self-contained integration guide that travels with the library when you copy the folder into a SiS workspace.
+
 ### Prerequisites — External Access Integrations
 
 Container runtime apps cannot make outbound network calls without an EAI. You need **two**:
