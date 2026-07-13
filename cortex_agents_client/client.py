@@ -19,7 +19,7 @@ from cortex_agents_client.auth import AuthProvider, PATAuth
 from cortex_agents_client.exceptions import CortexAgentError
 from cortex_agents_client.http import HttpClient
 from cortex_agents_client.models.events import MetadataEvent, SSEEvent, ToolResultEvent, ToolUseEvent
-from cortex_agents_client.models.thread import StoredMessage, ThreadMessage, ThreadMetadata
+from cortex_agents_client.models.thread import ThreadMessage
 from cortex_agents_client.resources.agents import AgentsResource
 from cortex_agents_client.resources.runs import RunResult, RunsResource
 from cortex_agents_client.resources.threads import ThreadsResource

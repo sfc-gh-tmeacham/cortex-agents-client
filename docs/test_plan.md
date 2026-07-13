@@ -83,6 +83,9 @@ One test per SSE event type, verifying that `event_from_sse(event_type, payload)
 | `test_thinking_event` | `response.thinking` → `ThinkingEvent` |
 | `test_tool_use_event_no_permission` | `response.tool_use` (no permission) → `permission_options=[]`, `client_side_execute=False` |
 | `test_tool_use_event_with_permission` | `response.tool_use` with options → `permission_options` populated |
+| `test_tool_use_client_side_execute_string_true` | `client_side_execute: "true"` (string) parses to `True` |
+| `test_tool_use_client_side_execute_string_false` | `client_side_execute: "false"` (string) parses to `False` (not `True`) |
+| `test_tool_use_client_side_execute_bool_true` | `client_side_execute: true` (boolean) parses to `True` |
 | `test_tool_result_success` | `response.tool_result` status=success → `ToolResultEvent` |
 | `test_tool_result_error` | `response.tool_result` status=error |
 | `test_tool_result_status_event` | `response.tool_result.status` → `ToolResultStatusEvent` |
@@ -114,10 +117,20 @@ One test per SSE event type, verifying that `event_from_sse(event_type, payload)
 | `TestAgentProfile` | `test_from_dict_with_display_name`, `test_from_dict_empty`, `test_to_dict` |
 | `TestAgentInstructions` | `test_from_dict_all_fields`, `test_to_dict_omits_empty_fields` |
 | `TestBudgetConfig` | `test_from_dict`, `test_to_dict_omits_none_fields` |
-| `TestAgent` | `test_from_dict_list_response`, `test_from_dict_describe_response_with_agent_spec` |
+| `TestAgent` | `test_from_dict_list_response`, `test_from_dict_describe_response_with_agent_spec`, `test_path_property` |
 | `TestThreadMetadata` | `test_from_dict` |
 | `TestThreadMessage` | `test_from_dict_with_parent`, `test_from_dict_without_parent` |
 | `TestStoredMessage` | `test_default_fields_are_empty` |
+| `TestRepr` | `test_cortex_agents_client_repr`, `test_thread_repr` |
+
+---
+
+### `tests/unit/test_exceptions.py`
+
+| Class | Tests |
+|---|---|
+| `TestExceptionHierarchy` | `test_agent_not_found_is_not_found_error`, `test_thread_not_found_is_not_found_error`, `test_cortex_permission_error_is_cortex_agent_error`, `test_cortex_timeout_error_is_cortex_agent_error`, `test_auth_error_is_cortex_agent_error`, `test_rate_limit_error_is_cortex_agent_error`, `test_server_error_is_cortex_agent_error`, `test_run_error_is_cortex_agent_error`, `test_not_found_catchall_catches_agent_variant`, `test_not_found_catchall_catches_thread_variant` |
+| `TestDeprecatedAliases` | `test_permission_error_alias_emits_deprecation_warning`, `test_timeout_error_alias_emits_deprecation_warning` |
 
 ---
 
@@ -265,6 +278,7 @@ Both files use `unittest.mock.MagicMock` and `patch.dict("sys.modules", ...)` to
 | `test_chart_event_stored_and_rendered` | `ChartEvent` stored in `charts` and rendered |
 | `test_thinking_event_stored_regardless_of_show_flag` | Thinking always stored; only rendered when `show_thinking=True` |
 | `test_thinking_event_rendered_when_show_thinking_true` | Expander created when `show_thinking=True` |
+| `test_streaming_default_show_thinking_false_suppresses_expander` | Default `show_thinking=False` suppresses expander |
 | `test_warning_event_stored_and_rendered` | `WarningEvent` stored + `container.warning()` called |
 | `test_error_event_stored_and_rendered` | `ErrorEvent` stored + `container.error()` called |
 | `test_annotation_event_stored` | `TextAnnotationEvent` stored in `annotations` |
