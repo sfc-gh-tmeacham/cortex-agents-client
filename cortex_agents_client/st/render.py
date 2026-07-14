@@ -472,12 +472,22 @@ def _render_annotations_expander(
     if not annotations:
         return
 
+    # Deduplicate: multiple chunks from the same document with the same text
+    # are collapsed into a single source entry.
+    seen: set[tuple[str, str]] = set()
+    unique_annotations = []
+    for ann in annotations:
+        key = (ann.doc_id, ann.text or "")
+        if key not in seen:
+            seen.add(key)
+            unique_annotations.append(ann)
+
     exp = container.expander(
-        f"Sources ({len(annotations)})",
+        f"Sources ({len(unique_annotations)})",
         icon=":material/library_books:",
         expanded=False,
     )
-    for ann in annotations:
+    for ann in unique_annotations:
         is_url = ann.doc_id.startswith("http://") or ann.doc_id.startswith("https://")
         label = ann.doc_title or ann.doc_id or f"Source {ann.index}"
         if is_url:
@@ -520,7 +530,7 @@ def _render_suggested_queries(
         "<style>"
         "[data-testid='stButton']:has(button[kind='tertiary']) { margin-top: -1.25rem; }"
         "[data-testid='stButton']:has(button[kind='tertiary']) button { justify-content: flex-start; }"
-        "[data-testid='stButton']:has(button[kind='tertiary']) button p { opacity: 0.6; }"
+        "[data-testid='stButton']:has(button[kind='tertiary']) button p { opacity: 0.6; text-align: left; }"
         "</style>",
         unsafe_allow_html=True,
     )
