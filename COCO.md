@@ -19,7 +19,7 @@ cortex_agents_client/
 ├── sse.py             # SSE stream parser, event_from_sse() factory
 ├── models/
 │   ├── agent.py      # Agent, Tool, ToolSpec, AgentProfile, AgentInstructions, BudgetConfig
-│   ├── events.py      # 17 typed SSE event dataclasses (16 API types + UnknownEvent)
+│   ├── events.py      # 18 typed SSE event dataclasses (17 API types + UnknownEvent)
 │   └── thread.py      # StoredMessage, ThreadDetail, ThreadMessage, ThreadMetadata
 ├── resources/
 │   ├── agents.py      # AgentsResource (CRUD for agent objects)
@@ -49,6 +49,8 @@ thread in `st.session_state` so it survives reruns.
 Every `StreamlitChatbot` uses a `session_key_prefix` (default `_ca`) to namespace its
 session state keys (`_ca_client`, `_ca_thread`, `_ca_messages`, `_ca_input`, `_ca_pending_perm`). Change the
 prefix to run multiple chatbots on one page without collisions.
+Keys include: `{prefix}_client`, `{prefix}_thread`, `{prefix}_messages`,
+`{prefix}_input`, `{prefix}_pending_perm`, `{prefix}_agent_spec`, `{prefix}_pending_suggestion`.
 
 ### Streamlit version requirement: ≥ 1.59
 Required for:
@@ -104,6 +106,40 @@ adds a NEW element instead of replacing — resulting in the text appearing twic
 Fix: `pass` in the `ThinkingEvent` handler when `thinking_placeholder is not None`;
 the deltas have already rendered the complete text.
 
+### Streaming element order (tables/charts positioned correctly)
+`text_placeholder` was created eagerly at the top of `render_streaming_response()`,
+which meant tables and charts arriving mid-stream were always pushed below the text.
+Fix: lazy `text_placeholder` creation — sealed when a table/chart arrives so post-table
+text gets its own placeholder below the interleaved element.
+
+### Reasoning expander pushed below text during streaming
+Same root cause: `text_placeholder` created eagerly occupied the top slot. Fix:
+placeholder created lazily, so the thinking expander (which arrives first) gets
+the top position naturally.
+
+---
+
+## Recent feature additions
+
+### `system_execute_sql` (Apr 2026 API change)
+Cortex Analyst now emits `ToolUseEvent` with `type="system_execute_sql"` instead of
+`cortex_analyst_text_to_sql`. SQL is in `event.input["sql"]`. `AnalystDeltaEvent` is
+deprecated. The client handles both old and new formats.
+
+### `SuggestedQueriesEvent`
+New event type `response.suggested_queries`. Parsed into `SuggestedQueriesEvent` with
+a `queries: list[str]` field. Stored on `StoredMessage.suggested_queries`.
+
+### Suggested questions UI
+`_render_suggested_queries()` renders compact tertiary buttons. Shown:
+- On new threads: agent's `sample_questions` (from agent spec, first 5)
+- After responses: `suggested_queries` from the last assistant message
+Clicking submits the query as the next user prompt via `st.rerun()`.
+
+### SQL in tool expander
+When `show_tool_status=True`, the status expander for `system_execute_sql` tools
+displays the generated SQL via `st.code(sql, language="sql")` — matching CoWork.
+
 ---
 
 ## File and audio attachments — current state and roadmap
@@ -137,11 +173,11 @@ uv run pytest tests/ -m "not live" -v
 ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run streamlit_demo/app.py
 ```
 
-Tests: 230 passing, 1 skipped (`tests/` tree below):
+Tests: 239 passing, 1 skipped (`tests/` tree below):
 ```
 tests/
 ├── unit/          # core client, auth, SSE parsing, event models
-├── streamlit/     # StreamlitChatbot, render functions (mocked st)
+├── streamlit/     # StreamlitChatbot, render functions, session helpers (mocked st)
 ├── integration/   # mocked HTTP tests via pytest-httpx; no Snowflake account required
 └── fixtures/      # shared SSE event payloads
 ```
@@ -155,8 +191,10 @@ streamlit_demo/
 ```
 
 The demo app has a scenario selector covering: Simple text, Thinking,
-Kitchen sink (tools + tables + charts), Elicitation, Error. Toggle
-"Show reasoning", file attachments, voice input from the sidebar.
+Cortex Analyst (SQL + table), Web search (citations), Kitchen sink
+(tools + tables + charts), Elicitation, Error. All scenarios include
+suggested follow-up queries. Toggle "Show reasoning", file attachments,
+voice input from the sidebar.
 
 ---
 
@@ -179,7 +217,7 @@ via `account_url_from_env()`.
 | File | Contents |
 |---|---|
 | `docs/api_spec.md` | REST API endpoint reference |
-| `docs/event_types.md` | All 16 SSE event types and their fields |
+| `docs/event_types.md` | All 17 SSE event types and their fields |
 | `docs/streamlit_guide.md` | Streamlit integration design reference |
 | `docs/test_plan.md` | Test coverage plan and strategy |
 | `docs/roadmap.md` | Planned features; file/audio attachment implementation plan |
