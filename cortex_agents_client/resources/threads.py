@@ -69,7 +69,7 @@ class ThreadsResource:
         if origin_application:
             body["origin_application"] = origin_application
 
-        data = self._http.request("POST", _THREADS_BASE, json=body or None, resource="thread")
+        data = self._http.request("POST", _THREADS_BASE, json=body, resource="thread")
         return ThreadMetadata.from_dict(data)
 
     def get(
