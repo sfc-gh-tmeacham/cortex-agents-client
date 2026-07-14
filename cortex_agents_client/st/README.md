@@ -16,7 +16,7 @@ Copy the `cortex_agents_client/` folder into your Streamlit app directory in Wor
 
 ```
 my_streamlit_app/
-├── app.py
+├── streamlit-app.py
 ├── pyproject.toml
 └── cortex_agents_client/
     ├── __init__.py
@@ -139,7 +139,7 @@ Via SQL:
 ```sql
 CREATE OR REPLACE STREAMLIT my_db.my_schema.my_app
   FROM '@my_stage/app'
-  MAIN_FILE                    = 'app.py'
+  MAIN_FILE                    = 'streamlit-app.py'
   RUNTIME_NAME                 = 'SYSTEM$ST_CONTAINER_RUNTIME_PY3_11'
   COMPUTE_POOL                 = my_compute_pool
   QUERY_WAREHOUSE              = 'MY_WH'
@@ -168,7 +168,7 @@ from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
 #### Full-page mode
 
 ```python
-# app.py — Full-page chatbot (chat input pinned to bottom)
+# streamlit-app.py — Full-page chatbot (chat input pinned to bottom)
 import streamlit as st
 from cortex_agents_client.st import StreamlitChatbot
 from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
@@ -189,7 +189,7 @@ StreamlitChatbot(
 #### Embedded mode (two-column layout)
 
 ```python
-# app.py — Dashboard + chat side by side
+# streamlit-app.py — Dashboard + chat side by side
 import streamlit as st
 from cortex_agents_client.st import StreamlitChatbot
 from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
@@ -223,7 +223,7 @@ with chat_col:
 #### Embedded mode (dialog popup)
 
 ```python
-# app.py — Chat opens in a modal dialog
+# streamlit-app.py — Chat opens in a modal dialog
 import streamlit as st
 from cortex_agents_client.st import StreamlitChatbot
 from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env

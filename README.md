@@ -457,7 +457,7 @@ auth        = SiSContainerAuth()       # reads /snowflake/session/token on every
 ### Drop-in chatbot
 
 ```python
-# app.py
+# streamlit-app.py
 from cortex_agents_client.st import StreamlitChatbot
 from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
 
@@ -516,7 +516,7 @@ Workspaces is a file-based IDE in Snowsight — you work in files and click Depl
 
    ```
    your_workspace/
-   ├── app.py
+   ├── streamlit-app.py
    ├── cortex_agents_client/    ← copy this folder from the repo
    │   ├── __init__.py
    │   ├── client.py
@@ -560,7 +560,7 @@ Upload your files to a stage, then create the Streamlit object. Use the `FROM` p
 ```sql
 CREATE OR REPLACE STREAMLIT my_db.my_schema.my_app
   FROM '@my_db.my_schema.my_stage/app'
-  MAIN_FILE                    = 'app.py'
+  MAIN_FILE                    = 'streamlit-app.py'
   RUNTIME_NAME                 = 'SYSTEM$ST_CONTAINER_RUNTIME_PY3_11'
   COMPUTE_POOL                 = my_compute_pool
   QUERY_WAREHOUSE              = 'MY_WH'
