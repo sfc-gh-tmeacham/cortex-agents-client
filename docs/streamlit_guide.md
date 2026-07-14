@@ -49,13 +49,15 @@ class StoredMessage:
     analyst_sql: dict[str, str]    # tool_use_id → SQL string (for debugging)
     verified_tool_uses: set[str]   # tool_use_ids whose results were verified
     tool_result_text: dict[str, str]  # tool_use_id → plain-text result summary
+    text_segments: list[str]       # text split at table/chart boundaries (for ordered replay)
+    content_blocks: list[tuple[str, int]]  # ordered sequence: ('text'|'table'|'chart', index)
     attachments: list[Any]         # Uploaded files / audio from the user turn
     pending_permission: ToolUseEvent | None  # Tool awaiting user approval
     suggested_queries: list[str]   # Suggested follow-up questions from the agent
     message_id: int | None         # Thread message ID from metadata event
 ```
 
-`StoredMessage` captures everything needed to re-render the message identically on any subsequent rerun.
+`StoredMessage` captures everything needed to re-render the message identically on any subsequent rerun. The `content_blocks` field preserves the interleaved arrival order of text, tables, and charts so that replay produces the same visual layout as the original streaming render.
 
 ---
 
@@ -101,14 +103,13 @@ for msg in get_messages():
 
 `render_stored_message()` applies the same elements in the same order:
 1. Thinking expander (if `thinking` is set and `show_thinking=True`).
-2. Tool result text for each tool execution (if any).
-3. Main text via `st.markdown(text)`, or `st.info(text)` when `is_elicitation=True`.
-4. Citations / Sources expander (if annotations present).
-5. Tables via `st.dataframe()`.
-6. Charts via `st.vega_lite_chart()`.
-7. Warnings via `st.warning()`.
-8. Error via `st.error()`.
-9. Pending permission notice via `st.warning()` (if a tool required approval).
+2. Tool status expanders with SQL (for each tool execution).
+3. Tool result text for each tool execution (if any).
+4. **Interleaved content** (text segments, tables, charts) in arrival order using `content_blocks`. Falls back to sequential text→tables→charts for legacy messages without `content_blocks`.
+5. Citations / Sources expander (if annotations present, deduplicated by doc_id+text).
+6. Warnings via `st.warning()`.
+7. Error via `st.error()`.
+8. Pending permission notice via `st.warning()` (if a tool required approval).
 
 ### Suggested follow-up queries
 
@@ -116,7 +117,7 @@ Suggestion buttons are rendered **only for the last assistant message** and **ou
 
 - During streaming: `SuggestedQueriesEvent` is captured on `StoredMessage.suggested_queries`.
 - After streaming: `st.rerun()` triggers a fresh render cycle.
-- On rerun: `_render_last_suggestions()` checks the last message for suggestions and renders compact tertiary buttons with a "Suggested follow-ups" caption.
+- On rerun: `_render_last_suggestions()` checks the last message for suggestions and renders compact tertiary buttons with a "Suggested questions" caption.
 - On click: the query text is stored in `st.session_state["_ca_pending_suggestion"]` and submitted as the next user message on rerun.
 - Stale suggestions from older messages are intentionally not shown.
 

@@ -3,7 +3,7 @@
 Living document describing the test suite for `cortex_agents_client`.
 All test names and file paths reflect the actual code on disk.
 
-**Current totals:** 230 passing, 1 skipped (JWT-missing-cryptography path skipped when `cryptography` is installed).
+**Current totals:** 239 passing, 1 skipped (JWT-missing-cryptography path skipped when `cryptography` is installed).
 
 ---
 
@@ -28,7 +28,8 @@ tests/
 │   └── test_threads.py          # ThreadsResource CRUD + pagination helpers
 ├── streamlit/
 │   ├── test_chatbot.py          # StreamlitChatbot constructor + render dispatch
-│   └── test_render.py           # render_streaming_response + render_stored_message
+│   ├── test_render.py           # render_streaming_response + render_stored_message
+│   └── test_session.py          # init_session, reset_thread, get_messages, append_message
 └── live/
     ├── conftest.py              # fixtures: live_client, agent_path_minimal, agent_path_full, agent_path_analyst, agent_path_web, live_thread
     ├── test_auth.py             # PAT auth smoke; bad token → AuthError; missing agent → AgentNotFoundError
@@ -45,6 +46,8 @@ tests/
         ├── 04_semantic_view.sql       # sales table + semantic view DDL
         ├── 05_analyst_agent.sql       # Cortex Analyst agent DDL
         ├── 06_web_search_agent.sql    # web search agent DDL
+        ├── teardown.sql               # DROP all test objects
+        ├── teardown.py                # run teardown.sql via snowflake-connector
         └── cleanup_leaked_threads.py  # sweep origin_application='cac_live' threads
 ```
 
