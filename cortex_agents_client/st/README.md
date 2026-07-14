@@ -117,8 +117,8 @@ CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION cortex_agents_api_eai
 GRANT USAGE ON INTEGRATION cortex_agents_api_eai TO ROLE app_owner_role;
 ```
 
-> **Note:** If your account name contains underscores (e.g. `va_demo99`), always use
-> the hyphenated form in `VALUE_LIST` (e.g. `va-demo99`). The `SYSTEM$ALLOWLIST()`
+> **Note:** If your account name contains underscores (e.g. `my_account01`), always use
+> the hyphenated form in `VALUE_LIST` (e.g. `my-account01`). The `SYSTEM$ALLOWLIST()`
 > query handles this automatically via the `REPLACE` call.
 
 > If your app and agent live in different accounts, add both hosts to
