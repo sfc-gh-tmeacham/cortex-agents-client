@@ -371,6 +371,7 @@ for event in fork.chat("MY_AGENT", "What about revenue by region instead?"):
 ```python
 from cortex_agents_client import (
     AuthError,
+    CortexConnectionError,
     CortexPermissionError,
     CortexTimeoutError,
     AgentNotFoundError,
@@ -391,6 +392,8 @@ except CortexPermissionError:
     print("Insufficient privileges — check USAGE on the agent and its resources")
 except AuthError:
     print("Token invalid or expired")
+except CortexConnectionError:
+    print("Network error — check connectivity and DNS")
 except CortexTimeoutError:
     print("Request exceeded timeout")
 except RateLimitError:
