@@ -350,9 +350,13 @@ def render_streaming_response(
 
         elif isinstance(event, TableEvent):
             stored.tables.append(event)
-            # Seal current text placeholder so post-table text gets a new slot.
+            # Seal current text segment and record ordering.
             if accumulated_text:
+                stored.text_segments.append(accumulated_text)
+                stored.content_blocks.append(("text", len(stored.text_segments) - 1))
+                accumulated_text = ""
                 text_placeholder = None
+            stored.content_blocks.append(("table", len(stored.tables) - 1))
             try:
                 df = result_set_to_dataframe(event)
                 if event.title:
@@ -368,9 +372,13 @@ def render_streaming_response(
 
         elif isinstance(event, ChartEvent):
             stored.charts.append(event)
-            # Seal current text placeholder so post-chart text gets a new slot.
+            # Seal current text segment and record ordering.
             if accumulated_text:
+                stored.text_segments.append(accumulated_text)
+                stored.content_blocks.append(("text", len(stored.text_segments) - 1))
+                accumulated_text = ""
                 text_placeholder = None
+            stored.content_blocks.append(("chart", len(stored.charts) - 1))
             try:
                 spec = json.loads(event.chart_spec)
                 container.vega_lite_chart(spec, use_container_width=True)
@@ -411,6 +419,11 @@ def render_streaming_response(
             text_placeholder.info(escape_dollars(accumulated_text), icon=":material/contact_support:", title="Clarification needed")
         else:
             text_placeholder.markdown(escape_dollars(accumulated_text))
+
+    # Record trailing text segment for ordered replay.
+    if accumulated_text:
+        stored.text_segments.append(accumulated_text)
+        stored.content_blocks.append(("text", len(stored.text_segments) - 1))
 
     if accumulated_thinking and not stored.thinking:
         stored.thinking = accumulated_thinking
@@ -597,36 +610,67 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
         if text:
             container.markdown(escape_dollars(text))
 
-    if msg.text:
-        if msg.is_elicitation:
-            # Agent was asking the user a question — render as info box
-            container.info(escape_dollars(msg.text), icon=":material/contact_support:", title="Clarification needed")
-        else:
-            container.markdown(escape_dollars(msg.text))
+    if msg.content_blocks:
+        # Ordered replay: render text segments, tables, and charts in arrival order.
+        for block_type, idx in msg.content_blocks:
+            if block_type == "text":
+                segment = msg.text_segments[idx]
+                if msg.is_elicitation:
+                    container.info(escape_dollars(segment), icon=":material/contact_support:", title="Clarification needed")
+                else:
+                    container.markdown(escape_dollars(segment))
+            elif block_type == "table":
+                table_event = msg.tables[idx]
+                try:
+                    df = result_set_to_dataframe(table_event)
+                    if table_event.title:
+                        container.caption(escape_dollars(table_event.title))
+                    container.dataframe(
+                        df,
+                        hide_index=True,
+                        width="stretch",
+                        column_config=_markdown_column_config(df),
+                    )
+                except Exception:
+                    logger.warning("Failed to render stored table.", exc_info=True)
+            elif block_type == "chart":
+                chart_event = msg.charts[idx]
+                try:
+                    spec = json.loads(chart_event.chart_spec)
+                    container.vega_lite_chart(spec, use_container_width=True)
+                except Exception:
+                    logger.warning("Failed to render stored chart.", exc_info=True)
+    else:
+        # Legacy fallback: messages stored before content_blocks was added.
+        if msg.text:
+            if msg.is_elicitation:
+                container.info(escape_dollars(msg.text), icon=":material/contact_support:", title="Clarification needed")
+            else:
+                container.markdown(escape_dollars(msg.text))
+
+        for table_event in msg.tables:
+            try:
+                df = result_set_to_dataframe(table_event)
+                if table_event.title:
+                    container.caption(escape_dollars(table_event.title))
+                container.dataframe(
+                    df,
+                    hide_index=True,
+                    width="stretch",
+                    column_config=_markdown_column_config(df),
+                )
+            except Exception:
+                logger.warning("Failed to render stored table.", exc_info=True)
+
+        for chart_event in msg.charts:
+            try:
+                spec = json.loads(chart_event.chart_spec)
+                container.vega_lite_chart(spec, use_container_width=True)
+            except Exception:
+                logger.warning("Failed to render stored chart.", exc_info=True)
 
     if msg.annotations:
         _render_annotations_expander(msg.annotations, container)
-
-    for table_event in msg.tables:
-        try:
-            df = result_set_to_dataframe(table_event)
-            if table_event.title:
-                container.caption(escape_dollars(table_event.title))
-            container.dataframe(
-                df,
-                hide_index=True,
-                width="stretch",
-                column_config=_markdown_column_config(df),
-            )
-        except Exception:
-            logger.warning("Failed to render stored table.", exc_info=True)
-
-    for chart_event in msg.charts:
-        try:
-            spec = json.loads(chart_event.chart_spec)
-            container.vega_lite_chart(spec, use_container_width=True)
-        except Exception:
-            logger.warning("Failed to render stored chart.", exc_info=True)
 
     for warning in msg.warnings:
         container.warning(escape_dollars(warning.message), icon=":material/warning:", title="Warning")

@@ -205,6 +205,20 @@ class StoredMessage:
     (e.g. results from generic or web_search tools). Used by render_stored_message
     to replay text results on Streamlit reruns.
     """
+    text_segments: list[str] = field(default_factory=list)
+    """Text split into segments by table/chart boundaries.
+
+    Each segment is the text that appeared before the next table or chart
+    (or end of message). Used together with ``content_blocks`` to replay
+    interleaved content in the correct order.
+    """
+    content_blocks: list[tuple[str, int]] = field(default_factory=list)
+    """Ordered sequence of content blocks for replay.
+
+    Each entry is ``('text', segment_index)``, ``('table', table_index)``,
+    or ``('chart', chart_index)``. Empty for legacy messages — the replay
+    function falls back to the original text→tables→charts ordering.
+    """
     suggested_queries: list[str] = field(default_factory=list)
     """Follow-up question suggestions from the agent.
 
