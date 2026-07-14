@@ -21,11 +21,24 @@ my_streamlit_app/
 └── cortex_agents_client/
     ├── __init__.py
     ├── auth.py
+    ├── exceptions.py
     ├── http.py
     ├── sse.py
     ├── models/
+    │   ├── __init__.py
+    │   ├── agent.py
+    │   ├── events.py
+    │   └── thread.py
     ├── resources/
+    │   ├── __init__.py
+    │   ├── agents.py
+    │   ├── runs.py
+    │   └── threads.py
     └── st/
+        ├── __init__.py
+        ├── chatbot.py
+        ├── render.py
+        └── session.py
 ```
 
 ### Dependencies
