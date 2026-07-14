@@ -121,6 +121,16 @@ Suggestion buttons are rendered **only for the last assistant message** and **ou
 - On click: the query text is stored in `st.session_state["_ca_pending_suggestion"]` and submitted as the next user message on rerun.
 - Stale suggestions from older messages are intentionally not shown.
 
+### Empty response fallback
+
+When the stream completes with no visible content (no text, tables, charts, errors, warnings, or pending permissions), the renderer displays a warning: "The agent returned an empty response. Try rephrasing your question." This prevents an empty assistant bubble from confusing users.
+
+### CSS targeting via widget keys
+
+Both `render_streaming_response` and `render_stored_message` accept an optional `key_prefix` parameter. When provided, widgets that accept Streamlit's `key` parameter get stable CSS classes (`.st-key-{prefix}-thinking`, `.st-key-{prefix}-sources`, `.st-key-{prefix}-table-{i}`, `.st-key-{prefix}-chart-{i}`).
+
+`StreamlitChatbot` passes `key_prefix` automatically using the pattern `{css_prefix}-{msg_index}` where `css_prefix` is derived from `session_key_prefix` (leading underscore stripped). Manual integration users can pass `key_prefix` explicitly for custom CSS targeting.
+
 ---
 
 ## Minimal Streamlit app
