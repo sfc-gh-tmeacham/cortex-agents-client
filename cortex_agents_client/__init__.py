@@ -35,6 +35,7 @@ from cortex_agents_client.exceptions import (
     AgentNotFoundError,
     AuthError,
     CortexAgentError,
+    CortexConnectionError,
     CortexPermissionError,
     CortexTimeoutError,
     NotFoundError,
@@ -87,6 +88,7 @@ __all__ = [
     # Exceptions
     "CortexAgentError",
     "AuthError",
+    "CortexConnectionError",
     "CortexPermissionError",
     "CortexTimeoutError",
     "NotFoundError",

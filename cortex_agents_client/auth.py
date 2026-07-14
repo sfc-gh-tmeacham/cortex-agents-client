@@ -315,9 +315,18 @@ class SiSContainerAuth(AuthProvider):
             ``X-Snowflake-Authorization-Token-Type: OAUTH`` headers.
 
         Raises:
-            FileNotFoundError: If the token file was removed after init.
+            AuthError: If the token file is missing, unreadable, or empty.
         """
-        token = self._token_path.read_text().strip()
+        try:
+            token = self._token_path.read_text().strip()
+        except (FileNotFoundError, PermissionError, OSError) as exc:
+            from cortex_agents_client.exceptions import AuthError
+            raise AuthError(
+                f"Failed to read session token from {self._token_path}: {exc}"
+            ) from exc
+        if not token:
+            from cortex_agents_client.exceptions import AuthError
+            raise AuthError(f"Session token file is empty: {self._token_path}")
         return {
             "Authorization": f"Bearer {token}",
             "X-Snowflake-Authorization-Token-Type": "OAUTH",

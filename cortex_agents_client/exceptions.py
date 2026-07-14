@@ -55,6 +55,15 @@ class CortexTimeoutError(CortexAgentError):
     """
 
 
+class CortexConnectionError(CortexAgentError):
+    """Raised when a network connection cannot be established.
+
+    Covers DNS failures, connection refused, TLS errors, and mid-stream
+    disconnects. Distinct from timeouts (:class:`CortexTimeoutError`) and
+    server errors (:class:`ServerError`).
+    """
+
+
 class ServerError(CortexAgentError):
     """Raised on unexpected server errors (HTTP 5xx)."""
 

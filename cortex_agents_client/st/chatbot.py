@@ -18,6 +18,7 @@ from collections.abc import Callable
 from typing import Any, Literal
 
 from cortex_agents_client.models.thread import StoredMessage
+from cortex_agents_client.models.events import ErrorEvent
 
 logger = logging.getLogger(__name__)
 
@@ -384,17 +385,30 @@ class StreamlitChatbot:
             #
             # When the API adds multimodal user-message support, wire attachments
             # through the extra_content parameter on thread.chat().
-            stored = render_streaming_response(
-                thread.chat(
-                    self._agent_path,
-                    prompt_text,
-                    tool_executor=self._tool_executor,
-                ),
-                container=st,
-                show_thinking=self._show_thinking,
-                show_tool_status=self._show_tool_status,
-                key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",
-            )
+            try:
+                stored = render_streaming_response(
+                    thread.chat(
+                        self._agent_path,
+                        prompt_text,
+                        tool_executor=self._tool_executor,
+                    ),
+                    container=st,
+                    show_thinking=self._show_thinking,
+                    show_tool_status=self._show_tool_status,
+                    key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",
+                )
+            except Exception as exc:
+                from cortex_agents_client.exceptions import CortexTimeoutError, AuthError
+                if isinstance(exc, CortexTimeoutError):
+                    msg = "Request timed out. Try again or simplify your question."
+                elif isinstance(exc, AuthError):
+                    msg = "Authentication failed. Your session may have expired."
+                else:
+                    msg = f"Failed to get a response: {exc}"
+                logger.exception("Error during streaming response")
+                st.error(msg, icon=":material/error:")
+                stored = StoredMessage(role="assistant")
+                stored.error = ErrorEvent(event_type="error", code="client_error", message=msg)
         if stored.pending_permission:
             # Permission was required — save state and rerun to show approval UI.
             # The partial assistant message is NOT appended to history; the full
@@ -469,18 +483,31 @@ class StreamlitChatbot:
                 },
             }
             with st.chat_message("assistant"):
-                stored = render_streaming_response(
-                    thread.chat(
-                        self._agent_path,
-                        original_message,
-                        permission_decisions=[permission_item],
-                        tool_executor=self._tool_executor,
-                    ),
-                    container=st,
-                    show_thinking=self._show_thinking,
-                    show_tool_status=self._show_tool_status,
-                    key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",
-                )
+                try:
+                    stored = render_streaming_response(
+                        thread.chat(
+                            self._agent_path,
+                            original_message,
+                            permission_decisions=[permission_item],
+                            tool_executor=self._tool_executor,
+                        ),
+                        container=st,
+                        show_thinking=self._show_thinking,
+                        show_tool_status=self._show_tool_status,
+                        key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",
+                    )
+                except Exception as exc:
+                    from cortex_agents_client.exceptions import CortexTimeoutError, AuthError
+                    if isinstance(exc, CortexTimeoutError):
+                        msg = "Request timed out. Try again or simplify your question."
+                    elif isinstance(exc, AuthError):
+                        msg = "Authentication failed. Your session may have expired."
+                    else:
+                        msg = f"Failed to get a response: {exc}"
+                    logger.exception("Error during permission follow-up")
+                    st.error(msg, icon=":material/error:")
+                    stored = StoredMessage(role="assistant")
+                    stored.error = ErrorEvent(event_type="error", code="client_error", message=msg)
             append_message_fn(stored, key=self._messages_key)
             st.rerun()
 

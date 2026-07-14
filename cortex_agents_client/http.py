@@ -18,6 +18,7 @@ from cortex_agents_client.exceptions import (
     AgentNotFoundError,
     AuthError,
     CortexAgentError,
+    CortexConnectionError,
     CortexPermissionError,
     CortexTimeoutError,
     NotFoundError,
@@ -197,6 +198,8 @@ class HttpClient:
             )
         except httpx.TimeoutException as exc:
             raise CortexTimeoutError(f"Request timed out after {self._timeout}s") from exc
+        except httpx.ConnectError as exc:
+            raise CortexConnectionError(f"Connection failed: {exc}") from exc
         except httpx.HTTPError as exc:
             raise CortexAgentError(f"HTTP error: {exc}") from exc
 
@@ -255,5 +258,7 @@ class HttpClient:
                 yield response.iter_lines()
         except httpx.TimeoutException as exc:
             raise CortexTimeoutError(f"Stream timed out after {self._timeout}s") from exc
+        except httpx.ConnectError as exc:
+            raise CortexConnectionError(f"Connection failed: {exc}") from exc
         except httpx.HTTPError as exc:
             raise CortexAgentError(f"Stream HTTP error: {exc}") from exc
