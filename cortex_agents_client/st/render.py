@@ -398,7 +398,7 @@ def render_streaming_response(
 
     # Clear the placeholder if no text was ever accumulated
     # (e.g. tool-only or error-only responses).
-    if not accumulated_text:
+    if not accumulated_text and text_placeholder is not None:
         text_placeholder.empty()
 
     # If text deltas came in but no final TextEvent, persist accumulated text.
@@ -516,7 +516,7 @@ def _render_suggested_queries(queries: list[str], container: Any) -> None:
         "</style>",
         unsafe_allow_html=True,
     )
-    container.caption("Suggested follow-ups")
+    container.caption("Suggested questions")
     for i, query in enumerate(queries):
         if container.button(
             query,

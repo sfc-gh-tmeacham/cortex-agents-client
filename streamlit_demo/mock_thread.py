@@ -1045,6 +1045,7 @@ class MockClient:
             scenario: Display name of the active scenario.
         """
         self.scenario = scenario
+        self.agents = _MockAgentsResource()
 
     def create_thread(self, **kwargs: Any) -> MockThread:
         """Returns a fresh :class:`MockThread` for the current scenario.
@@ -1056,3 +1057,22 @@ class MockClient:
             A new :class:`MockThread` for :attr:`scenario`.
         """
         return MockThread(self.scenario)
+
+
+class _MockAgentsResource:
+    """Stub for client.agents that returns an Agent with sample_questions."""
+
+    def get(self, *args: Any, **kwargs: Any) -> Any:
+        from cortex_agents_client.models.agent import Agent, AgentInstructions
+        return Agent(
+            name="DEMO_AGENT",
+            instructions=AgentInstructions(
+                sample_questions=[
+                    "What regions have the highest revenue?",
+                    "Show me monthly sales trends",
+                    "How does Q1 compare to last year?",
+                    "Which products have the best margins?",
+                    "Summarize our top 10 customers",
+                ],
+            ),
+        )

@@ -181,6 +181,7 @@ class StreamlitChatbot:
         self._file_type = file_type
         self._tool_executor = tool_executor
         self._pending_permission_key = f"{session_key_prefix}_pending_perm"
+        self._agent_spec_key = f"{session_key_prefix}_agent_spec"
 
     def render(self) -> None:
         """Renders the complete chat UI in the configured mode.
@@ -219,6 +220,7 @@ class StreamlitChatbot:
             init_session,
             reset_thread,
         )
+        import streamlit as st
 
         _, thread = init_session(
             self._account_url,
@@ -230,6 +232,22 @@ class StreamlitChatbot:
             default_database=self._default_database,
             default_schema=self._default_schema,
         )
+
+        # Fetch and cache agent spec for starter questions.
+        if self._agent_spec_key not in st.session_state:
+            try:
+                client = st.session_state[self._client_key]
+                parts = self._agent_path.rsplit(".", 2)
+                if len(parts) == 3:
+                    db, sc, name = parts
+                    spec = client.agents.get(name, database=db, schema=sc)
+                else:
+                    spec = client.agents.get(self._agent_path)
+                st.session_state[self._agent_spec_key] = spec
+            except Exception:
+                # Non-critical — starter questions just won't appear.
+                st.session_state[self._agent_spec_key] = None
+
         return thread, get_messages, append_message, reset_thread
 
     def _render_message_history(self, get_messages_fn) -> None:
@@ -270,6 +288,10 @@ class StreamlitChatbot:
 
         messages = get_messages_fn(self._messages_key)
         if not messages:
+            # New thread — show agent's starter questions.
+            agent_spec = st.session_state.get(self._agent_spec_key)
+            if agent_spec and agent_spec.instructions.sample_questions:
+                _render_suggested_queries(agent_spec.instructions.sample_questions[:5], st)
             return
         last = messages[-1]
         if last.role == "assistant" and last.suggested_queries:
