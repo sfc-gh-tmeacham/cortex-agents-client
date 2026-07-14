@@ -6,6 +6,8 @@
 
 Python client library for the Snowflake Cortex Agents REST API, with first-class Streamlit integration.
 
+> **Who is this for?** This library is primarily for Streamlit application developers who need programmatic control over the Cortex Agents API. If you want an easy, no-code, feature-rich experience for delivering agents to your users, consider [Snowflake CoWork](https://docs.snowflake.com/en/user-guide/snowflake-cortex/snowflake-cowork) instead.
+
 ## Installation
 
 This library is not currently published to PyPI or a public Git repository. Install it directly from a local clone of the project directory.
