@@ -439,8 +439,18 @@ def render_streaming_response(
     if stored.annotations:
         _render_annotations_expander(stored.annotations, container)
 
-    # Suggestions are rendered during history replay for the last message only
-    # (via chatbot.py), not here — the streaming render is ephemeral.
+    # Show fallback when the stream produced no visible content.
+    if (
+        not stored.text
+        and not stored.tables
+        and not stored.charts
+        and not stored.error
+        and not stored.tool_result_text
+    ):
+        container.warning(
+            "The agent returned an empty response. Try rephrasing your question.",
+            icon=":material/info:",
+        )
 
     return stored
 
