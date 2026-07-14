@@ -224,16 +224,17 @@ def render_streaming_response(
                 text_placeholder.markdown(escape_dollars(accumulated_text) + " :shimmer[▌]")
 
         elif isinstance(event, TextEvent):
-            accumulated_text = event.text
+            # Final assembled text — store for history replay. Only update
+            # the current placeholder to remove the shimmer cursor; don't
+            # re-render all text into one slot (which would break interleaved
+            # table/chart positioning).
             stored.text = event.text
             stored.is_elicitation = event.is_elicitation
-            if text_placeholder is None:
-                text_placeholder = container.empty()
-            if event.is_elicitation:
-                # Agent is asking the user for more information
-                text_placeholder.info(escape_dollars(event.text), icon=":material/contact_support:", title="Clarification needed")
-            else:
-                text_placeholder.markdown(escape_dollars(event.text))
+            if text_placeholder is not None:
+                if event.is_elicitation:
+                    text_placeholder.info(escape_dollars(accumulated_text), icon=":material/contact_support:", title="Clarification needed")
+                else:
+                    text_placeholder.markdown(escape_dollars(accumulated_text))
 
         elif isinstance(event, TextAnnotationEvent):
             stored.annotations.append(event)
@@ -295,6 +296,9 @@ def render_streaming_response(
                     expanded=False,
                     type="compact",
                 )
+                # Show SQL inside the expander if available
+                if event.tool_use_id in stored.analyst_sql:
+                    status_ctx.code(stored.analyst_sql[event.tool_use_id], language="sql")
                 tool_status_contexts[event.tool_use_id] = status_ctx
 
         elif isinstance(event, ToolResultStatusEvent):
@@ -345,6 +349,9 @@ def render_streaming_response(
 
         elif isinstance(event, TableEvent):
             stored.tables.append(event)
+            # Seal current text placeholder so post-table text gets a new slot.
+            if accumulated_text:
+                text_placeholder = None
             try:
                 df = result_set_to_dataframe(event)
                 if event.title:
@@ -360,6 +367,9 @@ def render_streaming_response(
 
         elif isinstance(event, ChartEvent):
             stored.charts.append(event)
+            # Seal current text placeholder so post-chart text gets a new slot.
+            if accumulated_text:
+                text_placeholder = None
             try:
                 spec = json.loads(event.chart_spec)
                 container.vega_lite_chart(spec, use_container_width=True)
@@ -556,6 +566,15 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
 
     # Tool result text appears before the main answer (tools execute first).
     for tool_use, _tool_result in msg.tool_executions:
+        sql = msg.analyst_sql.get(tool_use.tool_use_id)
+        if sql:
+            with container.status(
+                f":material/check_circle: {tool_use.name} complete",
+                state="complete",
+                expanded=False,
+                type="compact",
+            ) as ctx:
+                ctx.code(sql, language="sql")
         text = msg.tool_result_text.get(tool_use.tool_use_id)
         if text:
             container.markdown(escape_dollars(text))
