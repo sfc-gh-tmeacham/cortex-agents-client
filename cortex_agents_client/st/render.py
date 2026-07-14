@@ -198,8 +198,9 @@ def render_streaming_response(
 
     stored = StoredMessage(role="assistant")
 
-    # Text accumulation
-    text_placeholder = container.empty()
+    # Text accumulation — placeholder created lazily so thinking expander
+    # (which arrives first) occupies the top position.
+    text_placeholder = None
     accumulated_text = ""
 
     # Thinking accumulation
@@ -214,6 +215,8 @@ def render_streaming_response(
     for event in events:
         if isinstance(event, TextDeltaEvent):
             accumulated_text += event.text
+            if text_placeholder is None:
+                text_placeholder = container.empty()
             if event.is_elicitation:
                 stored.is_elicitation = True
                 text_placeholder.info(escape_dollars(accumulated_text) + " :shimmer[▌]", icon=":material/contact_support:", title="Clarification needed")
@@ -224,6 +227,8 @@ def render_streaming_response(
             accumulated_text = event.text
             stored.text = event.text
             stored.is_elicitation = event.is_elicitation
+            if text_placeholder is None:
+                text_placeholder = container.empty()
             if event.is_elicitation:
                 # Agent is asking the user for more information
                 text_placeholder.info(escape_dollars(event.text), icon=":material/contact_support:", title="Clarification needed")
@@ -496,6 +501,7 @@ def _render_suggested_queries(queries: list[str], container: Any) -> None:
     container.markdown(
         "<style>"
         "[data-testid='stButton']:has(button[kind='tertiary']) { margin-top: -1.25rem; }"
+        "[data-testid='stButton']:has(button[kind='tertiary']) button { justify-content: flex-start; }"
         "[data-testid='stButton']:has(button[kind='tertiary']) button p { opacity: 0.6; }"
         "</style>",
         unsafe_allow_html=True,

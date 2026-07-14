@@ -10,6 +10,24 @@ Drop-in Streamlit components for Snowflake Cortex Agents. Copy the parent
 > The Cortex Agents API requires **container runtime**. It is not available in
 > warehouse runtime SiS apps.
 
+### Installation
+
+Copy the `cortex_agents_client/` folder into your Streamlit app directory in Workspaces so it sits alongside your `app.py`:
+
+```
+my_streamlit_app/
+├── app.py
+├── pyproject.toml
+└── cortex_agents_client/
+    ├── __init__.py
+    ├── auth.py
+    ├── http.py
+    ├── sse.py
+    ├── models/
+    ├── resources/
+    └── st/
+```
+
 ### Dependencies
 
 Place a `pyproject.toml` in your app's source directory. uv resolves
@@ -17,14 +35,27 @@ dependencies at deploy time from PyPI:
 
 ```toml
 [project]
-name = "my-app"
-version = "0.1.0"
-requires-python = ">=3.11"
+name = "streamlit-app"
+requires-python = "~=3.11.0"
+version = "0.0.1"
+description = ""
 dependencies = [
+    "streamlit[snowflake]",
     "streamlit>=1.59",  # omit if the image version is sufficient
     "pandas",
     "requests",
+    "httpx",
 ]
+
+[tool.setuptools.packages.find]
+include = ["cortex_agents_client*"]
+
+[tool.uv]
+constraint-dependencies = ["numba>=0.56.0"]
+exclude-newer = "7 days"
+
+[tool.uv.exclude-newer-package]
+streamlit = false
 ```
 
 Streamlit is pre-installed in the SiS container image — add it explicitly only
@@ -111,17 +142,88 @@ from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
 
 ### Quickstart
 
+#### Full-page mode
+
 ```python
-# app.py
+# app.py — Full-page chatbot (chat input pinned to bottom)
 import streamlit as st
 from cortex_agents_client.st import StreamlitChatbot
 from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
 
+AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # ← swap this
+
 StreamlitChatbot(
     account_url=account_url_from_env(),
     auth=SiSContainerAuth(),
-    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    agent_path=AGENT_PATH,
+    show_thinking=True,
+    show_tool_status=True,
+    new_conversation_button=True,
+    input_placeholder="Ask a question...",
 ).render()
+```
+
+#### Embedded mode (two-column layout)
+
+```python
+# app.py — Dashboard + chat side by side
+import streamlit as st
+from cortex_agents_client.st import StreamlitChatbot
+from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+
+AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # ← swap this
+
+st.set_page_config(layout="wide")
+st.title("Revenue Dashboard")
+
+dash_col, chat_col = st.columns([2, 1])
+
+with dash_col:
+    st.metric("Total Revenue", "$1.41M", "+18% vs Q4")
+    st.metric("Total Orders", "5,492", "+12% vs Q4")
+
+with chat_col:
+    st.subheader("Ask the agent")
+    StreamlitChatbot(
+        account_url=account_url_from_env(),
+        auth=SiSContainerAuth(),
+        agent_path=AGENT_PATH,
+        mode="embedded",
+        height=500,
+        show_thinking=True,
+        show_tool_status=True,
+        new_conversation_button=True,
+        session_key_prefix="_emb",
+    ).render()
+```
+
+#### Embedded mode (dialog popup)
+
+```python
+# app.py — Chat opens in a modal dialog
+import streamlit as st
+from cortex_agents_client.st import StreamlitChatbot
+from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+
+AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # ← swap this
+
+st.title("My App")
+
+@st.dialog("Ask the agent", width="large")
+def open_chat():
+    StreamlitChatbot(
+        account_url=account_url_from_env(),
+        auth=SiSContainerAuth(),
+        agent_path=AGENT_PATH,
+        mode="embedded",
+        height=450,
+        show_thinking=True,
+        show_tool_status=True,
+        session_key_prefix="_dlg",
+    ).render()
+
+if st.button("Open chat", icon=":material/chat:"):
+    open_chat()
 ```
 
 ### Manual integration
