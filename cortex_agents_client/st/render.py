@@ -155,6 +155,7 @@ def render_streaming_response(
     *,
     show_thinking: bool = False,
     show_tool_status: bool = True,
+    key_prefix: str | None = None,
 ) -> StoredMessage:
     """Renders an SSE event stream into Streamlit elements as events arrive.
 
@@ -177,6 +178,10 @@ def render_streaming_response(
             of this flag.
         show_tool_status: If ``True``, shows ``st.status()`` spinners for
             tool execution progress.
+        key_prefix: Optional prefix for widget keys. When provided, widgets
+            that accept ``key`` get a stable CSS class (e.g.
+            ``.st-key-{prefix}-thinking``). Pass a unique value per message
+            to avoid key collisions across multiple messages.
 
     Returns:
         A :class:`~cortex_agents_client.models.thread.StoredMessage` populated
@@ -249,6 +254,7 @@ def render_streaming_response(
                         icon=":material/psychology:",
                         expanded=False,
                         type="compact",
+                        **({"key": f"{key_prefix}-thinking"} if key_prefix else {}),
                     )
                     thinking_placeholder = thinking_expander.empty()
                 if thinking_placeholder is not None:
@@ -272,6 +278,7 @@ def render_streaming_response(
                             icon=":material/psychology:",
                             expanded=False,
                             type="compact",
+                            **({"key": f"{key_prefix}-thinking"} if key_prefix else {}),
                         )
                     thinking_expander.markdown(escape_dollars(event.text))
 
@@ -366,6 +373,7 @@ def render_streaming_response(
                     hide_index=True,
                     width="stretch",
                     column_config=_markdown_column_config(df),
+                    **({"key": f"{key_prefix}-table-{len(stored.tables) - 1}"} if key_prefix else {}),
                 )
             except Exception:
                 logger.warning("Failed to render table event.", exc_info=True)
@@ -381,7 +389,11 @@ def render_streaming_response(
             stored.content_blocks.append(("chart", len(stored.charts) - 1))
             try:
                 spec = json.loads(event.chart_spec)
-                container.vega_lite_chart(spec, use_container_width=True)
+                container.vega_lite_chart(
+                    spec,
+                    use_container_width=True,
+                    **({"key": f"{key_prefix}-chart-{len(stored.charts) - 1}"} if key_prefix else {}),
+                )
             except Exception:
                 logger.warning("Failed to render chart event.", exc_info=True)
 
@@ -437,7 +449,7 @@ def render_streaming_response(
             pass
 
     if stored.annotations:
-        _render_annotations_expander(stored.annotations, container)
+        _render_annotations_expander(stored.annotations, container, key_prefix=key_prefix)
 
     # Show fallback when the stream produced no visible content.
     if (
@@ -446,6 +458,8 @@ def render_streaming_response(
         and not stored.charts
         and not stored.error
         and not stored.tool_result_text
+        and not stored.warnings
+        and not stored.pending_permission
     ):
         container.warning(
             "The agent returned an empty response. Try rephrasing your question.",
@@ -480,6 +494,8 @@ def _markdown_column_config(df: pd.DataFrame) -> dict[str, Any] | None:
 def _render_annotations_expander(
     annotations: list[TextAnnotationEvent],
     container: Any,
+    *,
+    key_prefix: str | None = None,
 ) -> None:
     """Renders citation annotations in a collapsible 'Sources' expander.
 
@@ -509,6 +525,7 @@ def _render_annotations_expander(
         f"Sources ({len(unique_annotations)})",
         icon=":material/library_books:",
         expanded=False,
+        **({"key": f"{key_prefix}-sources"} if key_prefix else {}),
     )
     for ann in unique_annotations:
         is_url = ann.doc_id.startswith("http://") or ann.doc_id.startswith("https://")
@@ -569,7 +586,7 @@ def _render_suggested_queries(
             st.rerun()
 
 
-def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: bool = False) -> None:
+def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: bool = False, key_prefix: str | None = None) -> None:
     """Renders a stored message from session state into Streamlit elements.
 
     Produces equivalent content to :func:`render_streaming_response` for the
@@ -585,6 +602,10 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
             expander. Defaults to ``False`` — pass the same value you passed
             to :func:`render_streaming_response` so the replay matches what
             the user saw during streaming.
+        key_prefix: Optional prefix for widget keys. When provided, widgets
+            that accept ``key`` get a stable CSS class (e.g.
+            ``.st-key-{prefix}-thinking``). Pass the same prefix used during
+            streaming to maintain consistent keys across reruns.
 
     Raises:
         ImportError: If ``streamlit`` or ``pandas`` is not installed
@@ -602,6 +623,7 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
             icon=":material/psychology:",
             expanded=False,
             type="compact",
+            **({"key": f"{key_prefix}-thinking"} if key_prefix else {}),
         )
         exp.markdown(escape_dollars(msg.thinking))
 
@@ -640,6 +662,7 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
                         hide_index=True,
                         width="stretch",
                         column_config=_markdown_column_config(df),
+                        **({"key": f"{key_prefix}-table-{idx}"} if key_prefix else {}),
                     )
                 except Exception:
                     logger.warning("Failed to render stored table.", exc_info=True)
@@ -647,7 +670,11 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
                 chart_event = msg.charts[idx]
                 try:
                     spec = json.loads(chart_event.chart_spec)
-                    container.vega_lite_chart(spec, use_container_width=True)
+                    container.vega_lite_chart(
+                        spec,
+                        use_container_width=True,
+                        **({"key": f"{key_prefix}-chart-{idx}"} if key_prefix else {}),
+                    )
                 except Exception:
                     logger.warning("Failed to render stored chart.", exc_info=True)
     else:
@@ -658,7 +685,7 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
             else:
                 container.markdown(escape_dollars(msg.text))
 
-        for table_event in msg.tables:
+        for i, table_event in enumerate(msg.tables):
             try:
                 df = result_set_to_dataframe(table_event)
                 if table_event.title:
@@ -668,19 +695,24 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
                     hide_index=True,
                     width="stretch",
                     column_config=_markdown_column_config(df),
+                    **({"key": f"{key_prefix}-table-{i}"} if key_prefix else {}),
                 )
             except Exception:
                 logger.warning("Failed to render stored table.", exc_info=True)
 
-        for chart_event in msg.charts:
+        for i, chart_event in enumerate(msg.charts):
             try:
                 spec = json.loads(chart_event.chart_spec)
-                container.vega_lite_chart(spec, use_container_width=True)
+                container.vega_lite_chart(
+                    spec,
+                    use_container_width=True,
+                    **({"key": f"{key_prefix}-chart-{i}"} if key_prefix else {}),
+                )
             except Exception:
                 logger.warning("Failed to render stored chart.", exc_info=True)
 
     if msg.annotations:
-        _render_annotations_expander(msg.annotations, container)
+        _render_annotations_expander(msg.annotations, container, key_prefix=key_prefix)
 
     for warning in msg.warnings:
         container.warning(escape_dollars(warning.message), icon=":material/warning:", title="Warning")

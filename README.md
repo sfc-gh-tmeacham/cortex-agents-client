@@ -876,6 +876,36 @@ When the agent needs clarification it emits a `TextEvent` with `is_elicitation=T
 | `file_type` | No | `None` | Allowed extensions, e.g. `["pdf","csv"]` — only applies when `accept_file` is set; `None` = all types |
 | `tool_executor` | No | `None` | Callable for client-side tool execution |
 
+### CSS targeting via widget keys
+
+Widgets rendered by the chatbot are assigned stable keys that generate `.st-key-*` CSS classes. Use these to style specific elements without relying on Streamlit's internal DOM structure.
+
+**Key format:** `.st-key-{prefix}-{msg_index}-{element}[-{item_index}]`
+
+Where `prefix` is the `session_key_prefix` with the leading underscore stripped (default: `ca`), and `msg_index` is the 0-based position in the message history.
+
+| Element | CSS class pattern | Example |
+|---------|-------------------|---------|
+| Thinking expander | `.st-key-ca-{msg}-thinking` | `.st-key-ca-1-thinking` |
+| Sources expander | `.st-key-ca-{msg}-sources` | `.st-key-ca-3-sources` |
+| Table (dataframe) | `.st-key-ca-{msg}-table-{i}` | `.st-key-ca-3-table-0` |
+| Chart (vega-lite) | `.st-key-ca-{msg}-chart-{i}` | `.st-key-ca-3-chart-0` |
+
+**Example — custom styling for all tables:**
+
+```python
+import streamlit as st
+
+st.html("""
+<style>
+[class*="st-key-ca-"][class*="-table-"] { border: 2px solid #29B5E8; border-radius: 8px; }
+[class*="st-key-ca-"][class*="-sources"] { opacity: 0.8; }
+</style>
+""")
+```
+
+**Note:** `st.status`, `st.markdown`, `st.warning`, `st.caption`, and `st.info` do not accept `key` parameters in Streamlit — those elements cannot be targeted via this mechanism.
+
 ### Secrets and environment variables
 
 #### External Streamlit — `.streamlit/secrets.toml`

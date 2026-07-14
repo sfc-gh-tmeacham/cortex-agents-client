@@ -183,6 +183,8 @@ class StreamlitChatbot:
         self._pending_permission_key = f"{session_key_prefix}_pending_perm"
         self._agent_spec_key = f"{session_key_prefix}_agent_spec"
         self._suggestion_key = f"{session_key_prefix}_pending_suggestion"
+        # CSS-friendly prefix for widget keys (strip leading underscore)
+        self._css_prefix = session_key_prefix.lstrip("_")
 
     def render(self) -> None:
         """Renders the complete chat UI in the configured mode.
@@ -261,7 +263,7 @@ class StreamlitChatbot:
 
         from cortex_agents_client.st.render import render_stored_message, escape_dollars
 
-        for msg in get_messages_fn(self._messages_key):
+        for msg_idx, msg in enumerate(get_messages_fn(self._messages_key)):
             with st.chat_message(msg.role):
                 if msg.role == "user":
                     # Re-display any stored file/audio attachments
@@ -276,7 +278,11 @@ class StreamlitChatbot:
                     if msg.text:
                         st.markdown(escape_dollars(msg.text))
                 else:
-                    render_stored_message(msg, st, show_thinking=self._show_thinking)
+                    render_stored_message(
+                        msg, st,
+                        show_thinking=self._show_thinking,
+                        key_prefix=f"{self._css_prefix}-{msg_idx}",
+                    )
 
     def _render_last_suggestions(self, get_messages_fn) -> None:
         """Renders suggestion buttons for the last assistant message if it has any."""
@@ -387,6 +393,7 @@ class StreamlitChatbot:
                 container=st,
                 show_thinking=self._show_thinking,
                 show_tool_status=self._show_tool_status,
+                key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",
             )
         if stored.pending_permission:
             # Permission was required — save state and rerun to show approval UI.
@@ -472,6 +479,7 @@ class StreamlitChatbot:
                     container=st,
                     show_thinking=self._show_thinking,
                     show_tool_status=self._show_tool_status,
+                    key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",
                 )
             append_message_fn(stored, key=self._messages_key)
             st.rerun()
