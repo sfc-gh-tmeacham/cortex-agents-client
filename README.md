@@ -1,4 +1,8 @@
 # cortex-agents-client
+---
+
+[![Snowflake](https://img.shields.io/badge/Snowflake-Cortex%20Agents-29B5E8?logo=snowflake&logoColor=white)](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents)
+[![Streamlit](https://img.shields.io/badge/Streamlit-integrated-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io)
 
 Python client library for the Snowflake Cortex Agents REST API, with first-class Streamlit integration.
 
@@ -6,7 +10,31 @@ Python client library for the Snowflake Cortex Agents REST API, with first-class
 
 This library is not currently published to PyPI or a public Git repository. Install it directly from a local clone of the project directory.
 
-> **Streamlit-in-Snowflake (container runtime)**: copy the `cortex_agents_client/` folder directly into your workspace — no install step needed. See [Streamlit-in-Snowflake](#streamlit-in-snowflake-container-runtime).
+> **Streamlit-in-Snowflake (container runtime)**: copy the `cortex_agents_client/` folder directly into your workspace and update your `pyproject.toml` as shown below. See [Streamlit-in-Snowflake](#streamlit-in-snowflake-container-runtime).
+>
+> ```toml
+> [project]
+> name = "streamlit-app"
+> requires-python = "~=3.11.0"
+> version = "0.0.1"
+> description = ""
+> dependencies = [
+>     "streamlit[snowflake]>=1.59",
+>     "pandas",
+>     "requests",
+>     "httpx",
+> ]
+>
+> [tool.setuptools.packages.find]
+> include = ["cortex_agents_client*"]
+>
+> [tool.uv]
+> constraint-dependencies = ["numba>=0.56.0"]
+> exclude-newer = "7 days"
+>
+> [tool.uv.exclude-newer-package]
+> streamlit = false
+> ```
 
 ### uv (recommended)
 
@@ -503,13 +531,24 @@ Workspaces is a file-based IDE in Snowsight — you work in files and click Depl
    ```toml
    [project]
    name = "my-sis-app"
+   requires-python = "~=3.11.0"
    version = "0.1.0"
-   requires-python = ">=3.11"
    dependencies = [
-       "streamlit>=1.59",  # omit if the image version is sufficient
-       "pandas>=2.0",
+       "streamlit[snowflake]>=1.59",
+       "pandas",
        "requests",
+       "httpx",
    ]
+
+   [tool.setuptools.packages.find]
+   include = ["cortex_agents_client*"]
+
+   [tool.uv]
+   constraint-dependencies = ["numba>=0.56.0"]
+   exclude-newer = "7 days"
+
+   [tool.uv.exclude-newer-package]
+   streamlit = false
    ```
 
 4. Click **Deploy**. In the deploy dialog, open the **Network** tab and attach both `cortex_agents_api_eai` and `pypi_eai`.
@@ -943,3 +982,11 @@ HTTP response body
 - **Timeout**: Default is 900 seconds (15 minutes), matching the Agents API maximum.
 - **Unknown event types**: Yielded as `UnknownEvent` (never raise) for forward-compatibility with new Snowflake tools.
 - **Thread compaction**: Use `client.threads.latest_context(thread_id)` to get the most recent summary + subsequent messages when resuming long conversations.
+
+---
+
+## Disclaimer
+
+This project is **not an official Snowflake offering**. It is provided as-is with no warranties, express or implied. Snowflake does not provide support for this library. Use at your own risk.
+
+This software is not covered by any Snowflake support agreement or SLA. For issues, please open a GitHub issue in this repository.

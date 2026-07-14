@@ -40,8 +40,7 @@ requires-python = "~=3.11.0"
 version = "0.0.1"
 description = ""
 dependencies = [
-    "streamlit[snowflake]",
-    "streamlit>=1.59",  # omit if the image version is sufficient
+    "streamlit[snowflake]>=1.59",
     "pandas",
     "requests",
     "httpx",
