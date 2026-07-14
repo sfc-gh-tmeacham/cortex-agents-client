@@ -44,6 +44,8 @@ Features out of the box: streaming text with typewriter effect, tables and chart
 
 **Layout modes:** `"fullpage"` (default — chat input pinned to bottom), `"embedded"` (fixed-height scrollable container for dashboards), or render inside an `st.dialog` for a modal chat overlay.
 
+![Embedded mode example](img/embed_example.png)
+
 Also includes the complete Python client library for the Cortex Agents REST API — use it standalone for scripts, notebooks, or custom integrations without Streamlit.
 
 > **Want a no-code experience?** Consider [Snowflake CoWork](https://docs.snowflake.com/en/user-guide/snowflake-cortex/snowflake-cowork) for delivering agents to users without building a custom app.
