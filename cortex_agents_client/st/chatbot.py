@@ -136,7 +136,7 @@ class StreamlitChatbot:
         accept_file: bool | Literal["multiple", "directory"] = False,
         accept_audio: bool = False,
         file_type: list[str] | str | None = None,
-        tool_executor: Callable | None = None,
+        tool_executor: Callable[[Any], list[dict[str, Any]]] | None = None,
     ) -> None:
         """Initialises the chatbot component.
 
@@ -182,6 +182,7 @@ class StreamlitChatbot:
         self._tool_executor = tool_executor
         self._pending_permission_key = f"{session_key_prefix}_pending_perm"
         self._agent_spec_key = f"{session_key_prefix}_agent_spec"
+        self._suggestion_key = f"{session_key_prefix}_pending_suggestion"
 
     def render(self) -> None:
         """Renders the complete chat UI in the configured mode.
@@ -283,7 +284,7 @@ class StreamlitChatbot:
         import streamlit as st
 
         # Don't render if a suggestion click is about to be processed.
-        if "_ca_pending_suggestion" in st.session_state:
+        if self._suggestion_key in st.session_state:
             return
 
         messages = get_messages_fn(self._messages_key)
@@ -291,11 +292,11 @@ class StreamlitChatbot:
             # New thread — show agent's starter questions.
             agent_spec = st.session_state.get(self._agent_spec_key)
             if agent_spec and agent_spec.instructions.sample_questions:
-                _render_suggested_queries(agent_spec.instructions.sample_questions[:5], st)
+                _render_suggested_queries(agent_spec.instructions.sample_questions[:5], st, self._suggestion_key)
             return
         last = messages[-1]
         if last.role == "assistant" and last.suggested_queries:
-            _render_suggested_queries(last.suggested_queries, st)
+            _render_suggested_queries(last.suggested_queries, st, self._suggestion_key)
 
     def _process_prompt(self, raw: Any, thread, append_message_fn) -> None:
         """Sends a prompt to the agent and renders the response.
@@ -514,8 +515,8 @@ class StreamlitChatbot:
 
         if self._pending_permission_key in st.session_state:
             self._render_permission_ui(thread, append_message)
-        elif "_ca_pending_suggestion" in st.session_state:
-            suggestion = st.session_state.pop("_ca_pending_suggestion")
+        elif self._suggestion_key in st.session_state:
+            suggestion = st.session_state.pop(self._suggestion_key)
             self._process_prompt(suggestion, thread, append_message)
         elif prompt := st.chat_input(
             self._input_placeholder,
@@ -583,8 +584,8 @@ class StreamlitChatbot:
         # is rendered inside a container or dialog.
         if self._pending_permission_key in st.session_state:
             self._render_permission_ui(thread, append_message)
-        elif "_ca_pending_suggestion" in st.session_state:
-            suggestion = st.session_state.pop("_ca_pending_suggestion")
+        elif self._suggestion_key in st.session_state:
+            suggestion = st.session_state.pop(self._suggestion_key)
             with chat_area:
                 self._process_prompt(suggestion, thread, append_message)
         elif prompt := st.chat_input(

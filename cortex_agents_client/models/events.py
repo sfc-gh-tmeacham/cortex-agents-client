@@ -1,6 +1,6 @@
 """Typed dataclasses for all Cortex Agents SSE event types.
 
-16 event dataclasses (emitted by the ``agent:run`` endpoint) plus
+17 event dataclasses (emitted by the ``agent:run`` endpoint) plus
 ``UnknownEvent`` (catch-all for unknown types) and three token-usage models
 (``InputTokens``, ``OutputTokens``, ``TokensConsumed``) used by
 ``ResponseEvent.usage``.

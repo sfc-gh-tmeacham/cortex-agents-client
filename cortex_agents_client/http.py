@@ -118,6 +118,11 @@ class HttpClient:
         self._base_url = base_url.rstrip("/")
         self._auth = auth
         self._timeout = timeout
+        self._client = httpx.Client(timeout=self._timeout)
+
+    def close(self) -> None:
+        """Closes the underlying HTTP connection pool."""
+        self._client.close()
 
     def _build_headers(self, extra: dict[str, str] | None = None) -> dict[str, str]:
         """Builds the complete request header dict.
@@ -183,14 +188,13 @@ class HttpClient:
             CortexAgentError: On connection or other HTTP errors.
         """
         try:
-            with httpx.Client(timeout=self._timeout) as client:
-                response = client.request(
-                    method,
-                    self._url(path),
-                    headers=self._build_headers(),
-                    params=params,
-                    json=json,
-                )
+            response = self._client.request(
+                method,
+                self._url(path),
+                headers=self._build_headers(),
+                params=params,
+                json=json,
+            )
         except httpx.TimeoutException as exc:
             raise CortexTimeoutError(f"Request timed out after {self._timeout}s") from exc
         except httpx.HTTPError as exc:
@@ -238,20 +242,17 @@ class HttpClient:
         """
         headers = self._build_headers({"Accept": "text/event-stream"})
         try:
-            with httpx.Client(timeout=self._timeout) as client:
-                with client.stream(
-                    method,
-                    self._url(path),
-                    headers=headers,
-                    params=params,
-                    json=json,
-                ) as response:
-                    if not response.is_success:
-                        # Read the error body before accessing .text / .json()
-                        # to avoid ResponseNotRead in streaming context.
-                        response.read()
-                    _raise_for_status(response)
-                    yield response.iter_lines()
+            with self._client.stream(
+                method,
+                self._url(path),
+                headers=headers,
+                params=params,
+                json=json,
+            ) as response:
+                if not response.is_success:
+                    response.read()
+                _raise_for_status(response)
+                yield response.iter_lines()
         except httpx.TimeoutException as exc:
             raise CortexTimeoutError(f"Stream timed out after {self._timeout}s") from exc
         except httpx.HTTPError as exc:

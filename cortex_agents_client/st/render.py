@@ -21,6 +21,7 @@ import json
 import logging
 import re
 from collections.abc import Iterator
+from html import escape as html_escape
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -480,10 +481,12 @@ def _render_annotations_expander(
         is_url = ann.doc_id.startswith("http://") or ann.doc_id.startswith("https://")
         label = ann.doc_title or ann.doc_id or f"Source {ann.index}"
         if is_url:
+            safe_url = html_escape(ann.doc_id, quote=True)
+            safe_label = html_escape(escape_dollars(label))
             exp.markdown(
                 f"**[{ann.index}]** "
-                f'<a href="{ann.doc_id}" target="_blank" rel="noopener noreferrer">'
-                f"{escape_dollars(label)}</a>",
+                f'<a href="{safe_url}" target="_blank" rel="noopener noreferrer">'
+                f"{safe_label}</a>",
                 unsafe_allow_html=True,
             )
         else:
@@ -492,16 +495,21 @@ def _render_annotations_expander(
             exp.caption(f'"{escape_dollars(ann.text)}"')
 
 
-def _render_suggested_queries(queries: list[str], container: Any) -> None:
+def _render_suggested_queries(
+    queries: list[str],
+    container: Any,
+    suggestion_key: str = "_ca_pending_suggestion",
+) -> None:
     """Renders suggested follow-up queries as clickable pill buttons.
 
     When a button is clicked, the query text is stored in session state
-    under ``_ca_pending_suggestion`` and a rerun is triggered. The chatbot
+    under *suggestion_key* and a rerun is triggered. The chatbot
     component picks this up and submits it as the next user message.
 
     Args:
         queries: List of suggested question strings from the agent.
         container: Streamlit container to render into.
+        suggestion_key: Session state key for the pending suggestion.
     """
     import streamlit as st
 
@@ -524,7 +532,7 @@ def _render_suggested_queries(queries: list[str], container: Any) -> None:
             type="tertiary",
             key=f"_ca_suggestion_{hash(query)}_{i}",
         ):
-            st.session_state["_ca_pending_suggestion"] = query
+            st.session_state[suggestion_key] = query
             st.rerun()
 
 
