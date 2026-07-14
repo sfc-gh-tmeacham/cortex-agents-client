@@ -63,8 +63,9 @@ Thumbs.db
 # Jupyter
 .ipynb_checkpoints/
 
-# Cortex Code (IDE planning artifacts)
+# Cortex Code (IDE planning artifacts and local skill symlinks)
 .snowflake/cortex/plans/
+.agents/
 
 # Logs
 *.log
