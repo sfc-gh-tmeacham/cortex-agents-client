@@ -7,6 +7,7 @@ against the ``/api/v2/databases/{db}/schemas/{schema}/agents`` endpoint family.
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import quote
 
 from cortex_agents_client.http import HttpClient
 from cortex_agents_client.models.agent import Agent
@@ -64,8 +65,8 @@ class AgentsResource:
         Returns:
             Relative API path string.
         """
-        base = f"/api/v2/databases/{database}/schemas/{schema}/agents"
-        return f"{base}/{name}" if name else base
+        base = f"/api/v2/databases/{quote(database, safe='')}/schemas/{quote(schema, safe='')}/agents"
+        return f"{base}/{quote(name, safe='')}" if name else base
 
     def _resolve(
         self, database: str | None, schema: str | None
@@ -395,5 +396,5 @@ class AgentsResource:
         if categories:
             body["categories"] = categories
 
-        path = f"/api/v2/databases/{db}/schemas/{sc}/agents/{name}:feedback"
+        path = f"/api/v2/databases/{quote(db, safe='')}/schemas/{quote(sc, safe='')}/agents/{quote(name, safe='')}:feedback"
         self._http.request("POST", path, json=body, resource="agent")

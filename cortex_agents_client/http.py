@@ -54,7 +54,7 @@ def _raise_for_status(response: httpx.Response, *, resource: str = "resource") -
     try:
         body = response.json()
         message = body.get("message", response.text)
-    except Exception:
+    except (ValueError, KeyError):
         message = response.text or f"HTTP {response.status_code}"
 
     kwargs: dict[str, Any] = {

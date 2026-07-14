@@ -10,6 +10,7 @@ import logging
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
+from urllib.parse import quote
 
 from cortex_agents_client.exceptions import RunError
 from cortex_agents_client.http import HttpClient
@@ -203,7 +204,7 @@ class RunsResource:
             or ``None`` for a lite run.
         """
         if agent_path:
-            parts = agent_path.split(".")
+            parts = agent_path.rsplit(".", 2)
             if len(parts) == 3:
                 db, sc, name = parts
             elif len(parts) == 2:
@@ -220,7 +221,7 @@ class RunsResource:
                     "Cannot resolve agent path without database/schema. "
                     "Provide them explicitly or set defaults on CortexAgentsClient."
                 )
-            return f"/api/v2/databases/{db}/schemas/{sc}/agents/{name}:run"
+            return f"/api/v2/databases/{quote(db, safe='')}/schemas/{quote(sc, safe='')}/agents/{quote(name, safe='')}:run"
 
         if agent:
             db = database or self._default_database
@@ -229,7 +230,7 @@ class RunsResource:
                 raise ValueError(
                     "database and schema are required for agent-object runs."
                 )
-            return f"/api/v2/databases/{db}/schemas/{sc}/agents/{agent}:run"
+            return f"/api/v2/databases/{quote(db, safe='')}/schemas/{quote(sc, safe='')}/agents/{quote(agent, safe='')}:run"
 
         return None  # Lite run
 

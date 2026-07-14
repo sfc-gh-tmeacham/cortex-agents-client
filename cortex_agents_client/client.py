@@ -124,6 +124,8 @@ class Thread:
             f"parent_message_id={self._parent_message_id!r})"
         )
 
+    _MAX_TOOL_ITERATIONS = 20
+
     def chat(
         self,
         agent_path: str,
@@ -143,6 +145,10 @@ class Thread:
         If the assistant metadata event is missing (rare server-side
         failure), a warning is logged and ``parent_message_id`` is left
         unchanged so the conversation can be retried.
+
+        Client-side tool execution loops are capped at
+        :attr:`_MAX_TOOL_ITERATIONS` to prevent stack overflow from
+        misbehaving agents.
 
         Args:
             agent_path: Dot-separated agent identifier
@@ -175,6 +181,8 @@ class Thread:
                 error event.
             cortex_agents_client.exceptions.AuthError: On authentication failure.
             cortex_agents_client.exceptions.CortexAgentError: On other errors.
+            RuntimeError: If client-side tool iterations exceed
+                :attr:`_MAX_TOOL_ITERATIONS`.
 
         Example::
 
@@ -182,88 +190,87 @@ class Thread:
                 if isinstance(event, TextDeltaEvent):
                     print(event.text, end="", flush=True)
         """
-        content: list[dict[str, Any]] = [{"type": "text", "text": message}]
-        if permission_decisions:
-            content.extend(permission_decisions)
-        if extra_content:
-            content.extend(extra_content)
+        current_extra = list(extra_content) if extra_content else []
 
-        messages = [{"role": "user", "content": content}]
-        new_assistant_message_id: int | None = None
-        client_tool_result: dict[str, Any] | None = None
+        for iteration in range(self._MAX_TOOL_ITERATIONS):
+            content: list[dict[str, Any]] = [{"type": "text", "text": message}]
+            if permission_decisions and iteration == 0:
+                content.extend(permission_decisions)
+            if current_extra:
+                content.extend(current_extra)
 
-        event_stream = self._client.runs.stream(
-            messages,
-            agent_path=agent_path,
-            thread_id=self._thread_id,
-            parent_message_id=self._parent_message_id,
-            tool_choice=tool_choice,
-        )
+            messages = [{"role": "user", "content": content}]
+            new_assistant_message_id: int | None = None
+            client_tool_result: dict[str, Any] | None = None
 
-        for event in event_stream:
-            if isinstance(event, MetadataEvent) and event.role == "assistant":
-                new_assistant_message_id = event.message_id
+            event_stream = self._client.runs.stream(
+                messages,
+                agent_path=agent_path,
+                thread_id=self._thread_id,
+                parent_message_id=self._parent_message_id,
+                tool_choice=tool_choice,
+            )
 
-            if (
-                isinstance(event, ToolUseEvent)
-                and event.client_side_execute
-                and tool_executor is not None
-            ):
-                yield event
-                # Execute the tool client-side.
-                try:
-                    result_content = tool_executor(event)
-                    status = "success"
-                except Exception as exc:
-                    logger.warning(
-                        "tool_executor raised for tool '%s': %s", event.name, exc
-                    )
-                    result_content = [{"type": "text", "text": str(exc)}]
-                    status = "error"
-                # Yield a synthetic ToolResultEvent so renderers close spinners.
-                yield ToolResultEvent._from_payload({
-                    "content_index": event.content_index,
-                    "tool_use_id": event.tool_use_id,
-                    "type": event.type,
-                    "name": event.name,
-                    "content": result_content,
-                    "status": status,
-                })
-                client_tool_result = {
-                    "type": "tool_result",
-                    "tool_result": {
+            for event in event_stream:
+                if isinstance(event, MetadataEvent) and event.role == "assistant":
+                    new_assistant_message_id = event.message_id
+
+                if (
+                    isinstance(event, ToolUseEvent)
+                    and event.client_side_execute
+                    and tool_executor is not None
+                ):
+                    yield event
+                    try:
+                        result_content = tool_executor(event)
+                        status = "success"
+                    except Exception as exc:
+                        logger.warning(
+                            "tool_executor raised for tool '%s': %s", event.name, exc
+                        )
+                        result_content = [{"type": "text", "text": str(exc)}]
+                        status = "error"
+                    yield ToolResultEvent._from_payload({
+                        "content_index": event.content_index,
                         "tool_use_id": event.tool_use_id,
+                        "type": event.type,
+                        "name": event.name,
                         "content": result_content,
                         "status": status,
-                    },
-                }
-                break  # Stream ends; restart with the tool result.
+                    })
+                    client_tool_result = {
+                        "type": "tool_result",
+                        "tool_result": {
+                            "tool_use_id": event.tool_use_id,
+                            "content": result_content,
+                            "status": status,
+                        },
+                    }
+                    break
 
-            yield event
+                yield event
 
-        if client_tool_result is not None:
-            # Restart the run with the tool result embedded in the user message.
-            # Recursion handles any further client-side tools in the same turn.
-            merged_extra = list(extra_content) if extra_content else []
-            merged_extra.append(client_tool_result)
-            yield from self.chat(
-                agent_path,
-                message,
-                tool_choice=tool_choice,
-                extra_content=merged_extra,
-                tool_executor=tool_executor,
-            )
-            return  # parent_message_id is updated by the recursive call.
+            if client_tool_result is None:
+                # No more tool calls — conversation turn is complete.
+                if new_assistant_message_id is not None:
+                    self._parent_message_id = new_assistant_message_id
+                else:
+                    logger.warning(
+                        "No assistant metadata event received for thread %d. "
+                        "parent_message_id unchanged (%d).",
+                        self._thread_id,
+                        self._parent_message_id,
+                    )
+                return
 
-        if new_assistant_message_id is not None:
-            self._parent_message_id = new_assistant_message_id
-        else:
-            logger.warning(
-                "No assistant metadata event received for thread %d. "
-                "parent_message_id unchanged (%d).",
-                self._thread_id,
-                self._parent_message_id,
-            )
+            # Append tool result and loop for the next iteration.
+            current_extra = list(extra_content) if extra_content else []
+            current_extra.append(client_tool_result)
+
+        raise RuntimeError(
+            f"Client-side tool execution exceeded {self._MAX_TOOL_ITERATIONS} "
+            f"iterations. The agent may be in an infinite tool-call loop."
+        )
 
     def fork(self, at_message_id: int) -> Thread:
         """Creates a new Thread branched from a specific assistant message.
@@ -412,6 +419,20 @@ class CortexAgentsClient:
 
     def __repr__(self) -> str:
         return f"CortexAgentsClient(account_url={self._account_url!r})"
+
+    def close(self) -> None:
+        """Closes the underlying HTTP connection pool.
+
+        Should be called when the client is no longer needed to release
+        connections. Alternatively, use the client as a context manager.
+        """
+        self._http.close()
+
+    def __enter__(self) -> CortexAgentsClient:
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()
 
     def create_thread(
         self, *, origin_application: str | None = None

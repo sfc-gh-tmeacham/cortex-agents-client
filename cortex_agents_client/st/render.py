@@ -446,7 +446,7 @@ def render_streaming_response(
         try:
             ctx.update(label="Tool interrupted", state="error", expanded=False)
         except Exception:
-            pass
+            logger.debug("Failed to close tool status context", exc_info=True)
 
     if stored.annotations:
         _render_annotations_expander(stored.annotations, container, key_prefix=key_prefix)

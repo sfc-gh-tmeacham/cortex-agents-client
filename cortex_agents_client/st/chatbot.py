@@ -250,6 +250,7 @@ class StreamlitChatbot:
                 st.session_state[self._agent_spec_key] = spec
             except Exception:
                 # Non-critical — starter questions just won't appear.
+                logger.debug("Failed to fetch agent spec for starter questions", exc_info=True)
                 st.session_state[self._agent_spec_key] = None
 
         return thread, get_messages, append_message, reset_thread
@@ -304,6 +305,40 @@ class StreamlitChatbot:
         last = messages[-1]
         if last.role == "assistant" and last.suggested_queries:
             _render_suggested_queries(last.suggested_queries, st, self._suggestion_key)
+
+    def _stream_with_retry(self, event_stream, container, key_prefix: str) -> StoredMessage:
+        """Streams a response with a single retry on transient errors.
+
+        Args:
+            event_stream: A generator/iterator of SSE events (e.g. from thread.chat()).
+            container: Streamlit container to render into (typically ``st``).
+            key_prefix: Unique key prefix for rendered widgets.
+
+        Returns:
+            The rendered StoredMessage.
+
+        Raises:
+            Exception: Re-raised after retry is exhausted or for non-transient errors.
+        """
+        from cortex_agents_client.exceptions import CortexConnectionError, ServerError
+        from cortex_agents_client.st.render import render_streaming_response
+
+        retried = False
+        while True:
+            try:
+                return render_streaming_response(
+                    event_stream,
+                    container=container,
+                    show_thinking=self._show_thinking,
+                    show_tool_status=self._show_tool_status,
+                    key_prefix=key_prefix,
+                )
+            except (CortexConnectionError, ServerError) as exc:
+                if not retried:
+                    retried = True
+                    logger.warning("Transient error, retrying once: %s", exc)
+                    continue
+                raise
 
     def _process_prompt(self, raw: Any, thread, append_message_fn) -> None:
         """Sends a prompt to the agent and renders the response.
@@ -386,28 +421,15 @@ class StreamlitChatbot:
             # When the API adds multimodal user-message support, wire attachments
             # through the extra_content parameter on thread.chat().
             try:
-                from cortex_agents_client.exceptions import CortexConnectionError, ServerError
-                retried = False
-                while True:
-                    try:
-                        stored = render_streaming_response(
-                            thread.chat(
-                                self._agent_path,
-                                prompt_text,
-                                tool_executor=self._tool_executor,
-                            ),
-                            container=st,
-                            show_thinking=self._show_thinking,
-                            show_tool_status=self._show_tool_status,
-                            key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",
-                        )
-                        break
-                    except (CortexConnectionError, ServerError) as exc:
-                        if not retried:
-                            retried = True
-                            logger.warning("Transient error, retrying once: %s", exc)
-                            continue
-                        raise
+                stored = self._stream_with_retry(
+                    thread.chat(
+                        self._agent_path,
+                        prompt_text,
+                        tool_executor=self._tool_executor,
+                    ),
+                    container=st,
+                    key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",
+                )
             except Exception as exc:
                 from cortex_agents_client.exceptions import CortexTimeoutError, AuthError
                 if isinstance(exc, CortexTimeoutError):
@@ -495,29 +517,16 @@ class StreamlitChatbot:
             }
             with st.chat_message("assistant"):
                 try:
-                    from cortex_agents_client.exceptions import CortexConnectionError, ServerError
-                    retried = False
-                    while True:
-                        try:
-                            stored = render_streaming_response(
-                                thread.chat(
-                                    self._agent_path,
-                                    original_message,
-                                    permission_decisions=[permission_item],
-                                    tool_executor=self._tool_executor,
-                                ),
-                                container=st,
-                                show_thinking=self._show_thinking,
-                                show_tool_status=self._show_tool_status,
-                                key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",
-                            )
-                            break
-                        except (CortexConnectionError, ServerError) as exc:
-                            if not retried:
-                                retried = True
-                                logger.warning("Transient error, retrying once: %s", exc)
-                                continue
-                            raise
+                    stored = self._stream_with_retry(
+                        thread.chat(
+                            self._agent_path,
+                            original_message,
+                            permission_decisions=[permission_item],
+                            tool_executor=self._tool_executor,
+                        ),
+                        container=st,
+                        key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",
+                    )
                 except Exception as exc:
                     from cortex_agents_client.exceptions import CortexTimeoutError, AuthError
                     if isinstance(exc, CortexTimeoutError):
