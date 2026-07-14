@@ -4,19 +4,35 @@
 [![Snowflake](https://img.shields.io/badge/Snowflake-Cortex%20Agents-29B5E8?logo=snowflake&logoColor=white)](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents)
 [![Streamlit](https://img.shields.io/badge/Streamlit-integrated-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io)
 
-Drop-in Cortex Agent chatbot for Streamlit. Add a fully functional, streaming AI chat interface to any Streamlit app in 5 lines of code:
+Drop-in Cortex Agent chatbot for Streamlit. Add a fully functional, streaming AI chat interface to any Streamlit app in a few lines of code:
+
+**Streamlit in Snowflake (container runtime):**
 
 ```python
 from cortex_agents_client.st import StreamlitChatbot
+from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
 
 StreamlitChatbot(
-    account_url="https://myorg-myaccount.snowflakecomputing.com",
-    auth="v2:my_pat_token",
+    account_url=account_url_from_env(),
+    auth=SiSContainerAuth(),
     agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
 ).render()
 ```
 
-Features out of the box: streaming text with typewriter effect, tables and charts, tool execution status, citation sources, suggested follow-up questions, thinking/reasoning expanders, file and voice attachments, and full conversation history across reruns.
+**External Streamlit (local / hosted):**
+
+```python
+from cortex_agents_client.st import StreamlitChatbot
+import streamlit as st
+
+StreamlitChatbot(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+).render()
+```
+
+Features out of the box: streaming text with typewriter effect, tables and charts, tool execution status with SQL display, citation sources, suggested follow-up questions, thinking/reasoning expanders, and full conversation history across reruns.
 
 Also includes the complete Python client library for the Cortex Agents REST API — use it standalone for scripts, notebooks, or custom integrations without Streamlit.
 
