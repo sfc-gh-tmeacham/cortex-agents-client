@@ -382,15 +382,27 @@ def page_code() -> None:
         """
 -- Run as ACCOUNTADMIN.
 
--- Find your account identifier first:
-SELECT LOWER(CURRENT_ORGANIZATION_NAME() || '-' || CURRENT_ACCOUNT_NAME() || '.snowflakecomputing.com:443');
--- e.g. returns 'myorg-myaccount.snowflakecomputing.com:443'
+-- Find your account's correct hostnames (handles underscores → hyphens):
+SELECT LISTAGG('''' || REPLACE(host, '_', '-') || '''', ', ') AS allowlist
+FROM (
+    SELECT VALUE:host::VARCHAR AS host
+    FROM TABLE(FLATTEN(INPUT => PARSE_JSON(SYSTEM$ALLOWLIST())))
+    WHERE VALUE:type::VARCHAR IN ('SNOWFLAKE_DEPLOYMENT','SNOWFLAKE_DEPLOYMENT_REGIONLESS')
+    UNION ALL
+    SELECT VALUE:host::VARCHAR AS host
+    FROM TABLE(FLATTEN(INPUT => PARSE_JSON(SYSTEM$ALLOWLIST_PRIVATELINK())))
+    WHERE VALUE:type::VARCHAR IN ('SNOWFLAKE_DEPLOYMENT','SNOWFLAKE_DEPLOYMENT_REGIONLESS')
+);
 
 -- 1. Network rule: allow outbound HTTPS to the Snowflake REST API.
+--    Use the hostname(s) from the query above.
 CREATE OR REPLACE NETWORK RULE snowflake_rest_api_network_rule
   MODE       = EGRESS
   TYPE       = HOST_PORT
-  VALUE_LIST = ('myorg-myaccount.snowflakecomputing.com:443');
+  VALUE_LIST = ('xy12345.us-east-1.snowflakecomputing.com',
+                'myorg-myaccount.snowflakecomputing.com',
+                'xy12345.us-east-1.privatelink.snowflakecomputing.com',
+                'myorg-myaccount.privatelink.snowflakecomputing.com');  -- ← paste your allowlist result
 
 -- 2. External Access Integration referencing the rule.
 CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION snowflake_rest_api_eai

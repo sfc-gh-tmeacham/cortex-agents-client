@@ -341,9 +341,26 @@ Container runtime apps cannot make outbound network calls without an EAI. You ne
 
 #### Cortex Agents API EAI
 
-Allows the app to call the Agents REST API. Requires ACCOUNTADMIN (or a role with `CREATE INTEGRATION` privilege). Replace `myorg-myaccount` with your account identifier (`SELECT CURRENT_ACCOUNT()`).
+Allows the app to call the Agents REST API. Requires ACCOUNTADMIN (or a role with `CREATE INTEGRATION` privilege).
 
-Network rules are schema-level objects — store them in a dedicated schema. The example below uses `common_db.security`; substitute your own database and schema:
+Network rules are schema-level objects — store them in a dedicated schema. The example below uses `common_db.security`; substitute your own database and schema.
+
+First, get your account's correct hostnames (handles underscores → hyphens automatically):
+
+```sql
+SELECT LISTAGG('''' || REPLACE(host, '_', '-') || '''', ', ') AS allowlist
+FROM (
+    SELECT VALUE:host::VARCHAR AS host
+    FROM TABLE(FLATTEN(INPUT => PARSE_JSON(SYSTEM$ALLOWLIST())))
+    WHERE VALUE:type::VARCHAR IN ('SNOWFLAKE_DEPLOYMENT','SNOWFLAKE_DEPLOYMENT_REGIONLESS')
+    UNION ALL
+    SELECT VALUE:host::VARCHAR AS host
+    FROM TABLE(FLATTEN(INPUT => PARSE_JSON(SYSTEM$ALLOWLIST_PRIVATELINK())))
+    WHERE VALUE:type::VARCHAR IN ('SNOWFLAKE_DEPLOYMENT','SNOWFLAKE_DEPLOYMENT_REGIONLESS')
+);
+```
+
+Then create the network rule using the hostnames from the query above:
 
 ```sql
 USE ROLE ACCOUNTADMIN;
@@ -351,7 +368,10 @@ USE ROLE ACCOUNTADMIN;
 CREATE OR REPLACE NETWORK RULE common_db.security.cortex_agents_api_rule
   TYPE       = HOST_PORT
   MODE       = EGRESS
-  VALUE_LIST = ('myorg-myaccount.snowflakecomputing.com');
+  VALUE_LIST = ('xy12345.us-east-1.snowflakecomputing.com',
+                'myorg-myaccount.snowflakecomputing.com',
+                'xy12345.us-east-1.privatelink.snowflakecomputing.com',
+                'myorg-myaccount.privatelink.snowflakecomputing.com');  -- ← paste your allowlist result
 
 CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION cortex_agents_api_eai
   ALLOWED_NETWORK_RULES = (common_db.security.cortex_agents_api_rule)
@@ -359,6 +379,10 @@ CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION cortex_agents_api_eai
 
 GRANT USAGE ON INTEGRATION cortex_agents_api_eai TO ROLE app_owner_role;
 ```
+
+> **Note:** If your account name contains underscores (e.g. `va_demo99`), always use
+> the hyphenated form in `VALUE_LIST` (e.g. `va-demo99`). The `SYSTEM$ALLOWLIST()`
+> query handles this automatically via the `REPLACE` call.
 
 > **Multi-account setup**: if your app and agent live in different accounts, add both hosts to
 > `VALUE_LIST`:
