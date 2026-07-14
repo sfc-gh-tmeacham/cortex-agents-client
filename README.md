@@ -9,13 +9,21 @@ Drop-in Cortex Agent chatbot for Streamlit. Add a fully functional, streaming AI
 **Streamlit in Snowflake (container runtime):**
 
 ```python
+# streamlit-app.py — Full-page chatbot (chat input pinned to bottom)
+import streamlit as st
 from cortex_agents_client.st import StreamlitChatbot
 from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+
+AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # ← swap this
 
 StreamlitChatbot(
     account_url=account_url_from_env(),
     auth=SiSContainerAuth(),
-    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    agent_path=AGENT_PATH,
+    show_thinking=True,
+    show_tool_status=True,
+    new_conversation_button=True,
+    input_placeholder="Ask a question...",
 ).render()
 ```
 
