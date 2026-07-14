@@ -42,6 +42,8 @@ StreamlitChatbot(
 
 Features out of the box: streaming text with typewriter effect, tables and charts, tool execution status with SQL display, citation sources, suggested follow-up questions, thinking/reasoning expanders, and full conversation history across reruns.
 
+**Layout modes:** `"fullpage"` (default — chat input pinned to bottom) or `"embedded"` (fixed-height scrollable container for dashboards with other components alongside).
+
 Also includes the complete Python client library for the Cortex Agents REST API — use it standalone for scripts, notebooks, or custom integrations without Streamlit.
 
 > **Want a no-code experience?** Consider [Snowflake CoWork](https://docs.snowflake.com/en/user-guide/snowflake-cortex/snowflake-cowork) for delivering agents to users without building a custom app.
