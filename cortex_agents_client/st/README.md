@@ -235,18 +235,34 @@ with chat_col:
 
 #### Embedded mode (dialog popup)
 
+The dialog must be driven by a **session state flag** so it persists across the
+reruns triggered by the chatbot internally. Use `dismissible=False` to prevent
+the dialog from closing when the user clicks outside it, and render the dialog
+call **at the end of the script** (after all other content).
+
 ```python
-# streamlit-app.py — Chat opens in a modal dialog
+# streamlit-app.py — Chat opens in a modal dialog that stays open across reruns
 import streamlit as st
 from cortex_agents_client.st import StreamlitChatbot
 from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # ← swap this
 
-st.title("My App")
+st.set_page_config(layout="wide")
 
-@st.dialog("Ask the agent", width="large")
-def open_chat():
+# --- State flag to keep dialog open across reruns ---
+if "chat_dialog_open" not in st.session_state:
+    st.session_state.chat_dialog_open = False
+
+# Pre-seed messages so st.chat_input renders on the first dialog open.
+st.session_state.setdefault("_dlg_messages", [])
+
+@st.dialog("Ask the agent", width="large", dismissible=False, icon=":material/smart_toy:")
+def _chat_dialog():
+    with st.container(horizontal_alignment="right"):
+        if st.button("Close", icon=":material/close:", type="tertiary"):
+            st.session_state.chat_dialog_open = False
+            st.rerun()
     StreamlitChatbot(
         account_url=account_url_from_env(),
         auth=SiSContainerAuth(),
@@ -255,11 +271,20 @@ def open_chat():
         height=450,
         show_thinking=True,
         show_tool_status=True,
+        new_conversation_button=True,
         session_key_prefix="_dlg",
     ).render()
 
-if st.button("Open chat", icon=":material/chat:"):
-    open_chat()
+# --- Page content ---
+st.title("My App")
+# ... your dashboard, charts, metrics, etc. ...
+
+if st.button("Open chat", icon=":material/chat:", type="primary"):
+    st.session_state.chat_dialog_open = True
+
+# --- Open dialog at the end (must be after all other content) ---
+if st.session_state.chat_dialog_open:
+    _chat_dialog()
 ```
 
 ### Manual integration
