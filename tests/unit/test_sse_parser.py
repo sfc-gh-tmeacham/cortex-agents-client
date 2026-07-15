@@ -72,7 +72,7 @@ def test_blank_line_dispatches_accumulated_event():
     assert events[0][1]["text"] == "hello world"
 
 
-def test_all_16_event_types_parsed():
+def test_all_17_event_types_parsed():
     """One fixture event of each type yields 16 tuples."""
     lines = stream_of(*ALL_EVENT_TYPES)
     events = list(parse_sse_stream(iter(lines)))

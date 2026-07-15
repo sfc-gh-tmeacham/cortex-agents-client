@@ -1,7 +1,7 @@
 """SSE stream fixtures for testing.
 
 Provides helper functions that generate synthetic SSE byte streams
-covering all 16 event types and common edge cases.
+covering all 17 event types and common edge cases.
 """
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def stream_of(*events: tuple[str, dict]) -> list[str]:
     return lines
 
 
-# Sample payloads for all 16 event types
+# Sample payloads for all 17 event types
 TEXT_DELTA_PAYLOAD = {"content_index": 0, "text": "Hello ", "is_elicitation": False}
 TEXT_PAYLOAD = {"content_index": 0, "text": "Hello world"}
 TEXT_ANNOTATION_PAYLOAD = {

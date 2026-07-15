@@ -164,7 +164,7 @@ Tests for the wire-level SSE parser (`parse_sse_stream`):
 | `test_comment_lines_ignored` | `:` comment lines are skipped |
 | `test_retry_lines_ignored` | `retry:` lines are ignored |
 | `test_blank_line_dispatches_accumulated_event` | Blank line flushes accumulated event |
-| `test_all_16_event_types_parsed` | All 16 API-emitted event types round-trip through the parser |
+| `test_all_17_event_types_parsed` | All 17 API-emitted event types round-trip through the parser |
 | `test_truncated_stream_discards_partial_event` | Incomplete event at end of stream is discarded |
 | `test_invalid_json_in_data_yields_parse_error` | Bad JSON yields `("_parse_error", {"raw": "..."})` |
 | `test_missing_event_line_uses_message_default` | No `event:` line → type defaults to `"message"` |
@@ -240,7 +240,7 @@ Fixtures (defined in `tests/integration/conftest.py`):
 
 | Class | Tests |
 |---|---|
-| `TestStreamAllEventTypes` | `test_stream_yields_all_16_event_types`, `test_stream_text_delta_type` (includes `.delta` backward-compat alias) |
+| `TestStreamAllEventTypes` | `test_stream_yields_all_17_event_types`, `test_stream_text_delta_type` (includes `.delta` backward-compat alias) |
 | `TestStreamMetadataTracking` | `test_metadata_events_both_yielded` — both user + assistant metadata events yielded in order |
 | `TestWarningEvent` | `test_warning_followed_by_text_both_yielded` — warning + text both yield |
 | `TestErrorEvent` | `test_stream_and_collect_raises_run_error`, `test_stream_yields_error_event_before_raising` |

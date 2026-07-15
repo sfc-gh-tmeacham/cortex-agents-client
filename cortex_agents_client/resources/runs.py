@@ -303,7 +303,7 @@ class RunsResource:
     ) -> Iterator[SSEEvent]:
         """Sends a streaming request to the agent:run endpoint.
 
-        Yields typed SSEEvent objects as they arrive from the server. All 16
+        Yields typed SSEEvent objects as they arrive from the server. All 17
         event types are possible; unknown types are yielded as
         :class:`~cortex_agents_client.models.events.UnknownEvent`.
 

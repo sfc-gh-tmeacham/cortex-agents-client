@@ -53,9 +53,9 @@ def sse_response(events: list[tuple[str, dict]]) -> httpx.Response:
 
 
 class TestStreamAllEventTypes:
-    """Tests that all 16 SSE event types are yielded correctly."""
+    """Tests that all 17 SSE event types are yielded correctly."""
 
-    def test_stream_yields_all_16_event_types(self, ca_client, httpx_mock: HTTPXMock):
+    def test_stream_yields_all_17_event_types(self, ca_client, httpx_mock: HTTPXMock):
         """stream() yields one event of each of the 16 types."""
         httpx_mock.add_response(content=sse_response(ALL_EVENT_TYPES).content)
         messages = [{"role": "user", "content": [{"type": "text", "text": "Hello"}]}]
