@@ -850,7 +850,7 @@ When the agent needs clarification it emits a `TextEvent` with `is_elicitation=T
 |---|---|---|---|
 | `account_url` | Yes | — | `https://myorg-myaccount.snowflakecomputing.com` |
 | `auth` | Yes | — | `AuthProvider` instance or PAT string (auto-wrapped as `PATAuth`) |
-| `timeout` | No | `900.0` | HTTP timeout in seconds (15 min = API max) |
+| `timeout` | No | `120.0` | Read timeout in seconds — max silence between SSE events. Increase for slow agents. |
 | `default_database` | No | `None` | Default database — avoids repeating it in every `thread.chat()` call |
 | `default_schema` | No | `None` | Default schema |
 | `origin_application` | No | `None` | Label attached to threads for monitoring (max 16 bytes) |
@@ -1056,7 +1056,7 @@ HTTP response body
 
 ### Notes
 
-- **Timeout**: Default is 900 seconds (15 minutes), matching the Agents API maximum.
+- **Timeout**: Default read timeout is 120 seconds (2 minutes). This controls the maximum silence between SSE data chunks — not the total request duration. Connection pooling is disabled to prevent stale connections from hanging in long-lived sessions. Increase the timeout for agents with very long processing times.
 - **Unknown event types**: Yielded as `UnknownEvent` (never raise) for forward-compatibility with new Snowflake tools.
 - **Thread compaction**: Use `client.threads.latest_context(thread_id)` to get the most recent summary + subsequent messages when resuming long conversations.
 

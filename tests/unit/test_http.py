@@ -173,3 +173,39 @@ class TestUrlConstruction:
         request = httpx_mock.get_request()
         assert "//" not in str(request.url).replace("https://", "")
         client.close()
+
+
+class TestConnectionPooling:
+    """Verifies connection pooling is disabled."""
+
+    def test_no_keepalive_connections(self):
+        client = HttpClient(base_url=BASE_URL, auth=PATAuth(PAT))
+        pool = client._client._transport._pool
+        assert pool._max_keepalive_connections == 0
+        client.close()
+
+
+class TestTimeoutConfiguration:
+    """Verifies fine-grained timeout settings."""
+
+    def test_default_read_timeout(self):
+        client = HttpClient(base_url=BASE_URL, auth=PATAuth(PAT))
+        assert client._timeout_config.read == 120.0
+        assert client._timeout_config.connect == 10.0
+        assert client._timeout_config.write == 30.0
+        assert client._timeout_config.pool == 5.0
+        client.close()
+
+    def test_custom_timeout_sets_read(self):
+        client = HttpClient(base_url=BASE_URL, auth=PATAuth(PAT), timeout=300.0)
+        assert client._timeout_config.read == 300.0
+        assert client._timeout_config.connect == 10.0
+        client.close()
+
+    def test_read_timeout_during_stream_raises_cortex_timeout(self, httpx_mock: HTTPXMock):
+        client = HttpClient(base_url=BASE_URL, auth=PATAuth(PAT), timeout=5.0)
+        httpx_mock.add_exception(httpx.ReadTimeout("read timed out"))
+        with pytest.raises(CortexTimeoutError):
+            with client.stream("POST", "/api/v2/test", json={}) as lines:
+                list(lines)
+        client.close()

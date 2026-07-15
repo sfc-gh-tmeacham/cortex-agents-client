@@ -527,6 +527,27 @@ When the agent returns `response.suggested_queries` events, the chatbot automati
 - No configuration is needed — if the API returns suggestions, they appear automatically.
 - The session state key `_ca_pending_suggestion` is used internally to pass the clicked query.
 
+### CSS targeting via widget keys
+
+All rendered widgets receive stable `key` values that produce `.st-key-*` CSS
+classes in the DOM. Use these to style individual elements with
+`st.markdown(unsafe_allow_html=True)` or a custom stylesheet.
+
+Key pattern: `{css_prefix}-{msg_index}-{widget_type}` where `css_prefix` is
+derived from `session_key_prefix` (leading underscore stripped).
+
+| Widget | Key format | CSS class |
+|---|---|---|
+| Thinking expander | `{prefix}-{i}-thinking` | `.st-key-ca-{i}-thinking` |
+| Table dataframe | `{prefix}-{i}-table-{n}` | `.st-key-ca-{i}-table-0` |
+| Chart container | `{prefix}-{i}-chart-{n}` | `.st-key-ca-{i}-chart-0` |
+| Sources expander | `{prefix}-{i}-sources` | `.st-key-ca-{i}-sources` |
+
+Default `session_key_prefix` is `"_ca"` → `css_prefix` = `"ca"`.
+
+Manual integration users can pass `key_prefix` directly to
+`render_streaming_response` and `render_stored_message` for custom targeting.
+
 ---
 
 ## Session state helpers

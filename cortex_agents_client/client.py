@@ -361,8 +361,9 @@ class CortexAgentsClient:
         account_url: Full base URL of the Snowflake account, including
             scheme (e.g. ``"https://myorg-myaccount.snowflakecomputing.com"``).
         auth: Authentication provider or plain PAT token string.
-        timeout: HTTP request timeout in seconds. Defaults to 900 (15
-            minutes), matching the API's maximum allowed duration.
+        timeout: Read timeout in seconds. Defaults to 120 (2 minutes).
+            Controls the maximum silence allowed between data chunks in an
+            SSE stream. Increase for agents with very long processing times.
         default_database: Default database for agent operations. Can be
             overridden per-call.
         default_schema: Default schema for agent operations.
@@ -391,7 +392,7 @@ class CortexAgentsClient:
         account_url: str,
         auth: AuthProvider | str,
         *,
-        timeout: float = 900.0,
+        timeout: float = 120.0,
         default_database: str | None = None,
         default_schema: str | None = None,
         origin_application: str | None = None,
@@ -401,7 +402,7 @@ class CortexAgentsClient:
         Args:
             account_url: Snowflake account base URL.
             auth: Auth provider or PAT token string.
-            timeout: Request timeout in seconds.
+            timeout: Read timeout in seconds.
             default_database: Default database.
             default_schema: Default schema.
             origin_application: Default origin application label for threads.

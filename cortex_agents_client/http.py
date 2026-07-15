@@ -87,12 +87,18 @@ class HttpClient:
     Wraps :class:`httpx.Client` with automatic authentication headers,
     base URL construction, and typed error raising.
 
+    Connection pooling is disabled — each request opens a fresh TCP
+    connection — to prevent stale pooled connections from silently hanging
+    in long-lived Streamlit sessions.
+
     Args:
         base_url: Full base URL including scheme and host
             (e.g. ``"https://myorg-myaccount.snowflakecomputing.com"``).
         auth: Authentication provider supplying request headers.
-        timeout: Request timeout in seconds. Defaults to 900 (15 minutes),
-            matching the API's maximum allowed duration.
+        timeout: Read timeout in seconds. Defaults to 120 (2 minutes).
+            Controls the maximum silence between data chunks in an SSE
+            stream. Connect, write, and pool timeouts use shorter fixed
+            defaults.
 
     Example::
 
@@ -107,22 +113,35 @@ class HttpClient:
         self,
         base_url: str,
         auth: AuthProvider,
-        timeout: float = 900.0,
+        timeout: float = 120.0,
     ) -> None:
         """Initialises the HTTP client.
 
         Args:
             base_url: Base URL for all requests.
             auth: Authentication provider.
-            timeout: Request timeout in seconds.
+            timeout: Read timeout in seconds — the maximum duration to wait
+                for a chunk of data (e.g. an SSE event) to arrive. Other
+                timeout phases use shorter defaults (connect=10s, write=30s,
+                pool=5s). Pass a higher value for agents with known long
+                processing times.
         """
         self._base_url = base_url.rstrip("/")
         self._auth = auth
         self._timeout = timeout
-        self._client = httpx.Client(timeout=self._timeout)
+        self._timeout_config = httpx.Timeout(
+            connect=10.0,
+            read=timeout,
+            write=30.0,
+            pool=5.0,
+        )
+        self._client = httpx.Client(
+            timeout=self._timeout_config,
+            limits=httpx.Limits(max_keepalive_connections=0),
+        )
 
     def close(self) -> None:
-        """Closes the underlying HTTP connection pool."""
+        """Closes the underlying HTTP transport."""
         self._client.close()
 
     def _build_headers(self, extra: dict[str, str] | None = None) -> dict[str, str]:

@@ -320,7 +320,7 @@ class StreamlitChatbot:
         Raises:
             Exception: Re-raised after retry is exhausted or for non-transient errors.
         """
-        from cortex_agents_client.exceptions import CortexConnectionError, ServerError
+        from cortex_agents_client.exceptions import CortexConnectionError, CortexTimeoutError, ServerError
         from cortex_agents_client.st.render import render_streaming_response
 
         retried = False
@@ -333,7 +333,7 @@ class StreamlitChatbot:
                     show_tool_status=self._show_tool_status,
                     key_prefix=key_prefix,
                 )
-            except (CortexConnectionError, ServerError) as exc:
+            except (CortexConnectionError, CortexTimeoutError, ServerError) as exc:
                 if not retried:
                     retried = True
                     logger.warning("Transient error, retrying once: %s", exc)

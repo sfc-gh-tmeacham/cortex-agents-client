@@ -30,7 +30,7 @@ def init_session(
     client_key: str = _DEFAULT_CLIENT_KEY,
     thread_key: str = _DEFAULT_THREAD_KEY,
     messages_key: str = _DEFAULT_MESSAGES_KEY,
-    timeout: float = 900.0,
+    timeout: float = 120.0,
     default_database: str | None = None,
     default_schema: str | None = None,
 ) -> tuple[CortexAgentsClient, Thread]:
