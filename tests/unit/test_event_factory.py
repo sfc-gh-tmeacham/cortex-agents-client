@@ -360,6 +360,31 @@ def test_response_event_missing_metadata():
     assert event.assistant_message_id is None
     assert event.usage == []
 
+def test_suggested_queries_event():
+    """SuggestedQueriesEvent extracts query strings from payload."""
+    from cortex_agents_client.models.events import SuggestedQueriesEvent
+
+    payload = {
+        "content_index": 0,
+        "suggested_queries": [
+            {"query": "What is Q2 revenue?"},
+            {"query": "Show top products"},
+        ],
+    }
+    event = event_from_sse("response.suggested_queries", payload)
+    assert isinstance(event, SuggestedQueriesEvent)
+    assert event.queries == ["What is Q2 revenue?", "Show top products"]
+    assert event.content_index == 0
+
+
+def test_suggested_queries_event_empty():
+    """SuggestedQueriesEvent with empty list returns empty queries."""
+    from cortex_agents_client.models.events import SuggestedQueriesEvent
+
+    event = event_from_sse("response.suggested_queries", {"suggested_queries": []})
+    assert isinstance(event, SuggestedQueriesEvent)
+    assert event.queries == []
+
 
 def test_unknown_event_type_returns_unknown_event():
     """An unrecognised event type returns UnknownEvent."""

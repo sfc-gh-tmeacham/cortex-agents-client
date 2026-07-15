@@ -76,7 +76,7 @@ def test_all_16_event_types_parsed():
     """One fixture event of each type yields 16 tuples."""
     lines = stream_of(*ALL_EVENT_TYPES)
     events = list(parse_sse_stream(iter(lines)))
-    assert len(events) == 16
+    assert len(events) == 17
     parsed_types = [e[0] for e in events]
     expected_types = [et for et, _ in ALL_EVENT_TYPES]
     assert parsed_types == expected_types

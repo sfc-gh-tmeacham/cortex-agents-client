@@ -14,6 +14,7 @@ from cortex_agents_client.models.events import (
     MetadataEvent,
     ResponseEvent,
     StatusEvent,
+    SuggestedQueriesEvent,
     TableEvent,
     TextAnnotationEvent,
     TextDeltaEvent,
@@ -85,6 +86,8 @@ def chat_turn(thread, message: str) -> None:
         elif isinstance(event, ResponseEvent):
             for usage in event.usage:
                 print(f"\n[Tokens — {usage.model_name}: {usage.input_tokens.total} in / {usage.output_tokens.total} out]")
+        elif isinstance(event, SuggestedQueriesEvent):
+            print(f"\n[Suggested follow-ups: {', '.join(event.queries)}]")
         elif isinstance(event, UnknownEvent):
             # Forward-compat catch-all — new event types arrive as UnknownEvent
             print(f"\n[Unknown event: {event.event_type}]")

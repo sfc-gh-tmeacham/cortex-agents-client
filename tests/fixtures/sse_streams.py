@@ -198,6 +198,14 @@ RESPONSE_PAYLOAD = {
     },
 }
 
+SUGGESTED_QUERIES_PAYLOAD = {
+    "content_index": 0,
+    "suggested_queries": [
+        {"query": "What is Q2 revenue?"},
+        {"query": "Show top products by region"},
+    ],
+}
+
 ALL_EVENT_TYPES = [
     ("response.text.delta", TEXT_DELTA_PAYLOAD),
     ("response.text", TEXT_PAYLOAD),
@@ -210,6 +218,7 @@ ALL_EVENT_TYPES = [
     ("response.tool_result.analyst.delta", ANALYST_DELTA_PAYLOAD),
     ("response.table", TABLE_PAYLOAD),
     ("response.chart", CHART_PAYLOAD),
+    ("response.suggested_queries", SUGGESTED_QUERIES_PAYLOAD),
     ("response.status", STATUS_PAYLOAD),
     ("response.warning", WARNING_PAYLOAD),
     ("error", ERROR_PAYLOAD),

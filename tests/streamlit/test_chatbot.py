@@ -306,3 +306,60 @@ class TestRenderEmbedded:
 
         # The sidebar context manager should never be entered in embedded mode.
         mock_st.sidebar.__enter__.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _stream_with_retry factory pattern
+# ---------------------------------------------------------------------------
+
+
+class TestStreamWithRetry:
+    """Verifies that _stream_with_retry uses a factory callable correctly."""
+
+    def _make_bot(self):
+        return StreamlitChatbot(
+            account_url="https://test.snowflakecomputing.com",
+            auth="v2:tok",
+            agent_path="DB.SC.AGENT",
+        )
+
+    def test_factory_called_twice_on_transient_error(self):
+        """On first failure, factory is called a second time (fresh stream)."""
+        from cortex_agents_client.exceptions import CortexTimeoutError
+        from cortex_agents_client.models.thread import StoredMessage
+
+        bot = self._make_bot()
+        call_count = 0
+
+        def factory():
+            nonlocal call_count
+            call_count += 1
+            return iter([])
+
+        with patch(
+            "cortex_agents_client.st.render.render_streaming_response",
+            side_effect=[
+                CortexTimeoutError("read timed out"),
+                StoredMessage(role="assistant"),
+            ],
+        ):
+            result = bot._stream_with_retry(factory, container=MagicMock(), key_prefix="test-0")
+
+        assert call_count == 2
+        assert result.role == "assistant"
+
+    def test_raises_after_second_failure(self):
+        """If both attempts fail, the exception propagates."""
+        from cortex_agents_client.exceptions import ServerError
+
+        bot = self._make_bot()
+
+        def factory():
+            return iter([])
+
+        with patch(
+            "cortex_agents_client.st.render.render_streaming_response",
+            side_effect=ServerError("fail"),
+        ):
+            with pytest.raises(ServerError):
+                bot._stream_with_retry(factory, container=MagicMock(), key_prefix="test-0")

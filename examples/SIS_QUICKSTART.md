@@ -206,7 +206,7 @@ To attach the EAI to an already-deployed app without redeploying:
 
 ```sql
 ALTER STREAMLIT my_db.my_schema.my_app
-  SET EXTERNAL_ACCESS_INTEGRATIONS = (cortex_agents_api_eai);
+  SET EXTERNAL_ACCESS_INTEGRATIONS = (cortex_agents_api_eai, pypi_eai);
 ```
 
 ---

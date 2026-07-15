@@ -24,6 +24,7 @@ from tests.fixtures.sse_streams import (
     ERROR_PAYLOAD,
     METADATA_ASSISTANT_PAYLOAD,
     METADATA_USER_PAYLOAD,
+    RESPONSE_PAYLOAD,
     TABLE_PAYLOAD,
     TEXT_DELTA_PAYLOAD,
     TEXT_PAYLOAD,
@@ -59,7 +60,7 @@ class TestStreamAllEventTypes:
         httpx_mock.add_response(content=sse_response(ALL_EVENT_TYPES).content)
         messages = [{"role": "user", "content": [{"type": "text", "text": "Hello"}]}]
         events = list(ca_client.runs.stream(messages, agent_path="DB.SC.AGENT"))
-        assert len(events) == 16
+        assert len(events) == 17
 
     def test_stream_text_delta_type(self, ca_client, httpx_mock: HTTPXMock):
         """TextDeltaEvent is yielded for response.text.delta."""
@@ -390,6 +391,22 @@ class TestStreamAndCollectFallback:
         messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
         result = ca_client.runs.stream_and_collect(messages, agent_path="DB.SC.AGENT")
         assert result.text == TEXT_PAYLOAD["text"]
+
+
+class TestStreamAndCollectResponseEvent:
+    """Tests that stream_and_collect captures ResponseEvent status."""
+
+    def test_response_event_populates_status(self, ca_client, httpx_mock: HTTPXMock):
+        """stream_and_collect sets RunResult.status from ResponseEvent."""
+        httpx_mock.add_response(
+            content=sse_response([
+                ("response.text.delta", TEXT_DELTA_PAYLOAD),
+                ("response", RESPONSE_PAYLOAD),
+            ]).content
+        )
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        result = ca_client.runs.stream_and_collect(messages, agent_path="DB.SC.AGENT")
+        assert result.status == "completed"
 
 
 class TestNonStreamingThinking:
