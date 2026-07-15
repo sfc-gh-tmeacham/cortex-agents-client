@@ -310,3 +310,107 @@ class TestToolExecutor:
         # Event should pass through unmodified (no follow-up request)
         assert client.runs.stream.call_count == 1
         assert any(isinstance(e, ToolUseEvent) for e in events)
+
+
+class TestRecursionGuard:
+    """Tests for the _MAX_TOOL_ITERATIONS safety limit in Thread.chat()."""
+
+    def _make_thread(self):
+        from cortex_agents_client.client import CortexAgentsClient, Thread
+
+        client = MagicMock(spec=CortexAgentsClient)
+        client.runs = MagicMock()
+        thread = Thread(client, thread_id=1, parent_message_id=0)
+        return thread, client
+
+    def test_raises_runtime_error_after_max_iterations(self):
+        """Thread.chat() raises RuntimeError after _MAX_TOOL_ITERATIONS."""
+        from cortex_agents_client.client import Thread
+        from cortex_agents_client.models.events import ToolUseEvent
+
+        thread, client = self._make_thread()
+
+        # Every stream returns a client-side tool event, creating an infinite loop
+        client_tool_event = ToolUseEvent._from_payload({
+            "content_index": 0,
+            "tool_use_id": "toolu_loop",
+            "type": "generic",
+            "name": "InfiniteTool",
+            "input": {},
+            "client_side_execute": True,
+            "permission": {"options": []},
+        })
+        client.runs.stream.return_value = iter([client_tool_event])
+        # Make stream return a fresh iterator each call
+        client.runs.stream.side_effect = lambda *a, **kw: iter([client_tool_event])
+
+        executor = MagicMock(return_value=[{"type": "json", "json": {}}])
+
+        with pytest.raises(RuntimeError, match="exceeded.*iterations"):
+            list(thread.chat("DB.SC.AGENT", "loop", tool_executor=executor))
+
+        assert executor.call_count == Thread._MAX_TOOL_ITERATIONS
+
+
+class TestContextManager:
+    """Tests for CortexAgentsClient context manager support."""
+
+    def test_context_manager_calls_close(self):
+        from cortex_agents_client.client import CortexAgentsClient
+
+        with patch.object(CortexAgentsClient, "close") as mock_close:
+            client = CortexAgentsClient("https://test.snowflakecomputing.com", "v2:tok")
+            with client:
+                pass
+            mock_close.assert_called_once()
+
+    def test_context_manager_calls_close_on_exception(self):
+        from cortex_agents_client.client import CortexAgentsClient
+
+        with patch.object(CortexAgentsClient, "close") as mock_close:
+            client = CortexAgentsClient("https://test.snowflakecomputing.com", "v2:tok")
+            with pytest.raises(ValueError):
+                with client:
+                    raise ValueError("test error")
+            mock_close.assert_called_once()
+
+
+class TestURLEncoding:
+    """Tests that special characters in identifiers are URL-encoded."""
+
+    def test_resolve_path_encodes_spaces(self):
+        from cortex_agents_client.resources.runs import RunsResource
+        from cortex_agents_client.http import HttpClient
+        from cortex_agents_client.auth import PATAuth
+
+        http = HttpClient("https://test.snowflakecomputing.com", PATAuth("v2:tok"))
+        runs = RunsResource(http)
+        path = runs._resolve_path(agent_path="MY DB.MY SCHEMA.MY AGENT")
+        assert "MY%20DB" in path
+        assert "MY%20SCHEMA" in path
+        assert "MY%20AGENT" in path
+        http.close()
+
+    def test_resolve_path_encodes_slashes(self):
+        from cortex_agents_client.resources.runs import RunsResource
+        from cortex_agents_client.http import HttpClient
+        from cortex_agents_client.auth import PATAuth
+
+        http = HttpClient("https://test.snowflakecomputing.com", PATAuth("v2:tok"))
+        runs = RunsResource(http)
+        path = runs._resolve_path(agent_path="DB.SC.agent/name")
+        assert "agent%2Fname" in path
+        http.close()
+
+    def test_agents_path_encodes_special_chars(self):
+        from cortex_agents_client.resources.agents import AgentsResource
+        from cortex_agents_client.http import HttpClient
+        from cortex_agents_client.auth import PATAuth
+
+        http = HttpClient("https://test.snowflakecomputing.com", PATAuth("v2:tok"))
+        agents = AgentsResource(http)
+        path = agents._path("MY DB", "MY SCHEMA", "MY AGENT")
+        assert "MY%20DB" in path
+        assert "MY%20SCHEMA" in path
+        assert "MY%20AGENT" in path
+        http.close()

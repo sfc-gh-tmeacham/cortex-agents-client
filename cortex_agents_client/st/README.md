@@ -301,7 +301,7 @@ from cortex_agents_client.st import (
 )
 from cortex_agents_client.models.thread import StoredMessage
 
-client, thread = sis_init_session(agent_path="MY_DB.MY_SCHEMA.MY_AGENT")
+client, thread = sis_init_session(origin_application="my_sis_app")
 
 st.title("Revenue Assistant")
 
@@ -555,7 +555,7 @@ Manual integration users can pass `key_prefix` directly to
 | Function | Description |
 |---|---|
 | `init_session(account_url, auth, ...)` | Creates client + thread on first call; returns cached objects on reruns |
-| `sis_init_session(agent_path, ...)` | Same as `init_session` but reads credentials from SiS container environment |
+| `sis_init_session(origin_application, ...)` | Same as `init_session` but reads credentials from SiS container environment |
 | `get_messages(key="_ca_messages")` | Returns the current `list[StoredMessage]` |
 | `append_message(msg, key="_ca_messages")` | Appends a message to history |
 | `reset_thread(account_url, auth, ...)` | Clears history and starts a new thread |

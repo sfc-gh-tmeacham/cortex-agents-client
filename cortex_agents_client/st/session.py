@@ -185,6 +185,7 @@ def sis_init_session(
     client_key: str = _DEFAULT_CLIENT_KEY,
     thread_key: str = _DEFAULT_THREAD_KEY,
     messages_key: str = _DEFAULT_MESSAGES_KEY,
+    timeout: float = 120.0,
     default_database: str | None = None,
     default_schema: str | None = None,
     token_path: str = "/snowflake/session/token",
@@ -207,6 +208,8 @@ def sis_init_session(
         client_key: ``st.session_state`` key for the client.
         thread_key: ``st.session_state`` key for the thread.
         messages_key: ``st.session_state`` key for the message list.
+        timeout: Read timeout in seconds. Increase for agents with long
+            processing times.
         default_database: Default database for agent operations.
         default_schema: Default schema for agent operations.
         token_path: Path to the Snowflake OAuth token file.
@@ -240,6 +243,7 @@ def sis_init_session(
         client_key=client_key,
         thread_key=thread_key,
         messages_key=messages_key,
+        timeout=timeout,
         default_database=default_database,
         default_schema=default_schema,
     )

@@ -19,6 +19,7 @@ from cortex_agents_client.models.events import (
     ChartEvent,
     ErrorEvent,
     MetadataEvent,
+    ResponseEvent,
     SSEEvent,
     SuggestedQueriesEvent,
     TableEvent,
@@ -503,6 +504,8 @@ class RunsResource:
                 result.suggested_queries = event.queries
             elif isinstance(event, MetadataEvent):
                 result.metadata_events.append(event)
+            elif isinstance(event, ResponseEvent):
+                result.status = event.status
             elif isinstance(event, ErrorEvent):
                 result.error = event
                 break

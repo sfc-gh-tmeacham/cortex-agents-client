@@ -17,7 +17,7 @@ To create the SiS app, run in Snowflake:
       RUNTIME_NAME                 = 'SYSTEM$ST_CONTAINER_RUNTIME_PY3_11'
       COMPUTE_POOL                 = my_compute_pool
       QUERY_WAREHOUSE              = 'MY_WH'
-      EXTERNAL_ACCESS_INTEGRATIONS = (cortex_agents_api_eai);
+      EXTERNAL_ACCESS_INTEGRATIONS = (cortex_agents_api_eai, pypi_eai);
 
 Upload this file and your cortex_agents_client/ directory to the stage path above.
 """

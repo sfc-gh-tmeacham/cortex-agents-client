@@ -263,6 +263,12 @@ class Thread:
                     )
                 return
 
+            # Advance parent_message_id if the server issued one for this
+            # intermediate response, so the next tool-loop iteration sends
+            # the correct context pointer.
+            if new_assistant_message_id is not None:
+                self._parent_message_id = new_assistant_message_id
+
             # Append tool result and loop for the next iteration.
             current_extra = list(extra_content) if extra_content else []
             current_extra.append(client_tool_result)

@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Agent CRUD operations (`create`, `get`, `update`, `list`, `delete`, `feedback`).
 - Thread lifecycle management (`create`, `get`, `update`, `list`, `delete`).
 - Streaming and non-streaming agent run invocations.
-- Full SSE event parsing with 16 typed event dataclasses.
+- Full SSE event parsing with 17 typed event dataclasses.
 - `Thread` class with automatic `parent_message_id` tracking.
 - `RunResult` dataclass for non-streaming and `stream_and_collect` results.
 - Streamlit integration layer (`StreamlitChatbot`, `render_streaming_response`).

@@ -306,11 +306,13 @@ class StreamlitChatbot:
         if last.role == "assistant" and last.suggested_queries:
             _render_suggested_queries(last.suggested_queries, st, self._suggestion_key)
 
-    def _stream_with_retry(self, event_stream, container, key_prefix: str) -> StoredMessage:
+    def _stream_with_retry(self, stream_factory, container, key_prefix: str) -> StoredMessage:
         """Streams a response with a single retry on transient errors.
 
         Args:
-            event_stream: A generator/iterator of SSE events (e.g. from thread.chat()).
+            stream_factory: A zero-argument callable that returns a fresh
+                iterator of SSE events. Called once per attempt so that
+                retries use a new HTTP connection rather than a dead iterator.
             container: Streamlit container to render into (typically ``st``).
             key_prefix: Unique key prefix for rendered widgets.
 
@@ -327,7 +329,7 @@ class StreamlitChatbot:
         while True:
             try:
                 return render_streaming_response(
-                    event_stream,
+                    stream_factory(),
                     container=container,
                     show_thinking=self._show_thinking,
                     show_tool_status=self._show_tool_status,
@@ -422,7 +424,7 @@ class StreamlitChatbot:
             # through the extra_content parameter on thread.chat().
             try:
                 stored = self._stream_with_retry(
-                    thread.chat(
+                    lambda: thread.chat(
                         self._agent_path,
                         prompt_text,
                         tool_executor=self._tool_executor,
@@ -518,7 +520,7 @@ class StreamlitChatbot:
             with st.chat_message("assistant"):
                 try:
                     stored = self._stream_with_retry(
-                        thread.chat(
+                        lambda: thread.chat(
                             self._agent_path,
                             original_message,
                             permission_decisions=[permission_item],
