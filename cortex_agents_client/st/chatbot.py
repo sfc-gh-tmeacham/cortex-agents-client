@@ -306,7 +306,7 @@ class StreamlitChatbot:
         if last.role == "assistant" and last.suggested_queries:
             _render_suggested_queries(last.suggested_queries, st, self._suggestion_key)
 
-    def _stream_with_retry(self, stream_factory, container, key_prefix: str) -> StoredMessage:
+    def _stream_with_retry(self, stream_factory, container, key_prefix: str, loading_placeholder=None) -> StoredMessage:
         """Streams a response with a single retry on transient errors.
 
         Args:
@@ -315,6 +315,8 @@ class StreamlitChatbot:
                 retries use a new HTTP connection rather than a dead iterator.
             container: Streamlit container to render into (typically ``st``).
             key_prefix: Unique key prefix for rendered widgets.
+            loading_placeholder: Optional ``st.empty()`` placeholder to clear
+                on the first SSE event.
 
         Returns:
             The rendered StoredMessage.
@@ -334,6 +336,7 @@ class StreamlitChatbot:
                     show_thinking=self._show_thinking,
                     show_tool_status=self._show_tool_status,
                     key_prefix=key_prefix,
+                    loading_placeholder=loading_placeholder,
                 )
             except (CortexConnectionError, CortexTimeoutError, ServerError) as exc:
                 if not retried:
@@ -422,6 +425,8 @@ class StreamlitChatbot:
             #
             # When the API adds multimodal user-message support, wire attachments
             # through the extra_content parameter on thread.chat().
+            loading_placeholder = st.empty()
+            loading_placeholder.markdown(":shimmer[▌]")
             try:
                 stored = self._stream_with_retry(
                     lambda: thread.chat(
@@ -431,8 +436,10 @@ class StreamlitChatbot:
                     ),
                     container=st,
                     key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",
+                    loading_placeholder=loading_placeholder,
                 )
             except Exception as exc:
+                loading_placeholder.empty()
                 from cortex_agents_client.exceptions import CortexTimeoutError, AuthError
                 if isinstance(exc, CortexTimeoutError):
                     msg = "Request timed out. Try again or simplify your question."

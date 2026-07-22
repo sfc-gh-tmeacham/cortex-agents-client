@@ -156,6 +156,7 @@ def render_streaming_response(
     show_thinking: bool = False,
     show_tool_status: bool = True,
     key_prefix: str | None = None,
+    loading_placeholder: Any | None = None,
 ) -> StoredMessage:
     """Renders an SSE event stream into Streamlit elements as events arrive.
 
@@ -182,6 +183,9 @@ def render_streaming_response(
             that accept ``key`` get a stable CSS class (e.g.
             ``.st-key-{prefix}-thinking``). Pass a unique value per message
             to avoid key collisions across multiple messages.
+        loading_placeholder: Optional ``st.empty()`` placeholder shown while
+            waiting for the first SSE event. Cleared automatically on the
+            first event that arrives.
 
     Returns:
         A :class:`~cortex_agents_client.models.thread.StoredMessage` populated
@@ -219,6 +223,10 @@ def render_streaming_response(
     pending_tool_uses: dict[str, ToolUseEvent] = {}
 
     for event in events:
+        if loading_placeholder is not None:
+            loading_placeholder.empty()
+            loading_placeholder = None
+
         if isinstance(event, TextDeltaEvent):
             accumulated_text += event.text
             if text_placeholder is None:
