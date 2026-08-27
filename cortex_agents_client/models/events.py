@@ -46,9 +46,14 @@ class SSEEvent:
     Attributes:
         event_type: The raw SSE event type string
             (e.g. ``"response.text.delta"``).
+        sequence_number: The event's position in the run's output stream, when
+            the server supplies one. Pass it as ``starting_after`` to
+            :meth:`~cortex_agents_client.resources.runs.RunsResource.stream_run`
+            to resume after this event. ``None`` if the server omitted it.
     """
 
     event_type: str
+    sequence_number: int | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -842,6 +847,62 @@ class TokensConsumed:
             input_tokens=InputTokens._from_dict(d.get("input_tokens") or {}),
             output_tokens=OutputTokens._from_dict(d.get("output_tokens") or {}),
             context_window=int(d.get("context_window", 0)),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Run metadata (ResponseMetadata schema)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class RunMetadata:
+    """Metadata about an agent run, mirroring the API ``ResponseMetadata``.
+
+    Returned by
+    :meth:`~cortex_agents_client.resources.runs.RunsResource.cancel_run` and
+    carried on :class:`~cortex_agents_client.resources.runs.RunResult`. The
+    same fields appear on :class:`ResponseEvent` for streaming runs.
+
+    Attributes:
+        run_id: Unique identifier for the run, formatted as
+            ``{thread_id}-{user_message_id}``. Pass it to
+            :meth:`~cortex_agents_client.resources.runs.RunsResource.stream_run`
+            to reconnect to the output.
+        thread_id: ID of the thread the run belongs to.
+        user_message_id: Persisted ID of the user message.
+        assistant_message_id: Persisted ID of the assistant message. Present
+            on a cancelled run only when partial output was saved; use it as
+            the ``parent_message_id`` for the next turn.
+        usage: Per-model token consumption for the run.
+    """
+
+    run_id: str | None = None
+    thread_id: int | None = None
+    user_message_id: int | None = None
+    assistant_message_id: int | None = None
+    usage: list[TokensConsumed] = field(default_factory=list)
+
+    @classmethod
+    def _from_dict(cls, d: dict[str, Any]) -> RunMetadata:
+        """Constructs from a raw ``metadata`` dict.
+
+        Args:
+            d: The ``metadata`` object from a run or cancel response.
+
+        Returns:
+            A populated RunMetadata instance.
+        """
+        usage_meta = d.get("usage") or {}
+        return cls(
+            run_id=d.get("run_id"),
+            thread_id=d.get("thread_id"),
+            user_message_id=d.get("user_message_id"),
+            assistant_message_id=d.get("assistant_message_id"),
+            usage=[
+                TokensConsumed._from_dict(t)
+                for t in (usage_meta.get("tokens_consumed") or [])
+            ],
         )
 
 

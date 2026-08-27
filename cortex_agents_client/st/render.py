@@ -490,12 +490,21 @@ def _markdown_column_config(df: pd.DataFrame) -> dict[str, Any] | None:
         A ``column_config`` dict for ``st.dataframe``, or ``None`` if there
         are no string columns.
     """
+    import pandas as pd
     import streamlit as st
 
-    cfg = {
-        col: st.column_config.MarkdownColumn(col)
-        for col in df.select_dtypes(include="object").columns
-    }
+    # Selecting text columns without select_dtypes(include="object"), which
+    # emits a Pandas4Warning: under pandas 3 the "object" selector no longer
+    # implies the new "str" dtype, so that call would silently stop matching
+    # string columns. Testing each column covers both dtypes on pandas 2 and 3.
+    text_columns = [
+        col
+        for col in df.columns
+        if pd.api.types.is_object_dtype(df[col])
+        or pd.api.types.is_string_dtype(df[col])
+    ]
+
+    cfg = {col: st.column_config.MarkdownColumn(col) for col in text_columns}
     return cfg or None
 
 

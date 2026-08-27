@@ -37,11 +37,25 @@ class TestStreaming:
         live_thread: Thread,
         agent_path_minimal: str,
     ) -> None:
-        """The final event is a ResponseEvent with status='completed'."""
+        """The final event really is a ResponseEvent with status='completed'.
+
+        This assertion used to filter for ResponseEvent instances and count
+        them, which could not detect anything emitted *after* the response.
+        It therefore stayed green while the server's terminal
+        ``event: done`` / ``data: [DONE]`` marker was being surfaced as a
+        spurious ``UnknownEvent`` on every turn. Indexing the last element is
+        what makes the test sensitive to that class of defect.
+        """
         events = list(live_thread.chat(agent_path_minimal, "hello"))
         response_events = [e for e in events if isinstance(e, ResponseEvent)]
         assert len(response_events) == 1
         assert response_events[-1].status == "completed"
+        assert isinstance(events[-1], ResponseEvent), (
+            "Final event was "
+            f"{type(events[-1]).__name__}(event_type={events[-1].event_type!r}), "
+            "not ResponseEvent — something is emitted after the response"
+        )
+
 
     def test_streaming_yields_text_event(
         self,

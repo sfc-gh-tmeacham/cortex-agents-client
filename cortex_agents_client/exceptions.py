@@ -89,6 +89,27 @@ class ThreadNotFoundError(NotFoundError):
     """Raised when the specified thread does not exist (HTTP 404)."""
 
 
+class ConflictError(CortexAgentError):
+    """Raised when a request conflicts with the current resource state (HTTP 409).
+
+    Use this as the catch-all for any conflict error. The specific subclass
+    :class:`RunNotActiveError` is raised when the resource type is known to
+    be an agent run.
+    """
+
+
+class RunNotActiveError(ConflictError):
+    """Raised when an agent run is no longer streamable or cancellable (HTTP 409).
+
+    The events of an agent run are available only while the run is active and
+    for up to 5 minutes after it completes. After that window, and for a run
+    that has already completed or been cancelled, both
+    :meth:`~cortex_agents_client.resources.runs.RunsResource.stream_run` and
+    :meth:`~cortex_agents_client.resources.runs.RunsResource.cancel_run`
+    raise this error. Retrieve the full response from the thread instead.
+    """
+
+
 class RunError(CortexAgentError):
     """Raised when an agent run terminates with a fatal error event.
 

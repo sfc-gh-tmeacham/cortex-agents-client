@@ -286,17 +286,101 @@ for event in thread.chat("MY_AGENT", "Show me the top 5 customers by revenue"):
         print(f"\n[Unknown event type: {event.event_type}]")
 ```
 
+Every event also carries `event.sequence_number` — its position in the run's output, and the
+cursor value for `client.stream_run(run_id, starting_after=...)`. It is `None` if the server
+omits it. The stream's terminal `[DONE]` marker is consumed by the parser and never reaches
+your loop.
+
 ### Non-streaming run
 
 ```python
 result = client.run("MY_DB.MY_SCHEMA.MY_AGENT", "What is total revenue?")
 print(result.text)
-print(result.status)  # "completed" | "cancelled"
+print(result.status)  # "completed" | "cancelled" | "timed_out" | "in_progress"
 for table in result.tables:
     print(f"Table: {table.title}")
 if result.suggested_queries:
     print(f"Suggestions: {result.suggested_queries}")
+
+# Run and message IDs plus token usage, when the response carries metadata
+if result.metadata:
+    print(result.run_id, result.metadata.assistant_message_id)
 ```
+
+### Background (asynchronous) runs
+
+By default a run times out after 15 minutes. Set `background=True` to raise that to 6 hours; the
+run then survives a client disconnect. Background runs require a thread.
+
+```python
+thread = client.create_thread()
+
+# Fire and forget — returns immediately with status "in_progress"
+result = client.run(
+    "MY_DB.MY_SCHEMA.MY_AGENT",
+    "Summarise every support ticket from last quarter.",
+    thread=thread,
+    background=True,
+)
+run_id = result.run_id  # e.g. "4264-83472"
+
+# Reconnect later and stream the output from the beginning
+for event in client.stream_run(run_id):
+    ...
+
+# Or resume after a known sequence number, exclusive
+for event in client.stream_run(run_id, starting_after=42):
+    ...
+```
+
+A run's events stay available while it is active and for 5 minutes after it completes. After that,
+`stream_run` raises `RunNotActiveError` and the response must be read back from the thread.
+
+`Thread.chat` accepts the same flag:
+
+```python
+for event in thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", "Long question…", background=True):
+    ...
+```
+
+### Cancelling a run
+
+```python
+from cortex_agents_client import RunNotActiveError
+
+try:
+    metadata = client.cancel_run(run_id)
+except RunNotActiveError:
+    print("Run already finished.")
+else:
+    # Present only when partial output was saved to the thread
+    if metadata.assistant_message_id:
+        print(f"Continue from message {metadata.assistant_message_id}")
+```
+
+Partial output produced before cancellation is saved to the thread and billed.
+
+### Runs without an agent object (lite runs)
+
+Omit `agent_path` to configure the agent inline instead of referencing an agent object:
+
+```python
+result = client.runs.run(
+    messages=[{"role": "user", "content": [{"type": "text", "text": "Hi"}]}],
+    models={"orchestration": "claude-4-sonnet"},
+    instructions={"response": "Be concise."},
+    orchestration={"budget": {"seconds": 30, "tokens": 16000}},
+    tools=[...],
+    tool_resources={...},
+)
+```
+
+`models`, `instructions`, `orchestration`, `tools`, and `tool_resources` apply to lite runs only —
+the API rejects attempts to set them on an agent-object run. Change the agent with
+`client.agents.update()` instead.
+
+> The older `model="claude-4-sonnet"` argument is deprecated. It still works and maps into
+> `models`, but emits a `DeprecationWarning`.
 
 ### Agent management (CRUD)
 
@@ -377,6 +461,8 @@ from cortex_agents_client import (
     AgentNotFoundError,
     ThreadNotFoundError,
     NotFoundError,       # base class — catches both Agent and Thread variants
+    ConflictError,       # base class for HTTP 409
+    RunNotActiveError,   # 409 on a run that is finished or expired
     RateLimitError,
     ServerError,
 )
@@ -400,6 +486,20 @@ except RateLimitError:
     print("Rate limit hit — back off and retry")
 except ServerError as exc:
     print(f"Snowflake server error: {exc}")
+```
+
+`RunNotActiveError` applies only to `stream_run` and `cancel_run`. It means the run has
+already finished or is outside its retention window — read the response from the thread
+instead:
+
+```python
+from cortex_agents_client import RunNotActiveError
+
+try:
+    for event in client.stream_run(run_id):
+        ...
+except RunNotActiveError:
+    messages = client.threads.list_messages(thread.thread_id)
 ```
 
 ---
@@ -854,6 +954,7 @@ When the agent needs clarification it emits a `TextEvent` with `is_elicitation=T
 | `default_database` | No | `None` | Default database — avoids repeating it in every `thread.chat()` call |
 | `default_schema` | No | `None` | Default schema |
 | `origin_application` | No | `None` | Label attached to threads for monitoring (max 16 bytes) |
+| `role` | No | `None` | Snowflake role sent as `X-Snowflake-Role`. Note that Cortex Agents derives tool permissions from the user's **default** role regardless of this header. |
 
 ### `StreamlitChatbot` parameters
 

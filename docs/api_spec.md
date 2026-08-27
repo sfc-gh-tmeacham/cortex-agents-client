@@ -4,7 +4,7 @@ Reference for all endpoints used by the `cortex_agents_client` Python library.
 
 Base URL: `https://{account}.snowflakecomputing.com`
 
-API timeout: 15 minutes per request.
+API timeout: 15 minutes per request by default. Set `background: true` on a run to raise this to 6 hours (requires a thread).
 
 ---
 
@@ -20,6 +20,12 @@ All requests require `Authorization: Bearer <token>`.
 | WIF | `Bearer WIF.{AWS\|AZURE\|GCP\|OIDC}.{token}` | `X-Snowflake-Authorization-Token-Type: WORKLOAD_IDENTITY_FEDERATION` |
 
 JWT claims: `iss = ACCOUNT.USER.SHA256:<fingerprint>`, `sub = ACCOUNT.USER`, `iat` and `exp` (max 1h TTL). Both account and user must be UPPERCASE.
+
+### Running under a non-default role
+
+A request can run under a role other than the user's default by sending `X-Snowflake-Role: <role>`. Note that Cortex Agents derives tool permissions from the querying user's **default** role, not the role in this header or the session role.
+
+Library support: `CortexAgentsClient(..., role="MY_ROLE")`, or per-call via `HttpClient.request(..., headers={...})`.
 
 ---
 
@@ -199,6 +205,20 @@ POST /api/v2/databases/{database}/schemas/{schema}/agents/{name}:run
 POST /api/v2/cortex/agent:run
 ```
 
+### SSE stream framing (verified live, not in the public docs)
+
+Every stream — from both run endpoints and from Stream Agent Run — ends with a terminal
+marker that is **not JSON**:
+
+```
+event: done
+data: [DONE]
+```
+
+A parser that assumes every `data:` line is JSON reports this as a malformed event. The
+library treats it as end-of-stream. Each real event also carries a `sequence_number`, which
+is the cursor value for `starting_after`.
+
 ### Request body
 
 ```json
@@ -214,6 +234,7 @@ POST /api/v2/cortex/agent:run
     }
   ],
   "stream": true,
+  "background": false,
   "tool_choice": {
     "type": "required",
     "name": ["Analyst1", "Search1"]
@@ -222,6 +243,8 @@ POST /api/v2/cortex/agent:run
 ```
 
 `tool_choice.type` values: `"auto"` (default) | `"required"` | `"none"`
+
+`background` (optional, default `false`): run asynchronously with a 6-hour timeout instead of 15 minutes. The run survives a client disconnect. **Only available when using threads.** With `stream: false`, the call returns immediately with `status: "in_progress"` and a `metadata.run_id`; collect the output later via [Stream Agent Run](#stream-agent-run).
 
 For permission decisions (response to `tool_use` with non-empty `permission.options`):
 ```json
@@ -252,9 +275,14 @@ Inline (lite agent) request adds config fields:
   "tools": [...],
   "tool_resources": {...},
   "instructions": {"response": "...", "orchestration": "..."},
-  "model": "claude-4-sonnet"
+  "orchestration": {"budget": {"seconds": 30, "tokens": 16000}},
+  "models": {"orchestration": "claude-4-sonnet"}
 }
 ```
+
+`models` is a `ModelConfig` **object**, not a string. A bare top-level `"model": "claude-4-sonnet"` is the pre-September-2025 legacy schema and should not be used for new work; the library still accepts a `model=` argument but maps it into `models` and emits a `DeprecationWarning`.
+
+These config fields apply to the lite endpoint only. `models`, `instructions`, and `orchestration` cannot be set or overwritten through an agent-object run — use [Update Agent](#update-agent) instead.
 
 ### Non-streaming response (`stream: false`)
 
@@ -291,7 +319,72 @@ Inline (lite agent) request adds config fields:
 ```
 
 The Python client captures `status` as `RunResult.status` — `"completed"` for a normal run,
-`"cancelled"` if stopped early via CancelAgentRun.
+`"cancelled"` if stopped early via CancelAgentRun, `"timed_out"` if the run exceeded its maximum
+length, and `"in_progress"` for a background run that has not finished.
+
+The response `metadata` block is parsed into `RunResult.metadata` (a `RunMetadata`), carrying
+`run_id`, `thread_id`, `user_message_id`, `assistant_message_id`, and token `usage`.
+`RunResult.run_id` is a shortcut to `metadata.run_id`.
+
+---
+
+## Stream Agent Run
+
+```
+GET /api/v2/cortex/agent/runs/{run_id}
+```
+
+Reconnects to an agent run and streams its output. The events are byte-for-byte the same as those
+returned by streaming `agent:run`.
+
+| Parameter | Location | Description |
+|---|---|---|
+| `run_id` | path | Run identifier, in `{thread_id}-{user_message_id}` form |
+| `starting_after` | query | (Optional) Sequence number to resume from, **exclusive**. Omit to replay the entire output. |
+
+The cursor value is the `sequence_number` field carried on each streamed event. The library
+exposes it as `SSEEvent.sequence_number` on every event type.
+
+A run's events are accessible while it is active and for up to **5 minutes** after it completes.
+Connecting after that returns `409 Conflict`; retrieve the full response from the thread instead.
+
+> Observed on va_demo99 in August 2026: a completed run was still streamable 5.5 minutes after
+> finishing, so this window was not enforced. Treat the 5 minutes as a lower bound on
+> availability, not as a guarantee that the run has expired. Do not rely on a 409 to detect
+> that a run is finished — check the run's terminal `response` event or read the thread.
+
+Library: `client.stream_run(run_id, starting_after=None)` or `client.runs.stream_run(...)`.
+A 409 raises `RunNotActiveError`.
+
+---
+
+## Cancel Agent Run
+
+```
+POST /api/v2/cortex/agent/runs/{run_id}/cancel
+```
+
+Cancels an actively running run. Partial output is saved to the thread and billed accordingly.
+
+Response:
+
+```json
+{
+  "metadata": {
+    "run_id": "4264-83472",
+    "thread_id": 4264,
+    "user_message_id": 83472,
+    "assistant_message_id": 83473,
+    "usage": {"tokens_consumed": [...]}
+  }
+}
+```
+
+`metadata.assistant_message_id` is present only when partial output was saved; use it as the
+`parent_message_id` for the next turn. A run that has already completed or been cancelled returns
+`409 Conflict`.
+
+Library: `client.cancel_run(run_id)` returns a `RunMetadata`. A 409 raises `RunNotActiveError`.
 
 ---
 

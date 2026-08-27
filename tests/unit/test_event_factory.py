@@ -399,3 +399,42 @@ def test_unknown_event_does_not_raise():
     # Should not raise even with an unusual type string
     event = event_from_sse("completely_unknown:::type", {"x": 1})
     assert isinstance(event, UnknownEvent)
+
+
+# ---------------------------------------------------------------------------
+# sequence_number
+#
+# Live streams carry a `sequence_number` on each event. It is the cursor value
+# consumed by stream_run(starting_after=...), so without exposing it a caller
+# has no way to resume from a known point.
+# ---------------------------------------------------------------------------
+
+
+def test_sequence_number_captured_from_payload():
+    """sequence_number is populated on a typed event."""
+    event = event_from_sse(
+        "response.text", {"content_index": 0, "text": "hi", "sequence_number": 7}
+    )
+    assert event.sequence_number == 7
+
+
+def test_sequence_number_none_when_absent():
+    """An event without sequence_number reports None, not 0."""
+    event = event_from_sse("response.text", {"content_index": 0, "text": "hi"})
+    assert event.sequence_number is None
+
+
+def test_sequence_number_on_status_event():
+    """The cursor is applied to every event type, not just text."""
+    event = event_from_sse(
+        "response.status", {"status": "planning", "message": "x", "sequence_number": 3}
+    )
+    assert event.sequence_number == 3
+
+
+def test_non_integer_sequence_number_ignored():
+    """A malformed sequence_number does not corrupt the field."""
+    event = event_from_sse(
+        "response.text", {"content_index": 0, "text": "hi", "sequence_number": "bad"}
+    )
+    assert event.sequence_number is None

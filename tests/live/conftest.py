@@ -17,6 +17,8 @@ test session ends (via the session-scoped _teardown_live_objects fixture). To sk
 teardown (e.g. for debugging), set LIVE_SKIP_TEARDOWN=1.
 
 Set LIVE_DUMP_EVENTS=1 to always dump captured SSE events (not just on failure).
+Set LIVE_TIMEOUT to raise the client read timeout in seconds (default 120) for
+slow suites such as Cortex Analyst.
 """
 from __future__ import annotations
 
@@ -45,6 +47,18 @@ def _require_env(name: str) -> str:
     if not value:
         pytest.skip(f"Environment variable {name!r} is not set")
     return value
+
+
+def _live_timeout() -> float:
+    """Returns the client read timeout for live tests.
+
+    Cortex Analyst runs can take minutes when the warehouse is cold. Raise
+    ``LIVE_TIMEOUT`` for those suites rather than editing this file.
+
+    Returns:
+        Read timeout in seconds. Defaults to 120.
+    """
+    return float(os.environ.get("LIVE_TIMEOUT", "120"))
 
 
 def _run_teardown(account_url: str, pat: str) -> None:
@@ -90,7 +104,13 @@ def live_client() -> CortexAgentsClient:
     parts = agent_path.split(".")
     db = parts[0] if len(parts) >= 3 else None
     schema = parts[1] if len(parts) >= 3 else None
-    return CortexAgentsClient(url, pat, timeout=120.0, default_database=db, default_schema=schema)
+    return CortexAgentsClient(
+        url,
+        pat,
+        timeout=_live_timeout(),
+        default_database=db,
+        default_schema=schema,
+    )
 
 
 @pytest.fixture(scope="session")

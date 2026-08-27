@@ -9,12 +9,14 @@ from cortex_agents_client.auth import PATAuth
 from cortex_agents_client.exceptions import (
     AgentNotFoundError,
     AuthError,
+    ConflictError,
     CortexAgentError,
     CortexConnectionError,
     CortexPermissionError,
     CortexTimeoutError,
     NotFoundError,
     RateLimitError,
+    RunNotActiveError,
     ServerError,
     ThreadNotFoundError,
 )
@@ -52,6 +54,65 @@ class TestHeaderAssembly:
         request = httpx_mock.get_request()
         assert request.headers["Accept"] == "text/event-stream"
 
+    def test_role_header_absent_by_default(self, http_client, httpx_mock: HTTPXMock):
+        """No X-Snowflake-Role header is sent unless a role is configured."""
+        httpx_mock.add_response(json={"ok": True})
+        http_client.request("GET", "/api/v2/test")
+        request = httpx_mock.get_request()
+        assert "X-Snowflake-Role" not in request.headers
+
+    def test_role_header_sent_when_configured(self, httpx_mock: HTTPXMock):
+        """A configured role is sent as X-Snowflake-Role."""
+        client = HttpClient(
+            base_url=BASE_URL, auth=PATAuth(PAT), timeout=5.0, role="MY_ROLE"
+        )
+        httpx_mock.add_response(json={"ok": True})
+        client.request("GET", "/api/v2/test")
+        request = httpx_mock.get_request()
+        assert request.headers["X-Snowflake-Role"] == "MY_ROLE"
+
+    def test_role_header_sent_on_stream(self, httpx_mock: HTTPXMock):
+        """The role header is also applied to streaming requests."""
+        client = HttpClient(
+            base_url=BASE_URL, auth=PATAuth(PAT), timeout=5.0, role="MY_ROLE"
+        )
+        httpx_mock.add_response(text="event: done\ndata: {}\n\n")
+        with client.stream("POST", "/api/v2/test", json={}) as lines:
+            list(lines)
+        request = httpx_mock.get_request()
+        assert request.headers["X-Snowflake-Role"] == "MY_ROLE"
+
+    def test_per_call_headers_override_role(self, httpx_mock: HTTPXMock):
+        """Per-call headers take precedence over the client-level role."""
+        client = HttpClient(
+            base_url=BASE_URL, auth=PATAuth(PAT), timeout=5.0, role="DEFAULT_ROLE"
+        )
+        httpx_mock.add_response(json={"ok": True})
+        client.request(
+            "GET", "/api/v2/test", headers={"X-Snowflake-Role": "OTHER_ROLE"}
+        )
+        request = httpx_mock.get_request()
+        assert request.headers["X-Snowflake-Role"] == "OTHER_ROLE"
+
+    def test_per_call_headers_merge_with_auth(self, http_client, httpx_mock: HTTPXMock):
+        """Extra headers are added without dropping the auth header."""
+        httpx_mock.add_response(json={"ok": True})
+        http_client.request("GET", "/api/v2/test", headers={"X-Custom": "abc"})
+        request = httpx_mock.get_request()
+        assert request.headers["X-Custom"] == "abc"
+        assert request.headers["Authorization"] == f"Bearer {PAT}"
+
+    def test_stream_accept_overridable_per_call(self, http_client, httpx_mock: HTTPXMock):
+        """Stream keeps text/event-stream unless explicitly overridden."""
+        httpx_mock.add_response(text="event: done\ndata: {}\n\n")
+        with http_client.stream(
+            "GET", "/api/v2/test", headers={"X-Custom": "abc"}
+        ) as lines:
+            list(lines)
+        request = httpx_mock.get_request()
+        assert request.headers["Accept"] == "text/event-stream"
+        assert request.headers["X-Custom"] == "abc"
+
 
 class TestErrorMapping:
     """Verifies HTTP status codes map to correct exception types."""
@@ -64,6 +125,9 @@ class TestErrorMapping:
             (404, "agent", AgentNotFoundError),
             (404, "thread", ThreadNotFoundError),
             (404, "resource", NotFoundError),
+            (409, "run", RunNotActiveError),
+            (409, "agent", ConflictError),
+            (409, "resource", ConflictError),
             (429, "resource", RateLimitError),
             (500, "resource", ServerError),
             (502, "resource", ServerError),

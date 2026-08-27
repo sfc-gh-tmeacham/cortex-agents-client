@@ -34,6 +34,7 @@ from cortex_agents_client.client import CortexAgentsClient, Thread
 from cortex_agents_client.exceptions import (
     AgentNotFoundError,
     AuthError,
+    ConflictError,
     CortexAgentError,
     CortexConnectionError,
     CortexPermissionError,
@@ -42,6 +43,7 @@ from cortex_agents_client.exceptions import (
     PermissionError,   # deprecated alias for CortexPermissionError
     RateLimitError,
     RunError,
+    RunNotActiveError,
     ServerError,
     ThreadNotFoundError,
     TimeoutError,      # deprecated alias for CortexTimeoutError
@@ -56,6 +58,7 @@ from cortex_agents_client.models.events import (
     MetadataEvent,
     OutputTokens,
     ResponseEvent,
+    RunMetadata,
     SSEEvent,
     StatusEvent,
     SuggestedQueriesEvent,
@@ -97,6 +100,8 @@ __all__ = [
     "ServerError",
     "AgentNotFoundError",
     "ThreadNotFoundError",
+    "ConflictError",
+    "RunNotActiveError",
     # Deprecated exception aliases
     "PermissionError",
     "TimeoutError",
@@ -107,6 +112,7 @@ __all__ = [
     "ThreadMessage",
     "ThreadMetadata",
     "RunResult",
+    "RunMetadata",
     # SSE events
     "SSEEvent",
     "TextDeltaEvent",

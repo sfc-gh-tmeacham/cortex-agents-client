@@ -17,7 +17,13 @@ from typing import Any
 
 from cortex_agents_client.auth import AuthProvider, PATAuth
 from cortex_agents_client.http import HttpClient
-from cortex_agents_client.models.events import MetadataEvent, SSEEvent, ToolResultEvent, ToolUseEvent
+from cortex_agents_client.models.events import (
+    MetadataEvent,
+    RunMetadata,
+    SSEEvent,
+    ToolResultEvent,
+    ToolUseEvent,
+)
 from cortex_agents_client.models.thread import ThreadMessage
 from cortex_agents_client.resources.agents import AgentsResource
 from cortex_agents_client.resources.runs import RunResult, RunsResource
@@ -134,6 +140,7 @@ class Thread:
         tool_choice: dict[str, Any] | None = None,
         permission_decisions: list[dict[str, Any]] | None = None,
         extra_content: list[dict[str, Any]] | None = None,
+        background: bool = False,
         tool_executor: Callable[[ToolUseEvent], list[dict[str, Any]]] | None = None,
     ) -> Iterator[SSEEvent]:
         """Streams a conversation turn, auto-advancing ``parent_message_id``.
@@ -162,6 +169,11 @@ class Thread:
                 ``permission_options`` populated.
             extra_content: Additional content items to append to the user
                 message content array.
+            background: Run asynchronously with a 6-hour timeout instead of
+                the default 15-minute one. The run survives a client
+                disconnect; resume it with
+                :meth:`CortexAgentsClient.stream_run` using the ``run_id``
+                from any :class:`~cortex_agents_client.models.events.MetadataEvent`.
             tool_executor: Optional callable invoked when the agent emits a
                 :class:`~cortex_agents_client.models.events.ToolUseEvent` with
                 ``client_side_execute=True``. Receives the event and must
@@ -209,6 +221,7 @@ class Thread:
                 thread_id=self._thread_id,
                 parent_message_id=self._parent_message_id,
                 tool_choice=tool_choice,
+                background=background,
             )
 
             for event in event_stream:
@@ -375,6 +388,10 @@ class CortexAgentsClient:
         default_schema: Default schema for agent operations.
         origin_application: Default ``origin_application`` label used when
             creating threads. Identifies this client in monitoring.
+        role: Optional Snowflake role sent as the ``X-Snowflake-Role`` header
+            on every request. Note that Cortex Agents derives tool
+            permissions from the user's default role regardless of this
+            header; it affects the role the request itself runs under.
 
     Example::
 
@@ -402,6 +419,7 @@ class CortexAgentsClient:
         default_database: str | None = None,
         default_schema: str | None = None,
         origin_application: str | None = None,
+        role: str | None = None,
     ) -> None:
         """Initialises the client.
 
@@ -412,12 +430,14 @@ class CortexAgentsClient:
             default_database: Default database.
             default_schema: Default schema.
             origin_application: Default origin application label for threads.
+            role: Optional Snowflake role for the ``X-Snowflake-Role`` header.
         """
         self._account_url = account_url
         self._http = HttpClient(
             base_url=account_url,
             auth=_coerce_auth(auth),
             timeout=timeout,
+            role=role,
         )
         self._origin_application = origin_application
         self.agents = AgentsResource(self._http, default_database, default_schema)
@@ -558,3 +578,48 @@ class CortexAgentsClient:
             tool_choice=tool_choice,
             **kwargs,
         )
+
+    def stream_run(
+        self,
+        run_id: str,
+        *,
+        starting_after: int | None = None,
+    ) -> Iterator[SSEEvent]:
+        """Reconnects to an existing agent run and streams its output.
+
+        Delegates to
+        :meth:`~cortex_agents_client.resources.runs.RunsResource.stream_run`.
+        Use this to resume a background run or recover from a dropped
+        connection.
+
+        Args:
+            run_id: Run identifier, in ``{thread_id}-{user_message_id}`` form.
+            starting_after: Sequence number to resume from, exclusive.
+
+        Yields:
+            :class:`~cortex_agents_client.models.events.SSEEvent` subclass instances.
+
+        Raises:
+            cortex_agents_client.exceptions.RunNotActiveError: If the run
+                finished more than 5 minutes ago.
+        """
+        yield from self.runs.stream_run(run_id, starting_after=starting_after)
+
+    def cancel_run(self, run_id: str) -> RunMetadata:
+        """Cancels an actively running agent run.
+
+        Delegates to
+        :meth:`~cortex_agents_client.resources.runs.RunsResource.cancel_run`.
+
+        Args:
+            run_id: Run identifier, in ``{thread_id}-{user_message_id}`` form.
+
+        Returns:
+            :class:`~cortex_agents_client.models.events.RunMetadata` for the
+            cancelled run.
+
+        Raises:
+            cortex_agents_client.exceptions.RunNotActiveError: If the run has
+                already completed or been cancelled.
+        """
+        return self.runs.cancel_run(run_id)

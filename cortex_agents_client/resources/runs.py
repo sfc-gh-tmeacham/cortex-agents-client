@@ -7,6 +7,7 @@ endpoint, supporting both agent-object and inline (lite) configurations.
 from __future__ import annotations
 
 import logging
+import warnings
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
@@ -20,6 +21,7 @@ from cortex_agents_client.models.events import (
     ErrorEvent,
     MetadataEvent,
     ResponseEvent,
+    RunMetadata,
     SSEEvent,
     SuggestedQueriesEvent,
     TableEvent,
@@ -35,6 +37,8 @@ from cortex_agents_client.models.events import (
 from cortex_agents_client.sse import event_from_sse, parse_sse_stream
 
 logger = logging.getLogger(__name__)
+
+_RUNS_BASE = "/api/v2/cortex/agent/runs"
 
 __all__ = ["RunsResource", "RunResult"]
 
@@ -54,7 +58,9 @@ class RunResult:
         thinking: Agent reasoning text, or ``None`` if not emitted.
         status: Completion status from the response body.
             ``"completed"`` for a normal non-streaming run;
-            ``"cancelled"`` if the run was stopped early.
+            ``"cancelled"`` if the run was stopped early;
+            ``"timed_out"`` if it exceeded its maximum run length;
+            ``"in_progress"`` for a background run that has not finished.
             Empty string when assembled via :meth:`RunsResource.stream_and_collect`.
         tables: List of table events in order of appearance.
         charts: List of chart events in order of appearance.
@@ -65,6 +71,10 @@ class RunResult:
         metadata_events: Both metadata events (user + assistant message IDs).
         error: Fatal error event, or ``None`` if the run succeeded.
         analyst_sql: Maps tool_use_id to generated SQL strings.
+        metadata: Run and message IDs plus token usage, or ``None`` when the
+            response carried no ``metadata`` block. For a background run this
+            is the only source of the ``run_id`` needed by
+            :meth:`RunsResource.stream_run`.
     """
 
     text: str = ""
@@ -80,6 +90,16 @@ class RunResult:
     error: ErrorEvent | None = None
     analyst_sql: dict[str, str] = field(default_factory=dict)
     suggested_queries: list[str] = field(default_factory=list)
+    metadata: RunMetadata | None = None
+
+    @property
+    def run_id(self) -> str | None:
+        """The run ID, or ``None`` if the response carried no metadata.
+
+        Returns:
+            Run ID string in ``{thread_id}-{user_message_id}`` form.
+        """
+        return self.metadata.run_id if self.metadata else None
 
 
 def _parse_non_streaming_response(data: dict[str, Any]) -> RunResult:
@@ -137,6 +157,10 @@ def _parse_non_streaming_response(data: dict[str, Any]) -> RunResult:
             result.warnings.append(WarningEvent._from_payload(w))
 
     result.status = data.get("status", "")
+
+    metadata_raw = data.get("metadata")
+    if isinstance(metadata_raw, dict):
+        result.metadata = RunMetadata._from_dict(metadata_raw)
 
     error_data = data.get("error")
     if error_data and isinstance(error_data, dict):
@@ -243,9 +267,12 @@ class RunsResource:
         parent_message_id: int = 0,
         tool_choice: dict[str, Any] | None = None,
         stream: bool = True,
+        background: bool = False,
         tools: list[dict[str, Any]] | None = None,
         tool_resources: dict[str, Any] | None = None,
         instructions: dict[str, Any] | None = None,
+        orchestration: dict[str, Any] | None = None,
+        models: dict[str, Any] | None = None,
         model: str | None = None,
     ) -> dict[str, Any]:
         """Builds the request body for an agent:run call.
@@ -257,10 +284,16 @@ class RunsResource:
                 turn in a thread.
             tool_choice: Optional tool selection constraint.
             stream: Whether to request streaming SSE response.
+            background: Whether to run asynchronously with a 6-hour timeout.
+                Only emitted when ``True``.
             tools: Inline tool specs for lite runs.
             tool_resources: Inline tool resources for lite runs.
             instructions: Inline instructions for lite runs.
-            model: Inline model name for lite runs.
+            orchestration: Inline orchestration config (budget) for lite runs.
+            models: Inline model config for lite runs, e.g.
+                ``{"orchestration": "claude-4-sonnet"}``.
+            model: Deprecated. Bare orchestration model name, mapped to
+                ``models``. Ignored when ``models`` is also given.
 
         Returns:
             Request body dict.
@@ -274,6 +307,8 @@ class RunsResource:
             body["parent_message_id"] = parent_message_id
         if tool_choice:
             body["tool_choice"] = tool_choice
+        if background:
+            body["background"] = True
         # Inline (lite) config fields
         if tools:
             body["tools"] = tools
@@ -281,9 +316,54 @@ class RunsResource:
             body["tool_resources"] = tool_resources
         if instructions:
             body["instructions"] = instructions
-        if model:
-            body["model"] = model
+        if orchestration:
+            body["orchestration"] = orchestration
+
+        resolved_models = self._resolve_models(models, model)
+        if resolved_models:
+            body["models"] = resolved_models
         return body
+
+    @staticmethod
+    def _resolve_models(
+        models: dict[str, Any] | None,
+        model: str | None,
+    ) -> dict[str, Any] | None:
+        """Resolves the ``models`` request field from both supported inputs.
+
+        The API expects a ``models`` object (``ModelConfig``). The bare
+        ``model`` string is the pre-September-2025 legacy schema and is
+        retained only as a deprecated alias.
+
+        Args:
+            models: Model config dict, used verbatim when provided.
+            model: Deprecated bare orchestration model name.
+
+        Returns:
+            The resolved model config dict, or ``None`` when neither
+            argument was supplied.
+        """
+        if models and model:
+            warnings.warn(
+                "Both 'models' and the deprecated 'model' were given; "
+                "'model' is ignored. Pass only "
+                "models={'orchestration': ...}.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            return models
+        if models:
+            return models
+        if model:
+            warnings.warn(
+                "The 'model' argument is deprecated and reflects the "
+                "pre-September-2025 API schema. Use "
+                "models={'orchestration': 'claude-4-sonnet'} instead.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            return {"orchestration": model}
+        return None
 
     def stream(
         self,
@@ -296,9 +376,12 @@ class RunsResource:
         thread_id: int | None = None,
         parent_message_id: int = 0,
         tool_choice: dict[str, Any] | None = None,
+        background: bool = False,
         tools: list[dict[str, Any]] | None = None,
         tool_resources: dict[str, Any] | None = None,
         instructions: dict[str, Any] | None = None,
+        orchestration: dict[str, Any] | None = None,
+        models: dict[str, Any] | None = None,
         model: str | None = None,
     ) -> Iterator[SSEEvent]:
         """Sends a streaming request to the agent:run endpoint.
@@ -325,10 +408,25 @@ class RunsResource:
             parent_message_id: Parent message ID. Use ``0`` for new threads.
             tool_choice: Tool selection dict, e.g.
                 ``{"type": "required", "name": ["Analyst1"]}``.
+            background: Run asynchronously with a 6-hour timeout instead of
+                the default 15-minute synchronous timeout. Requires
+                ``thread_id``. The run survives a client disconnect and can
+                be resumed with :meth:`stream_run`.
             tools: Inline tool specs for lite (no-agent-object) runs.
             tool_resources: Inline tool resources for lite runs.
             instructions: Inline instructions for lite runs.
-            model: Inline model name for lite runs.
+            orchestration: Inline orchestration config for lite runs, e.g.
+                ``{"budget": {"seconds": 30, "tokens": 16000}}``.
+            models: Inline model config for lite runs, e.g.
+                ``{"orchestration": "claude-4-sonnet"}``.
+            model: Deprecated alias for ``models``. Pass ``models`` instead.
+
+        Note:
+            ``tools``, ``tool_resources``, ``instructions``, ``orchestration``,
+            and ``models`` apply only to lite runs. The API rejects attempts
+            to set them on an agent-object run; change the agent object with
+            :meth:`~cortex_agents_client.resources.agents.AgentsResource.update`
+            instead.
 
         Yields:
             Typed :class:`~cortex_agents_client.models.events.SSEEvent` subclass
@@ -360,9 +458,12 @@ class RunsResource:
             parent_message_id=parent_message_id,
             tool_choice=tool_choice,
             stream=True,
+            background=background,
             tools=tools,
             tool_resources=tool_resources,
             instructions=instructions,
+            orchestration=orchestration,
+            models=models,
             model=model,
         )
 
@@ -382,9 +483,12 @@ class RunsResource:
         thread_id: int | None = None,
         parent_message_id: int = 0,
         tool_choice: dict[str, Any] | None = None,
+        background: bool = False,
         tools: list[dict[str, Any]] | None = None,
         tool_resources: dict[str, Any] | None = None,
         instructions: dict[str, Any] | None = None,
+        orchestration: dict[str, Any] | None = None,
+        models: dict[str, Any] | None = None,
         model: str | None = None,
     ) -> RunResult:
         """Sends a non-streaming request and returns the assembled RunResult.
@@ -405,10 +509,17 @@ class RunsResource:
             thread_id: Thread ID for context persistence.
             parent_message_id: Parent message ID.
             tool_choice: Tool selection constraint dict.
+            background: Run asynchronously with a 6-hour timeout. Requires
+                ``thread_id``. The call returns immediately with
+                ``status="in_progress"`` and a populated ``run_id``; collect
+                the output later with :meth:`stream_run`.
             tools: Inline tool specs for lite runs.
             tool_resources: Inline tool resources for lite runs.
             instructions: Inline instructions for lite runs.
-            model: Inline model name for lite runs.
+            orchestration: Inline orchestration config for lite runs.
+            models: Inline model config for lite runs, e.g.
+                ``{"orchestration": "claude-4-sonnet"}``.
+            model: Deprecated alias for ``models``.
 
         Returns:
             Fully assembled :class:`RunResult`.
@@ -427,9 +538,12 @@ class RunsResource:
             parent_message_id=parent_message_id,
             tool_choice=tool_choice,
             stream=False,
+            background=background,
             tools=tools,
             tool_resources=tool_resources,
             instructions=instructions,
+            orchestration=orchestration,
+            models=models,
             model=model,
         )
 
@@ -444,6 +558,94 @@ class RunsResource:
                 request_id=result.error.request_id,
             )
         return result
+
+    def stream_run(
+        self,
+        run_id: str,
+        *,
+        starting_after: int | None = None,
+    ) -> Iterator[SSEEvent]:
+        """Reconnects to an agent run and streams its output.
+
+        Yields the same typed events as :meth:`stream`. Use this to resume a
+        background run, or to recover from a dropped connection.
+
+        A run's events are available only while it is active and for up to
+        5 minutes after it completes. Past that window, this raises
+        :class:`~cortex_agents_client.exceptions.RunNotActiveError`; retrieve
+        the response from the thread instead (see
+        :meth:`~cortex_agents_client.resources.threads.ThreadsResource.list_messages`).
+
+        Args:
+            run_id: The run identifier, in ``{thread_id}-{user_message_id}``
+                form. Available from :attr:`RunResult.run_id`,
+                :attr:`~cortex_agents_client.models.events.ResponseEvent.run_id`,
+                or :attr:`~cortex_agents_client.models.events.MetadataEvent.run_id`.
+            starting_after: Sequence number to resume from, exclusive. Omit
+                to replay the entire output from the beginning.
+
+        Yields:
+            Typed :class:`~cortex_agents_client.models.events.SSEEvent`
+            subclass instances in the order they are received.
+
+        Raises:
+            cortex_agents_client.exceptions.RunNotActiveError: On HTTP 409 if
+                the run finished more than 5 minutes ago.
+            cortex_agents_client.exceptions.AuthError: On HTTP 401.
+            cortex_agents_client.exceptions.CortexPermissionError: On HTTP 403.
+
+        Example::
+
+            result = client.runs.run(
+                messages=[...], agent_path="DB.SCHEMA.MY_AGENT",
+                thread_id=thread.thread_id, background=True,
+            )
+            for event in client.runs.stream_run(result.run_id):
+                ...
+        """
+        params: dict[str, Any] | None = None
+        if starting_after is not None:
+            params = {"starting_after": starting_after}
+
+        with self._http.stream(
+            "GET",
+            f"{_RUNS_BASE}/{quote(run_id, safe='')}",
+            params=params,
+            resource="run",
+        ) as lines:
+            for event_type, payload in parse_sse_stream(lines):
+                yield event_from_sse(event_type, payload)
+
+    def cancel_run(self, run_id: str) -> RunMetadata:
+        """Cancels an actively running agent run.
+
+        Any partial output produced before cancellation is saved to the
+        thread and billed. When partial output was saved,
+        :attr:`~cortex_agents_client.models.events.RunMetadata.assistant_message_id`
+        is populated and can be used as the ``parent_message_id`` for the
+        next turn.
+
+        Args:
+            run_id: The run identifier, in ``{thread_id}-{user_message_id}``
+                form.
+
+        Returns:
+            :class:`~cortex_agents_client.models.events.RunMetadata` for the
+            cancelled run.
+
+        Raises:
+            cortex_agents_client.exceptions.RunNotActiveError: On HTTP 409 if
+                the run has already completed or been cancelled.
+            cortex_agents_client.exceptions.AuthError: On HTTP 401.
+            cortex_agents_client.exceptions.CortexPermissionError: On HTTP 403.
+        """
+        data = self._http.request(
+            "POST",
+            f"{_RUNS_BASE}/{quote(run_id, safe='')}/cancel",
+            resource="run",
+        )
+        metadata_raw = data.get("metadata") if isinstance(data, dict) else None
+        return RunMetadata._from_dict(metadata_raw or {})
 
     def stream_and_collect(
         self,
@@ -506,6 +708,13 @@ class RunsResource:
                 result.metadata_events.append(event)
             elif isinstance(event, ResponseEvent):
                 result.status = event.status
+                result.metadata = RunMetadata(
+                    run_id=event.run_id,
+                    thread_id=event.thread_id,
+                    user_message_id=event.user_message_id,
+                    assistant_message_id=event.assistant_message_id,
+                    usage=event.usage,
+                )
             elif isinstance(event, ErrorEvent):
                 result.error = event
                 break

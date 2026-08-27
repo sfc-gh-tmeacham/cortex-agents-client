@@ -17,9 +17,10 @@ tests/
 │   └── sse_streams.py           # per-event-type payloads + ALL_EVENT_TYPES + stream_of()
 ├── unit/
 │   ├── test_auth.py             # PATAuth, OAuthAuth, SiSContainerAuth, account_url_from_env, JWTAuth
-│   ├── test_event_factory.py    # 34 tests across 17 SSE event types
+│   ├── test_event_factory.py    # 34 tests across 17 SSE event types + sequence_number capture
 │   ├── test_models.py           # Agent, ThreadMetadata, ThreadMessage, StoredMessage
-│   ├── test_sse_parser.py       # SSE wire-level parsing
+│   ├── test_run_body.py         # agent:run body: models vs deprecated model, orchestration, background
+│   ├── test_sse_parser.py       # SSE wire-level parsing + terminal [DONE] sentinel
 │   └── test_utils.py            # agent path resolution, result_set_to_dataframe, Thread.chat tool_executor
 ├── integration/
 │   ├── conftest.py              # ca_client, pat_auth, http_client, make_sse_response, make_sse_httpx_response
@@ -28,6 +29,7 @@ tests/
 │   └── test_threads.py          # ThreadsResource CRUD + pagination helpers
 ├── streamlit/
 │   ├── test_chatbot.py          # StreamlitChatbot constructor + render dispatch
+│   ├── test_column_config.py    # _markdown_column_config dtype selection (object + StringDtype)
 │   ├── test_render.py           # render_streaming_response + render_stored_message
 │   └── test_session.py          # init_session, reset_thread, get_messages, append_message
 └── live/
@@ -38,6 +40,11 @@ tests/
     ├── test_runs_full.py        # ToolUseEvent, ToolResultEvent, TextAnnotationEvent (Cortex Search agent)
     ├── test_runs_analyst.py     # ToolUseEvent (analyst), AnalystDeltaEvent, TableEvent, result_set_to_dataframe
     ├── test_runs_web.py         # ToolUseEvent (web_search), ToolResultEvent, non-empty text (web agent)
+    ├── test_runs_async.py       # background runs, stream_run reconnect, starting_after, cancel_run + 409, Thread.chat(background), lite models/orchestration, X-Snowflake-Role
+    ├── test_agents.py           # agent CRUD lifecycle, createMode, ifExists, agent- and request-level feedback
+    ├── test_streamlit_live.py   # AppTest against a live agent: render pipeline, history replay, Analyst dataframe
+    ├── apps/
+    │   └── live_chat_app.py     # app script driven by AppTest
     ├── README.md                # setup instructions, env vars, how to run
     └── seed/
         ├── 01_minimal_agent.sql       # LLM-only agent DDL
@@ -48,7 +55,8 @@ tests/
         ├── 06_web_search_agent.sql    # web search agent DDL
         ├── teardown.sql               # DROP all test objects
         ├── teardown.py                # run teardown.sql via snowflake-connector
-        └── cleanup_leaked_threads.py  # sweep origin_application='cac_live' threads
+        ├── cleanup_leaked_threads.py  # sweep origin_application='cac_live' threads
+        └── cleanup_leaked_agents.py   # sweep cac_live_crud_* agents left by a hard kill
 ```
 
 ---
@@ -346,8 +354,12 @@ Items not yet implemented — candidates for future test sprints:
 | HTTP connection errors | `httpx.ConnectError` → `CortexAgentError`; `httpx.TimeoutException` → `CortexTimeoutError`. Requires patching at transport level. |
 | `Thread.chat()` tool_choice body | Verify `tool_choice` dict is sent correctly in the run request body. |
 | `Thread.chat()` permission_decisions body | Verify `permission_decisions` content items are sent in the user message. |
-| `StreamlitChatbot` AppTest integration | Full headless browser-style test via `streamlit.testing.v1.AppTest` for a real render cycle (submit message → assert response appears in chat history). High complexity. |
 | Thread `update` 404 | `threads.update()` on a non-existent thread raises `ThreadNotFoundError`. |
+| Mock-based AppTest for CI | `tests/live/test_streamlit_live.py` covers the render pipeline but needs live credentials. A mock-driven AppTest over `streamlit_demo/mock_thread.py` would give the same structural coverage in CI. |
+
+> `StreamlitChatbot` AppTest integration was previously listed here. It is now implemented in
+> `tests/live/test_streamlit_live.py`. It was worth the complexity: the first run surfaced a
+> real defect in `_markdown_column_config` that no mock-based test could reach.
 
 ---
 

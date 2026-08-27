@@ -50,6 +50,10 @@ __all__ = ["parse_sse_stream", "event_from_sse"]
 
 logger = logging.getLogger(__name__)
 
+# Terminal marker the server sends as the final SSE event of every stream,
+# as `event: done` / `data: [DONE]`. It is not JSON.
+_DONE_SENTINEL = "[DONE]"
+
 # Maps SSE event type strings to their factory functions.
 _EVENT_FACTORIES: dict[str, Any] = {
     "response.text": TextEvent._from_payload,
@@ -83,6 +87,10 @@ def parse_sse_stream(lines: Iterator[str]) -> Iterator[tuple[str, dict[str, Any]
     - A blank line dispatches the accumulated event and resets state.
     - Incomplete events at stream end (no trailing blank line) are discarded.
 
+    The server terminates a stream with ``event: done`` / ``data: [DONE]``.
+    That sentinel is not JSON, so it is treated as end-of-stream and ends
+    iteration rather than being reported as a malformed event.
+
     Args:
         lines: Iterator of raw text lines from the SSE stream. Lines should
             not include trailing newline characters (as returned by
@@ -113,6 +121,9 @@ def parse_sse_stream(lines: Iterator[str]) -> Iterator[tuple[str, dict[str, Any]
             if data_parts:
                 raw_data = "\n".join(data_parts)
                 dispatch_type = event_type or "message"
+                if raw_data.strip() == _DONE_SENTINEL:
+                    # Terminal marker; no further events follow.
+                    return
                 try:
                     payload = json.loads(raw_data)
                 except json.JSONDecodeError:
@@ -164,7 +175,7 @@ def event_from_sse(event_type: str, payload: dict[str, Any]) -> SSEEvent:
         return UnknownEvent(event_type=event_type, raw_payload=payload)
 
     try:
-        return factory(payload)
+        event = factory(payload)
     except (KeyError, TypeError, ValueError) as exc:
         logger.warning(
             "Failed to parse event '%s': %s. Falling back to UnknownEvent.",
@@ -172,3 +183,10 @@ def event_from_sse(event_type: str, payload: dict[str, Any]) -> SSEEvent:
             exc,
         )
         return UnknownEvent(event_type=event_type, raw_payload=payload)
+
+    # Applied centrally: every event type may carry a sequence number, and it
+    # is the cursor value for stream_run(starting_after=...).
+    seq = payload.get("sequence_number")
+    if isinstance(seq, int):
+        event.sequence_number = seq
+    return event

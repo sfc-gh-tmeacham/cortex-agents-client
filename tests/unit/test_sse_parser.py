@@ -137,3 +137,56 @@ def test_data_field_whitespace_stripped():
     ]
     events = list(parse_sse_stream(iter(lines)))
     assert events[0][1]["text"] == "hi"
+
+
+# ---------------------------------------------------------------------------
+# Terminal [DONE] sentinel
+#
+# Verified against the live API: every stream, from both POST agent:run and
+# GET agent/runs/{run_id}, ends with `event: done` / `data: [DONE]`. It is not
+# JSON, so without explicit handling it surfaced as a bogus '_parse_error'
+# event and a WARNING log on every single turn.
+# ---------------------------------------------------------------------------
+
+
+def test_done_sentinel_does_not_yield_an_event():
+    """The terminal [DONE] marker is consumed, not reported as an event."""
+    lines = [
+        "event: response.text",
+        "data: {\"content_index\": 0, \"text\": \"hi\"}",
+        "",
+        "event: done",
+        "data: [DONE]",
+        "",
+    ]
+    events = list(parse_sse_stream(iter(lines)))
+    assert len(events) == 1, f"Expected only the text event, got {events}"
+    assert events[0][0] == "response.text"
+
+
+def test_done_sentinel_ends_iteration():
+    """Nothing after [DONE] is parsed, since the stream is over."""
+    lines = [
+        "event: done",
+        "data: [DONE]",
+        "",
+        "event: response.text",
+        "data: {\"content_index\": 0, \"text\": \"late\"}",
+        "",
+    ]
+    assert list(parse_sse_stream(iter(lines))) == []
+
+
+def test_done_sentinel_without_event_name():
+    """A bare [DONE] data line terminates even with no event: line."""
+    lines = ["data: [DONE]", ""]
+    assert list(parse_sse_stream(iter(lines))) == []
+
+
+def test_malformed_json_still_yields_parse_error():
+    """Genuine malformed JSON is still reported — [DONE] is the only exception."""
+    lines = ["event: response.text", "data: {not json", ""]
+    events = list(parse_sse_stream(iter(lines)))
+    assert len(events) == 1
+    assert events[0][0] == "_parse_error"
+

@@ -7,7 +7,8 @@ import httpx
 import pytest
 from pytest_httpx import HTTPXMock
 
-from cortex_agents_client.exceptions import AuthError, RunError
+from cortex_agents_client.client import Thread
+from cortex_agents_client.exceptions import AuthError, RunError, RunNotActiveError
 from cortex_agents_client.models.events import (
     ErrorEvent,
     MetadataEvent,
@@ -489,3 +490,242 @@ class TestNonStreamingToolParsing:
         assert len(result.warnings) == 1
         assert result.warnings[0].message == "MCP server unavailable"
         assert result.warnings[0].code == "003001"
+
+
+class TestBackgroundRun:
+    """Tests for asynchronous (background) agent runs."""
+
+    def test_background_run_sends_flag_in_body(self, ca_client, httpx_mock: HTTPXMock):
+        """background=True reaches the request body, not just the signature."""
+        httpx_mock.add_response(json={"role": "assistant", "content": [], "status": "in_progress"})
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        ca_client.runs.run(
+            messages, agent_path="DB.SC.AGENT", thread_id=1234, background=True
+        )
+        body = json.loads(httpx_mock.get_request().content)
+        assert body["background"] is True
+        assert body["stream"] is False
+        assert body["thread_id"] == 1234
+
+    def test_background_run_returns_in_progress_and_run_id(
+        self, ca_client, httpx_mock: HTTPXMock
+    ):
+        """An in_progress response exposes the run_id needed to reconnect."""
+        httpx_mock.add_response(
+            json={
+                "role": "assistant",
+                "content": [],
+                "status": "in_progress",
+                "metadata": {
+                    "run_id": "4264-83472",
+                    "thread_id": 4264,
+                    "user_message_id": 83472,
+                },
+            }
+        )
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        result = ca_client.runs.run(
+            messages, agent_path="DB.SC.AGENT", thread_id=4264, background=True
+        )
+        assert result.status == "in_progress"
+        assert result.run_id == "4264-83472"
+        assert result.metadata is not None
+        assert result.metadata.thread_id == 4264
+        assert result.metadata.user_message_id == 83472
+
+    def test_non_streaming_run_parses_usage_metadata(
+        self, ca_client, httpx_mock: HTTPXMock
+    ):
+        """Token usage in the metadata block is parsed for a completed run."""
+        httpx_mock.add_response(
+            json={
+                "role": "assistant",
+                "content": [{"type": "text", "text": "42"}],
+                "status": "completed",
+                "metadata": {
+                    "run_id": "1-2",
+                    "assistant_message_id": 3,
+                    "usage": {
+                        "tokens_consumed": [
+                            {
+                                "model_name": "claude-4-sonnet",
+                                "input_tokens": {"total": 175},
+                                "output_tokens": {"total": 75},
+                                "context_window": 128000,
+                            }
+                        ]
+                    },
+                },
+            }
+        )
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        result = ca_client.runs.run(messages, agent_path="DB.SC.AGENT")
+        assert result.metadata.assistant_message_id == 3
+        assert len(result.metadata.usage) == 1
+        assert result.metadata.usage[0].model_name == "claude-4-sonnet"
+        assert result.metadata.usage[0].input_tokens.total == 175
+        assert result.metadata.usage[0].context_window == 128000
+
+    def test_run_without_metadata_leaves_run_id_none(
+        self, ca_client, httpx_mock: HTTPXMock
+    ):
+        """A response with no metadata block does not fabricate a run_id."""
+        httpx_mock.add_response(
+            json={"role": "assistant", "content": [], "status": "completed"}
+        )
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        result = ca_client.runs.run(messages, agent_path="DB.SC.AGENT")
+        assert result.metadata is None
+        assert result.run_id is None
+
+
+class TestStreamRun:
+    """Tests for reconnecting to an existing run (Stream Agent Run)."""
+
+    def test_stream_run_uses_get_on_run_path(self, ca_client, httpx_mock: HTTPXMock):
+        """Reconnect issues GET against /api/v2/cortex/agent/runs/{run_id}."""
+        httpx_mock.add_response(content=sse_response([("response.text", TEXT_PAYLOAD)]).content)
+        list(ca_client.runs.stream_run("4264-83472"))
+        request = httpx_mock.get_request()
+        assert request.method == "GET"
+        assert request.url.path == "/api/v2/cortex/agent/runs/4264-83472"
+        assert request.headers["Accept"] == "text/event-stream"
+
+    def test_stream_run_omits_starting_after_by_default(
+        self, ca_client, httpx_mock: HTTPXMock
+    ):
+        """Without starting_after, the whole output is replayed."""
+        httpx_mock.add_response(content=sse_response([("response.text", TEXT_PAYLOAD)]).content)
+        list(ca_client.runs.stream_run("4264-83472"))
+        assert "starting_after" not in httpx_mock.get_request().url.query.decode()
+
+    def test_stream_run_sends_starting_after(self, ca_client, httpx_mock: HTTPXMock):
+        """starting_after is passed as a query parameter."""
+        httpx_mock.add_response(content=sse_response([("response.text", TEXT_PAYLOAD)]).content)
+        list(ca_client.runs.stream_run("4264-83472", starting_after=12))
+        assert httpx_mock.get_request().url.params["starting_after"] == "12"
+
+    def test_stream_run_yields_typed_events(self, ca_client, httpx_mock: HTTPXMock):
+        """Reconnected events are parsed with the same factory as agent:run."""
+        httpx_mock.add_response(content=sse_response(ALL_EVENT_TYPES).content)
+        events = list(ca_client.runs.stream_run("4264-83472"))
+        assert len(events) == 17
+
+    def test_stream_run_409_raises_run_not_active(self, ca_client, httpx_mock: HTTPXMock):
+        """A run finished more than 5 minutes ago raises RunNotActiveError."""
+        httpx_mock.add_response(status_code=409, json={"message": "run completed"})
+        with pytest.raises(RunNotActiveError):
+            list(ca_client.runs.stream_run("4264-83472"))
+
+    def test_stream_run_via_client_facade(self, ca_client, httpx_mock: HTTPXMock):
+        """The facade delegate hits the same endpoint."""
+        httpx_mock.add_response(content=sse_response([("response.text", TEXT_PAYLOAD)]).content)
+        events = list(ca_client.stream_run("4264-83472"))
+        assert len(events) == 1
+        assert httpx_mock.get_request().url.path == "/api/v2/cortex/agent/runs/4264-83472"
+
+
+class TestCancelRun:
+    """Tests for cancelling an active run."""
+
+    def test_cancel_run_posts_to_cancel_path(self, ca_client, httpx_mock: HTTPXMock):
+        """Cancel issues POST against the run's /cancel sub-path."""
+        httpx_mock.add_response(json={"metadata": {"run_id": "4264-83472"}})
+        ca_client.runs.cancel_run("4264-83472")
+        request = httpx_mock.get_request()
+        assert request.method == "POST"
+        assert request.url.path == "/api/v2/cortex/agent/runs/4264-83472/cancel"
+
+    def test_cancel_run_returns_metadata(self, ca_client, httpx_mock: HTTPXMock):
+        """Partial output yields an assistant_message_id for the next turn."""
+        httpx_mock.add_response(
+            json={
+                "metadata": {
+                    "run_id": "4264-83472",
+                    "thread_id": 4264,
+                    "user_message_id": 83472,
+                    "assistant_message_id": 83473,
+                    "usage": {
+                        "tokens_consumed": [
+                            {"model_name": "claude-4-sonnet", "output_tokens": {"total": 75}}
+                        ]
+                    },
+                }
+            }
+        )
+        metadata = ca_client.runs.cancel_run("4264-83472")
+        assert metadata.run_id == "4264-83472"
+        assert metadata.assistant_message_id == 83473
+        assert metadata.usage[0].output_tokens.total == 75
+
+    def test_cancel_run_without_partial_output(self, ca_client, httpx_mock: HTTPXMock):
+        """No saved partial output leaves assistant_message_id unset."""
+        httpx_mock.add_response(json={"metadata": {"run_id": "4264-83472", "thread_id": 4264}})
+        metadata = ca_client.runs.cancel_run("4264-83472")
+        assert metadata.assistant_message_id is None
+
+    def test_cancel_run_409_raises_run_not_active(self, ca_client, httpx_mock: HTTPXMock):
+        """Cancelling an already-finished run raises RunNotActiveError."""
+        httpx_mock.add_response(status_code=409, json={"message": "already completed"})
+        with pytest.raises(RunNotActiveError):
+            ca_client.runs.cancel_run("4264-83472")
+
+    def test_cancel_run_via_client_facade(self, ca_client, httpx_mock: HTTPXMock):
+        """The facade delegate returns the same metadata."""
+        httpx_mock.add_response(json={"metadata": {"run_id": "4264-83472"}})
+        assert ca_client.cancel_run("4264-83472").run_id == "4264-83472"
+
+
+class TestLiteRunConfig:
+    """Tests the inline (lite) config fields reach the request body."""
+
+    def test_models_object_sent_not_bare_model(self, ca_client, httpx_mock: HTTPXMock):
+        """The wire format is a models object, per the current API schema."""
+        httpx_mock.add_response(json={"role": "assistant", "content": [], "status": "completed"})
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        ca_client.runs.run(messages, models={"orchestration": "claude-4-sonnet"})
+        body = json.loads(httpx_mock.get_request().content)
+        assert body["models"] == {"orchestration": "claude-4-sonnet"}
+        assert "model" not in body
+
+    def test_lite_run_uses_cortex_agent_run_path(self, ca_client, httpx_mock: HTTPXMock):
+        """With no agent_path, the lite endpoint is used."""
+        httpx_mock.add_response(json={"role": "assistant", "content": [], "status": "completed"})
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        ca_client.runs.run(messages, models={"orchestration": "claude-4-sonnet"})
+        assert httpx_mock.get_request().url.path == "/api/v2/cortex/agent:run"
+
+    def test_orchestration_budget_sent(self, ca_client, httpx_mock: HTTPXMock):
+        """The orchestration budget reaches the request body."""
+        httpx_mock.add_response(json={"role": "assistant", "content": [], "status": "completed"})
+        messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
+        ca_client.runs.run(
+            messages, orchestration={"budget": {"seconds": 30, "tokens": 16000}}
+        )
+        body = json.loads(httpx_mock.get_request().content)
+        assert body["orchestration"] == {"budget": {"seconds": 30, "tokens": 16000}}
+
+
+class TestThreadBackgroundChat:
+    """Tests that Thread.chat forwards the background flag."""
+
+    def test_chat_background_reaches_body(self, ca_client, httpx_mock: HTTPXMock):
+        """Thread.chat(background=True) sets background on the run request."""
+        httpx_mock.add_response(
+            content=sse_response([("metadata", METADATA_ASSISTANT_PAYLOAD)]).content
+        )
+        thread = Thread(ca_client, thread_id=4264)
+        list(thread.chat("DB.SC.AGENT", "Hi", background=True))
+        body = json.loads(httpx_mock.get_request().content)
+        assert body["background"] is True
+        assert body["thread_id"] == 4264
+
+    def test_chat_default_omits_background(self, ca_client, httpx_mock: HTTPXMock):
+        """The default synchronous path sends no background field."""
+        httpx_mock.add_response(
+            content=sse_response([("metadata", METADATA_ASSISTANT_PAYLOAD)]).content
+        )
+        thread = Thread(ca_client, thread_id=4264)
+        list(thread.chat("DB.SC.AGENT", "Hi"))
+        assert "background" not in json.loads(httpx_mock.get_request().content)
+

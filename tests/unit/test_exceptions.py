@@ -6,12 +6,14 @@ import pytest
 from cortex_agents_client.exceptions import (
     AgentNotFoundError,
     AuthError,
+    ConflictError,
     CortexAgentError,
     CortexPermissionError,
     CortexTimeoutError,
     NotFoundError,
     RateLimitError,
     RunError,
+    RunNotActiveError,
     ServerError,
     ThreadNotFoundError,
 )
@@ -31,6 +33,17 @@ class TestExceptionHierarchy:
         exc = ThreadNotFoundError("thread missing")
         assert isinstance(exc, NotFoundError)
         assert isinstance(exc, CortexAgentError)
+
+    def test_run_not_active_is_conflict_error(self):
+        """RunNotActiveError is catchable as ConflictError."""
+        exc = RunNotActiveError("run finished")
+        assert isinstance(exc, ConflictError)
+        assert isinstance(exc, CortexAgentError)
+
+    def test_conflict_error_is_not_a_not_found_error(self):
+        """409 and 404 hierarchies stay distinct."""
+        exc = ConflictError("conflict")
+        assert not isinstance(exc, NotFoundError)
 
     def test_cortex_permission_error_is_cortex_agent_error(self):
         """CortexPermissionError is catchable as CortexAgentError."""

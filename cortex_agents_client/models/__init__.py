@@ -15,6 +15,7 @@ from cortex_agents_client.models.events import (
     ChartEvent,
     ErrorEvent,
     MetadataEvent,
+    RunMetadata,
     SSEEvent,
     StatusEvent,
     SuggestedQueriesEvent,
@@ -65,6 +66,7 @@ __all__ = [
     "WarningEvent",
     "ErrorEvent",
     "MetadataEvent",
+    "RunMetadata",
     "UnknownEvent",
     # Thread models
     "ThreadMetadata",

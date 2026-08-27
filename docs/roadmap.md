@@ -161,10 +161,17 @@ items. Only the upload + wiring step is missing.
 
 #### Current state
 
-Once a user submits a prompt, the streaming response runs to completion with no way to
-interrupt it. `render_streaming_response` loops synchronously on the main Streamlit
-thread. There is no stop button, no cancellation token, and no running-state flag in
-session state.
+Server-side cancellation now exists in the library: `client.cancel_run(run_id)` calls
+`POST /api/v2/cortex/agent/runs/{run_id}/cancel`, which stops the run and saves any partial
+output to the thread. That is verified live.
+
+What is still missing is the **Streamlit UX**. Once a user submits a prompt,
+`render_streaming_response` loops synchronously on the main Streamlit thread. There is no
+stop button and no running-state flag in session state, so the user has no way to trigger the
+cancel that the API now supports.
+
+The `run_id` needed for the call is available during streaming from any
+`MetadataEvent.run_id`, so no additional plumbing is required to obtain it.
 
 #### Why it's non-trivial
 
@@ -184,6 +191,10 @@ Split streaming into two responsibilities separated by a `queue.Queue`:
 2. **Main Streamlit thread** — reads from the queue and performs all `st.*` UI calls.
    Renders a "Stop" button that sets the stop flag.
 
+The stop handler should also call `client.cancel_run(run_id)`. Closing the HTTP connection
+only stops the client reading; without the cancel the run keeps executing server-side and is
+still billed.
+
 To make the Stop button interactive *during* streaming (Streamlit only processes clicks
 on a full rerun), wrap the streaming UI in `@st.fragment` so the fragment can rerun
 independently while the background thread drains the HTTP connection.
@@ -192,6 +203,8 @@ independently while the background thread drains the HTTP connection.
 
 - All `st.*` / `container.*` calls must stay on the main thread.
 - `events_iter.close()` must be called explicitly — not left to GC.
+- Closing the connection is not cancellation; call `cancel_run` as well or the run continues
+  to completion and is billed.
 - `render_streaming_response` would need to be refactored into a pure-IO drainer and a
   pure-UI renderer with a queue between them.
 - `st.fragment` is needed to make the Stop button interactive during streaming.

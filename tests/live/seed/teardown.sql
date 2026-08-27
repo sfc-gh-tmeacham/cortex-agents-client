@@ -12,6 +12,11 @@ DROP AGENT IF EXISTS cac_live_db.cac_live_schema.cac_live_analyst_agent;
 DROP AGENT IF EXISTS cac_live_db.cac_live_schema.cac_live_full_agent;
 DROP AGENT IF EXISTS cac_live_db.cac_live_schema.cac_live_minimal_agent;
 
+-- Disposable agents created by test_agents.py. Those tests drop their own
+-- agent in a fixture finally block; this is only a backstop for a run that
+-- was killed hard. Names are cac_live_crud_<uuid8>, so they cannot be listed
+-- statically -- see cleanup_leaked_agents.py to sweep them by prefix.
+
 -- Cortex Search service
 DROP CORTEX SEARCH SERVICE IF EXISTS cac_live_db.cac_live_schema.cac_live_doc_search;
 

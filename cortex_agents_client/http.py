@@ -17,12 +17,14 @@ from cortex_agents_client.auth import AuthProvider
 from cortex_agents_client.exceptions import (
     AgentNotFoundError,
     AuthError,
+    ConflictError,
     CortexAgentError,
     CortexConnectionError,
     CortexPermissionError,
     CortexTimeoutError,
     NotFoundError,
     RateLimitError,
+    RunNotActiveError,
     ServerError,
     ThreadNotFoundError,
 )
@@ -43,6 +45,8 @@ def _raise_for_status(response: httpx.Response, *, resource: str = "resource") -
         AgentNotFoundError: On HTTP 404 when resource is ``"agent"``.
         ThreadNotFoundError: On HTTP 404 when resource is ``"thread"``.
         NotFoundError: On HTTP 404 for other resource types.
+        RunNotActiveError: On HTTP 409 when resource is ``"run"``.
+        ConflictError: On HTTP 409 for other resource types.
         RateLimitError: On HTTP 429.
         ServerError: On HTTP 5xx.
         CortexAgentError: On any other non-2xx status.
@@ -72,6 +76,12 @@ def _raise_for_status(response: httpx.Response, *, resource: str = "resource") -
         if resource == "thread":
             raise ThreadNotFoundError(f"Thread not found: {message}", **kwargs)
         raise NotFoundError(f"Not found: {message}", **kwargs)
+    if response.status_code == 409:
+        if resource == "run":
+            raise RunNotActiveError(
+                f"Run is no longer active: {message}", **kwargs
+            )
+        raise ConflictError(f"Conflict: {message}", **kwargs)
     if response.status_code == 429:
         raise RateLimitError(f"Rate limit exceeded: {message}", **kwargs)
     if response.status_code >= 500:
@@ -99,6 +109,9 @@ class HttpClient:
             Controls the maximum silence between data chunks in an SSE
             stream. Connect, write, and pool timeouts use shorter fixed
             defaults.
+        role: Optional Snowflake role to run requests under, sent as the
+            ``X-Snowflake-Role`` header. Without it, requests run under the
+            user's default role.
 
     Example::
 
@@ -114,6 +127,7 @@ class HttpClient:
         base_url: str,
         auth: AuthProvider,
         timeout: float = 120.0,
+        role: str | None = None,
     ) -> None:
         """Initialises the HTTP client.
 
@@ -125,10 +139,14 @@ class HttpClient:
                 timeout phases use shorter defaults (connect=10s, write=30s,
                 pool=5s). Pass a higher value for agents with known long
                 processing times.
+            role: Optional Snowflake role for the ``X-Snowflake-Role``
+                header. Note that Cortex Agents derives tool permissions
+                from the user's default role regardless of this header.
         """
         self._base_url = base_url.rstrip("/")
         self._auth = auth
         self._timeout = timeout
+        self._role = role
         self._timeout_config = httpx.Timeout(
             connect=10.0,
             read=timeout,
@@ -159,6 +177,8 @@ class HttpClient:
             "Accept": "application/json",
             **self._auth.headers(),
         }
+        if self._role:
+            headers["X-Snowflake-Role"] = self._role
         if extra:
             headers.update(extra)
         return headers
@@ -182,6 +202,7 @@ class HttpClient:
         params: dict[str, Any] | None = None,
         json: Any = None,
         resource: str = "resource",
+        headers: dict[str, str] | None = None,
     ) -> Any:
         """Performs a synchronous HTTP request and returns the parsed JSON body.
 
@@ -191,7 +212,8 @@ class HttpClient:
             params: Optional query string parameters.
             json: Optional request body, serialised as JSON.
             resource: Resource type used to choose the right 404 exception
-                (``"agent"``, ``"thread"``, or ``"resource"``).
+                (``"agent"``, ``"thread"``, ``"run"``, or ``"resource"``).
+            headers: Optional extra headers, merged over the auth headers.
 
         Returns:
             Parsed JSON response body (dict, list, or primitive).
@@ -202,6 +224,8 @@ class HttpClient:
             AgentNotFoundError: On HTTP 404 for agents.
             ThreadNotFoundError: On HTTP 404 for threads.
             NotFoundError: On HTTP 404 for other resource types.
+            RunNotActiveError: On HTTP 409 for runs.
+            ConflictError: On HTTP 409 for other resource types.
             RateLimitError: On HTTP 429.
             ServerError: On HTTP 5xx.
             CortexTimeoutError: On request timeout.
@@ -211,7 +235,7 @@ class HttpClient:
             response = self._client.request(
                 method,
                 self._url(path),
-                headers=self._build_headers(),
+                headers=self._build_headers(headers),
                 params=params,
                 json=json,
             )
@@ -235,6 +259,8 @@ class HttpClient:
         *,
         params: dict[str, Any] | None = None,
         json: Any = None,
+        resource: str = "resource",
+        headers: dict[str, str] | None = None,
     ) -> Generator[Iterator[str], None, None]:
         """Context manager that opens a streaming SSE connection.
 
@@ -242,10 +268,15 @@ class HttpClient:
         The connection is kept open until the context exits.
 
         Args:
-            method: HTTP method (typically ``"POST"``).
+            method: HTTP method (``"POST"`` for ``agent:run``, ``"GET"`` for
+                reconnecting to an existing run).
             path: API path for the streaming endpoint.
             params: Optional query string parameters.
             json: Optional request body, serialised as JSON.
+            resource: Resource type used to choose the right 404/409
+                exception (``"agent"``, ``"thread"``, ``"run"``, or
+                ``"resource"``).
+            headers: Optional extra headers, merged over the auth headers.
 
         Yields:
             An iterator of raw line strings from the SSE stream.
@@ -253,6 +284,7 @@ class HttpClient:
         Raises:
             AuthError: On HTTP 401.
             CortexPermissionError: On HTTP 403.
+            RunNotActiveError: On HTTP 409 when ``resource`` is ``"run"``.
             CortexTimeoutError: On request timeout.
             CortexAgentError: On connection or other HTTP errors.
 
@@ -262,18 +294,20 @@ class HttpClient:
                 for event_type, payload in parse_sse_stream(lines):
                     ...
         """
-        headers = self._build_headers({"Accept": "text/event-stream"})
+        stream_headers = {"Accept": "text/event-stream"}
+        if headers:
+            stream_headers.update(headers)
         try:
             with self._client.stream(
                 method,
                 self._url(path),
-                headers=headers,
+                headers=self._build_headers(stream_headers),
                 params=params,
                 json=json,
             ) as response:
                 if not response.is_success:
                     response.read()
-                _raise_for_status(response)
+                _raise_for_status(response, resource=resource)
                 yield response.iter_lines()
         except httpx.TimeoutException as exc:
             raise CortexTimeoutError(f"Stream timed out after {self._timeout}s") from exc

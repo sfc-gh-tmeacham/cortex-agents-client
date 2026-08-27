@@ -12,6 +12,37 @@ data: <json_payload>
 
 Unknown event types are passed through as `UnknownEvent` and never raise an error. This ensures forward-compatibility as Snowflake adds new tools and event types.
 
+## Fields present on every event
+
+### `sequence_number`
+
+Each event carries a `sequence_number` giving its position in the run's output. It is the
+cursor value consumed by the Stream Agent Run endpoint:
+
+```python
+for event in client.stream_run(run_id, starting_after=42):
+    ...
+```
+
+The library exposes it as `SSEEvent.sequence_number` on every event type, or `None` when the
+server omits it. Without it, `starting_after` cannot be used with a known position.
+
+## Terminal marker (`event: done`)
+
+Every stream — from both `agent:run` and `GET agent/runs/{run_id}` — ends with a marker whose
+data is **not JSON**:
+
+```
+event: done
+data: [DONE]
+
+```
+
+This is not documented in the public API reference; it was found by live testing. A parser
+that assumes every `data:` line is JSON reports it as a malformed event. `parse_sse_stream`
+treats it as end-of-stream, so it never reaches the caller and is not counted among the 17
+event types below.
+
 ---
 
 ## 1. `response.text`
