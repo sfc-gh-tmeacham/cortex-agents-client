@@ -1090,7 +1090,7 @@ cortex_agents_client/
 ├── resources/
 │   ├── agents.py     AgentsResource (CRUD + feedback)
 │   ├── threads.py    ThreadsResource (CRUD + pagination + compaction)
-│   └── runs.py       RunsResource (stream, run, stream_and_collect)
+│   └── runs.py       RunsResource (stream, run, stream_run, cancel_run, stream_and_collect)
 └── st/
     ├── session.py    init_session(), sis_init_session(), reset_thread(), get_messages()
     ├── render.py     render_streaming_response(), render_stored_message(), result_set_to_dataframe(), escape_dollars()

@@ -1,9 +1,10 @@
 # Test Plan
 
 Living document describing the test suite for `cortex_agents_client`.
-All test names and file paths reflect the actual code on disk.
+Test names and file paths are kept in sync with the code on disk; if you find a
+discrepancy, the code is authoritative.
 
-**Current totals:** 239 passing, 1 skipped (JWT-missing-cryptography path skipped when `cryptography` is installed).
+**Current totals:** 339 passing, 1 skipped (JWT-missing-cryptography path skipped when `cryptography` is installed), excluding the `live` suite, which requires credentials.
 
 ---
 
@@ -17,7 +18,9 @@ tests/
 │   └── sse_streams.py           # per-event-type payloads + ALL_EVENT_TYPES + stream_of()
 ├── unit/
 │   ├── test_auth.py             # PATAuth, OAuthAuth, SiSContainerAuth, account_url_from_env, JWTAuth
-│   ├── test_event_factory.py    # 34 tests across 17 SSE event types + sequence_number capture
+│   ├── test_event_factory.py    # 40 tests across 17 SSE event types + sequence_number capture
+│   ├── test_exceptions.py       # exception hierarchy, incl. ConflictError / RunNotActiveError (409)
+│   ├── test_http.py             # status-code → exception mapping (incl. 409), headers, X-Snowflake-Role
 │   ├── test_models.py           # Agent, ThreadMetadata, ThreadMessage, StoredMessage
 │   ├── test_run_body.py         # agent:run body: models vs deprecated model, orchestration, background
 │   ├── test_sse_parser.py       # SSE wire-level parsing + terminal [DONE] sentinel
@@ -38,13 +41,14 @@ tests/
     ├── test_threads.py          # create, get, list, delete, fork, latest_context
     ├── test_runs.py             # streaming events, ResponseEvent, multi-turn, non-streaming run (minimal agent)
     ├── test_runs_full.py        # ToolUseEvent, ToolResultEvent, TextAnnotationEvent (Cortex Search agent)
-    ├── test_runs_analyst.py     # ToolUseEvent (analyst), AnalystDeltaEvent, TableEvent, result_set_to_dataframe
+    ├── test_runs_analyst.py     # ToolUseEvent (system_execute_sql), SQL via ToolUseEvent.input, verified query
     ├── test_runs_web.py         # ToolUseEvent (web_search), ToolResultEvent, non-empty text (web agent)
     ├── test_runs_async.py       # background runs, stream_run reconnect, starting_after, cancel_run + 409, Thread.chat(background), lite models/orchestration, X-Snowflake-Role
     ├── test_agents.py           # agent CRUD lifecycle, createMode, ifExists, agent- and request-level feedback
     ├── test_streamlit_live.py   # AppTest against a live agent: render pipeline, history replay, Analyst dataframe
     ├── apps/
     │   └── live_chat_app.py     # app script driven by AppTest
+    ├── captures/                # recorded live SSE payloads, for offline inspection
     ├── README.md                # setup instructions, env vars, how to run
     └── seed/
         ├── 01_minimal_agent.sql       # LLM-only agent DDL
@@ -155,8 +159,28 @@ One test per SSE event type, verifying that `event_from_sse(event_type, payload)
 
 | Class | Tests |
 |---|---|
-| `TestExceptionHierarchy` | `test_agent_not_found_is_not_found_error`, `test_thread_not_found_is_not_found_error`, `test_cortex_permission_error_is_cortex_agent_error`, `test_cortex_timeout_error_is_cortex_agent_error`, `test_auth_error_is_cortex_agent_error`, `test_rate_limit_error_is_cortex_agent_error`, `test_server_error_is_cortex_agent_error`, `test_run_error_is_cortex_agent_error`, `test_not_found_catchall_catches_agent_variant`, `test_not_found_catchall_catches_thread_variant` |
+| `TestExceptionHierarchy` | `test_agent_not_found_is_not_found_error`, `test_thread_not_found_is_not_found_error`, `test_run_not_active_is_conflict_error`, `test_conflict_error_is_not_a_not_found_error`, `test_cortex_permission_error_is_cortex_agent_error`, `test_cortex_timeout_error_is_cortex_agent_error`, `test_auth_error_is_cortex_agent_error`, `test_rate_limit_error_is_cortex_agent_error`, `test_server_error_is_cortex_agent_error`, `test_run_error_is_cortex_agent_error`, `test_not_found_catchall_catches_agent_variant`, `test_not_found_catchall_catches_thread_variant` |
 | `TestDeprecatedAliases` | `test_permission_error_alias_emits_deprecation_warning`, `test_timeout_error_alias_emits_deprecation_warning` |
+
+---
+
+### `tests/unit/test_http.py`
+
+Tests for the transport layer (`SnowflakeHttpClient`):
+
+| Class | What it verifies |
+|---|---|
+| `TestHeaderAssembly` | Auth and `Content-Type` headers on `request`; `Accept: text/event-stream` on `stream`; `X-Snowflake-Role` absent by default, sent when `role` is configured, sent on streams too; per-call headers override the role and merge with auth; per-call `Accept` override |
+| `TestErrorMapping` | `test_status_code_raises_correct_exception` is parametrized over the full status/resource matrix, including **409 → `RunNotActiveError`** for `resource='run'` and **409 → `ConflictError`** otherwise; `test_error_preserves_status_code` |
+| `TestJsonParseFallback` | Non-JSON error body falls back to raw text; empty body reports the status code |
+| `TestConnectionErrors` | Timeout → `CortexTimeoutError`; connect failure → `CortexConnectionError`; generic transport error → `CortexAgentError` |
+| `TestSuccessResponses` | JSON parsed; `204` → `None`; empty body → `None` |
+| `TestClose` | `close()` does not raise and is idempotent |
+| `TestUrlConstruction` | URL joined from base and path; trailing slash stripped from base |
+| `TestConnectionPooling` | No keep-alive connections (streaming correctness) |
+| `TestTimeoutConfiguration` | Default and custom read timeouts; read timeout mid-stream → `CortexTimeoutError` |
+
+This file holds the only unit-level proof of the 409 mapping.
 
 ---
 
@@ -178,6 +202,10 @@ Tests for the wire-level SSE parser (`parse_sse_stream`):
 | `test_missing_event_line_uses_message_default` | No `event:` line → type defaults to `"message"` |
 | `test_event_without_data_not_dispatched` | Event line with no `data:` is not dispatched |
 | `test_data_field_whitespace_stripped` | Leading space in `data: value` is stripped |
+| `test_done_sentinel_does_not_yield_an_event` | `data: [DONE]` is swallowed rather than surfaced as `_parse_error` |
+| `test_done_sentinel_ends_iteration` | Nothing after the `[DONE]` frame is yielded |
+| `test_done_sentinel_without_event_name` | `[DONE]` is recognised even with no preceding `event:` line |
+| `test_malformed_json_still_yields_parse_error` | The `[DONE]` special case does not mask genuine JSON errors |
 
 ---
 
@@ -262,6 +290,8 @@ Fixtures (defined in `tests/integration/conftest.py`):
 | `TestStreamAndCollectFallback` | `test_text_delta_fallback_when_no_text_event`, `test_thinking_delta_fallback_when_no_thinking_event`, `test_summary_event_takes_precedence_over_deltas` |
 | `TestNonStreamingThinking` | `test_run_with_thinking_content_in_response` |
 | `TestNonStreamingToolParsing` | `test_run_parses_tool_use_and_tool_result`, `test_run_parses_top_level_warnings` |
+| `TestStreamRun` | `test_stream_run_uses_get_on_run_path`, `test_stream_run_omits_starting_after_by_default`, `test_stream_run_sends_starting_after`, `test_stream_run_yields_typed_events`, `test_stream_run_409_raises_run_not_active`, `test_stream_run_via_client_facade` |
+| `TestCancelRun` | `test_cancel_run_posts_to_cancel_path`, `test_cancel_run_returns_metadata`, `test_cancel_run_without_partial_output`, `test_cancel_run_409_raises_run_not_active`, `test_cancel_run_via_client_facade` |
 
 ---
 
@@ -378,6 +408,11 @@ See [`tests/live/README.md`](../tests/live/README.md) for setup instructions.
 | `LIVE_AGENT_FULL` | `test_runs_full.py` | Fully-qualified path to the Cortex Search agent |
 | `LIVE_AGENT_ANALYST` | `test_runs_analyst.py` | Fully-qualified path to the Cortex Analyst agent |
 | `LIVE_AGENT_WEB` | `test_runs_web.py` | Fully-qualified path to the web search agent (requires account-level web search enabled) |
+| `LIVE_APPTEST_AGENT` | `test_streamlit_live.py` | Overrides the agent used by `apps/live_chat_app.py`; falls back to `LIVE_AGENT_MINIMAL` |
+| `LIVE_SKIP_TEARDOWN` | Optional | Set to `1` to skip teardown. **Teardown drops `CAC_LIVE_DB`**, so set this unless you intend that |
+| `LIVE_TIMEOUT` | Optional | Client read timeout in seconds (default 120; `test_streamlit_live.py` defaults to 180) |
+| `LIVE_SLOW` | Optional | Set to `1` to run the ~6-minute run-expiry test in `test_runs_async.py`, which is otherwise skipped |
+| `LIVE_DUMP_EVENTS` | Optional | Set to `1` to always write captured SSE events to `captures/<test_name>.json`, not just on failure |
 
 ### `tests/live/test_auth.py`
 
@@ -426,18 +461,64 @@ See [`tests/live/README.md`](../tests/live/README.md) for setup instructions.
 | `test_response_event_completed` | Final `ResponseEvent(status='completed')` |
 | `test_text_is_non_empty` | Assembled text from deltas is non-empty |
 
+---
+
+### `tests/live/test_runs_async.py` (async run lifecycle)
+
+Covers the v0.2.0 async surface. Requires `LIVE_AGENT_MINIMAL`.
+
+| Class | Tests | What it verifies |
+|---|---|---|
+| `TestBackgroundRun` | `test_background_run_returns_usable_run_id`, `test_background_run_status_is_recognised` | `background=True` returns a `run_id` of the form `{thread_id}-{user_message_id}` |
+| `TestThreadChatBackground` | `test_background_chat_yields_text_and_advances_parent`, `test_background_chat_supports_a_second_turn` | `Thread.chat(background=True)` still yields text and advances the parent message id across turns |
+| `TestStreamRun` | `test_stream_run_yields_the_answer`, `test_starting_after_truncates_the_replay`, `test_events_expose_sequence_number_for_the_cursor`, `test_events_are_typed_not_unknown` | Reconnecting with `stream_run` replays the run; `starting_after` truncates the replay; every event carries `sequence_number`; no event degrades to `UnknownEvent` (the `[DONE]` regression guard) |
+| `TestCancelRun` | `test_cancel_active_run_returns_metadata`, `test_cancel_finished_run_raises_run_not_active` | `cancel_run` returns `RunMetadata`; cancelling a finished run raises `RunNotActiveError` (409) |
+| `TestLiteRunModelConfig` | `test_lite_run_with_models_object`, `test_models_orchestration_is_read_by_the_server`, `test_lite_run_with_orchestration_budget`, `test_deprecated_model_alias_still_reaches_server` | The server parses `models.orchestration` — proved by an invalid model name being echoed back in the error |
+| `TestRoleHeader` | `test_valid_role_succeeds`, `test_nonexistent_role_is_rejected` | `X-Snowflake-Role` is honoured end to end |
+| `TestRunExpiryWindow` | `test_stream_run_after_window` | **`xfail`** — gated behind `LIVE_SLOW=1`. The documented 5-minute expiry window was **not** enforced on the test account: the run remained streamable at 5.5 minutes. Do not rely on a 409 here. See `docs/api_spec.md`. |
+
+---
+
+### `tests/live/test_agents.py` (agent object CRUD)
+
+| Class | Tests | What it verifies |
+|---|---|---|
+| `TestAgentLifecycle` | `test_create_then_get`, `test_update_changes_the_spec`, `test_list_finds_the_agent_with_like_filter`, `test_delete_removes_the_agent` | Full create/get/update/list/delete round trip |
+| `TestCreateMode` | `test_create_twice_raises_by_default`, `test_or_replace_succeeds_on_existing` | `createMode` semantics |
+| `TestDeleteIfExists` | `test_delete_missing_with_if_exists_succeeds`, `test_delete_missing_without_if_exists_raises` | `ifExists` on delete |
+| `TestFeedback` | `test_agent_level_feedback_accepted`, `test_request_level_feedback_accepted` | Both `:feedback` forms are accepted |
+
+Agents created here are named with a `cac_live` prefix; `seed/cleanup_leaked_agents.py` sweeps any left behind by an interrupted run.
+
+---
+
+### `tests/live/test_streamlit_live.py` (AppTest against a live agent)
+
+Drives `apps/live_chat_app.py` through `streamlit.testing.v1.AppTest`. Honours `LIVE_APPTEST_AGENT`; `LIVE_TIMEOUT` defaults to 180 here.
+
+| Class | Tests | What it verifies |
+|---|---|---|
+| `TestAppLoads` | `test_initial_render_succeeds`, `test_chat_input_is_present` | App renders without exception and exposes a chat input |
+| `TestLiveTurn` | `test_turn_renders_assistant_text`, `test_turn_renders_no_parse_error_text`, `test_second_turn_replays_history` | A real turn renders assistant text; **no `_parse_error` leaks into the UI** (the `[DONE]` regression guard at the render layer); history replays on the second turn |
+| `TestAnalystTableRendering` | `test_analyst_turn_renders_dataframe` | An Analyst turn renders a non-empty dataframe — this is the test that surfaced the pandas `StringDtype` column-config defect |
+
 ### `tests/live/test_runs_analyst.py` (Cortex Analyst agent)
 
 | Test | Description |
 |---|---|
-| `test_tool_use_event_is_emitted` | `ToolUseEvent` with `type='cortex_analyst_text_to_sql'` is yielded |
+| `test_tool_use_event_is_emitted` | At least one `ToolUseEvent` whose `type` is in `{'system_execute_sql', 'system_agentic_semantic_context'}` |
 | `test_tool_result_event_follows_tool_use` | Every `tool_use_id` has a matching `ToolResultEvent` |
-| `test_analyst_delta_event_contains_sql` | `AnalystDeltaEvent` with non-empty SQL referencing `REVENUE` or `SALES` |
-| `test_table_event_is_emitted` | At least one `TableEvent` with query results |
-| `test_table_event_has_rows` | `TableEvent.result_set` contains ≥ 1 row |
-| `test_table_event_result_set_to_dataframe` | `result_set_to_dataframe()` returns a non-empty DataFrame |
+| `test_system_execute_sql_contains_sql` | A `system_execute_sql` `ToolUseEvent` carries non-empty `input['sql']` referencing `REVENUE` or `SALES` |
+| `test_verified_query_used` | At least one `system_execute_sql` event sets `input['verified_query_used']` |
 | `test_response_event_completed` | Final `ResponseEvent(status='completed')` |
 | `test_text_is_non_empty` | Assembled text from deltas is non-empty |
+
+> **Note on tool types.** Agentic Cortex Analyst (Apr 2026+) emits
+> `system_execute_sql` / `system_agentic_semantic_context` as the *runtime event*
+> type, and the generated SQL arrives on `ToolUseEvent.input['sql']` — there is no
+> `AnalystDeltaEvent` in this flow. The `cortex_analyst_text_to_sql` string that
+> still appears in `seed/05_analyst_agent.sql` is the *agent-definition* tool type,
+> which is a separate namespace. See `docs/api_spec.md`.
 
 ### `tests/live/test_runs_web.py` (web search agent)
 

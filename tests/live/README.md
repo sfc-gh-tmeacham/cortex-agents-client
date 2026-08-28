@@ -167,7 +167,7 @@ SNOWFLAKE_ACCOUNT_URL="https://..." SNOWFLAKE_PAT="v2:..." \
 | `test_threads.py` | minimal | Create, get, list, delete, fork, latest_context |
 | `test_runs.py` | minimal | Streaming events, ResponseEvent status, TextEvent, MetadataEvent, token usage, non-streaming run, multi-turn |
 | `test_runs_full.py` | full (Cortex Search) | ToolUseEvent, ToolResultEvent, TextAnnotationEvent, citation doc_id/title |
-| `test_runs_analyst.py` | analyst (Cortex Analyst) | ToolUseEvent (cortex_analyst_text_to_sql), AnalystDeltaEvent (SQL), TableEvent (result set), result_set_to_dataframe |
+| `test_runs_analyst.py` | analyst (Cortex Analyst) | ToolUseEvent (`system_execute_sql`, `system_agentic_semantic_context`), SQL via `ToolUseEvent.input["sql"]`, `verified_query_used`, non-empty text |
 | `test_runs_web.py` | web (web_search) | ToolUseEvent (web_search), ToolResultEvent status, non-empty text response |
 | `test_runs_async.py` | minimal | Background runs, `stream_run` reconnect, `starting_after` cursor, `sequence_number`, `cancel_run` plus its 409, `Thread.chat(background=True)`, lite-run `models` object, `orchestration` budget, `X-Snowflake-Role` (including a negative case), and the 5-minute expiry window (`LIVE_SLOW=1`) |
 | `test_streamlit_live.py` | minimal, analyst | Drives `apps/live_chat_app.py` with `streamlit.testing.v1.AppTest` against a real agent: initial render, a full turn, absence of internal artefacts in the output, second-turn history replay, and dataframe rendering for an Analyst answer |

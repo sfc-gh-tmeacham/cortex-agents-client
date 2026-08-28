@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Documentation
+
+- Corrected the Cortex Analyst live-test documentation in `docs/test_plan.md` and
+  `tests/live/README.md`. It cited a `test_analyst_delta_event_contains_sql` test and three
+  `test_table_event_*` tests that do not exist, and named the runtime tool type as
+  `cortex_analyst_text_to_sql` rather than `system_execute_sql` /
+  `system_agentic_semantic_context`. Added a note distinguishing the runtime event type from
+  the agent-definition tool type, which legitimately still uses the older string.
+- Documented the previously missing test surface in `docs/test_plan.md`: `tests/unit/test_http.py`
+  (including the 409 mapping matrix), `tests/unit/test_exceptions.py`, the `[DONE]` sentinel
+  tests, the integration `TestStreamRun` / `TestCancelRun` classes, and the three live files
+  `test_runs_async.py`, `test_agents.py`, `test_streamlit_live.py`. Added the four undocumented
+  live environment variables plus `LIVE_DUMP_EVENTS`.
+- Corrected stale test totals (239 → 339) in `docs/test_plan.md` and `COCO.md`, and removed the
+  unqualified accuracy claim in the `docs/test_plan.md` header.
+- Fixed `COCO.md`, which described the pre-0.2.0 `select_dtypes(include="object")` column
+  selection as current behaviour, and added `ConflictError`, `RunNotActiveError` and
+  `CortexConnectionError` to its `exceptions.py` inventory. Added `stream_run` / `cancel_run`
+  to the `RunsResource` descriptions in `COCO.md` and `README.md`.
+
 ## [0.2.0] — 2026-08-27
 
 ### Added

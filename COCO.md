@@ -12,18 +12,18 @@ cortex_agents_client/
 ├── auth.py            # PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, AuthProvider, account_url_from_env
 ├── client.py          # CortexAgentsClient, Thread (primary entry points)
 ├── exceptions.py      # CortexAgentError, AuthError, CortexPermissionError, CortexTimeoutError,
-│                      # NotFoundError, AgentNotFoundError, ThreadNotFoundError,
-│                      # RateLimitError, ServerError, RunError;
+│                      # CortexConnectionError, NotFoundError, AgentNotFoundError, ThreadNotFoundError,
+│                      # ConflictError, RunNotActiveError, RateLimitError, ServerError, RunError;
 │                      # deprecated aliases: PermissionError, TimeoutError
-├── http.py            # HttpClient (httpx-based, auth header injection)
+├── http.py            # HttpClient (httpx-based, auth header injection, optional X-Snowflake-Role)
 ├── sse.py             # SSE stream parser, event_from_sse() factory
 ├── models/
 │   ├── agent.py      # Agent, Tool, ToolSpec, AgentProfile, AgentInstructions, BudgetConfig
-│   ├── events.py      # 18 typed SSE event dataclasses (17 API types + UnknownEvent)
+│   ├── events.py      # 18 typed SSE event dataclasses (17 API types + UnknownEvent), RunMetadata
 │   └── thread.py      # StoredMessage, ThreadDetail, ThreadMessage, ThreadMetadata
 ├── resources/
 │   ├── agents.py      # AgentsResource (CRUD for agent objects)
-│   ├── runs.py        # RunsResource — agent:run endpoint, streaming + non-streaming
+│   ├── runs.py        # RunsResource — agent:run, plus run stream (GET) and cancel (POST) endpoints
 │   └── threads.py     # ThreadsResource (thread CRUD)
 └── st/
     ├── chatbot.py     # StreamlitChatbot — drop-in full-page or embedded chat component
@@ -57,7 +57,7 @@ Required for:
 - `st.chat_input` in any container (embedded mode, replaces old `st.form` workaround)
 - `accept_file` / `accept_audio` params on `st.chat_input`
 - `key` param on `st.chat_input` (needed for embedded mode placement)
-- `st.column_config.MarkdownColumn` — applied to all `object`-dtype columns in Analyst result dataframes
+- `st.column_config.MarkdownColumn` — applied to all text columns in Analyst result dataframes, selected via `is_object_dtype(...) or is_string_dtype(...)` so that pandas `StringDtype` columns are included (a bare `select_dtypes(include="object")` misses them and emits a `Pandas4Warning`)
 
 ---
 
@@ -121,6 +121,25 @@ the top position naturally.
 
 ## Recent feature additions
 
+### Async run lifecycle (v0.2.0)
+`runs.run(..., background=True)` submits a run that is not held open by the request
+(6 hour server-side budget, versus ~15 minutes for a foreground run). Reattach with
+`client.stream_run(run_id, starting_after=N)` and stop it with
+`client.cancel_run(run_id)`, which returns `RunMetadata`. `run_id` has the form
+`{thread_id}-{user_message_id}` and is exposed as `RunResult.run_id`. Every event
+carries `sequence_number`, which is the cursor for `starting_after`. A 409 maps to
+`RunNotActiveError` (a `ConflictError`). Note that the documented 5-minute expiry
+window was **not** enforced in live testing — see `docs/api_spec.md`.
+
+### `models` / ModelConfig (v0.2.0)
+`agent:run` takes `models={"orchestration": ...}`. The bare `model="..."` string is
+the pre-September-2025 schema and is deprecated — it is still translated, but emits a
+`DeprecationWarning`.
+
+### `X-Snowflake-Role` (v0.2.0)
+`CortexAgentsClient(role=...)` sets the header per request. Note that Cortex Agents
+derives *tool* permissions from the user's **default** role, not this header.
+
 ### `system_execute_sql` (Apr 2026 API change)
 Cortex Analyst now emits `ToolUseEvent` with `type="system_execute_sql"` instead of
 `cortex_analyst_text_to_sql`. SQL is in `event.input["sql"]`. `AnalystDeltaEvent` is
@@ -173,7 +192,7 @@ uv run pytest tests/ -m "not live" -v
 ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run streamlit_demo/app.py
 ```
 
-Tests: 239 passing, 1 skipped (`tests/` tree below):
+Tests: 339 passing, 1 skipped, excluding the credentialed `live` suite (`tests/` tree below):
 ```
 tests/
 ├── unit/          # core client, auth, SSE parsing, event models
