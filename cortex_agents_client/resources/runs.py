@@ -575,6 +575,9 @@ class RunsResource:
         :class:`~cortex_agents_client.exceptions.RunNotActiveError`; retrieve
         the response from the thread instead (see
         :meth:`~cortex_agents_client.resources.threads.ThreadsResource.list_messages`).
+        Note that the 5-minute window is the documented contract and was not
+        enforced in live testing, so treat it as a lower bound rather than a
+        guarantee that the run has become unavailable.
 
         Args:
             run_id: The run identifier, in ``{thread_id}-{user_message_id}``

@@ -495,4 +495,11 @@ data: {"metadata": {"role": "assistant", "message_id": 456, "run_id": "run_001"}
 
 event: response
 data: {"role": "assistant", "content": [...], "status": "completed", "metadata": {"usage": [...], "run_id": "run_001"}}
+
+event: done
+data: [DONE]
 ```
+
+The trailing `done` / `[DONE]` frame terminates every stream. It is consumed by
+`parse_sse_stream` and never reaches the caller, so `ResponseEvent` is the last event a
+consumer observes.

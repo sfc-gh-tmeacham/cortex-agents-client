@@ -159,6 +159,11 @@ items. Only the upload + wiring step is missing.
 
 ### Cancel in-progress streaming request
 
+**Status: not implemented.** The core-client half is done and verified live; the Streamlit
+UX is not, and a plan to build it was written and then deliberately abandoned. The
+obstacles below are the reason, and they are recorded so the next attempt does not
+rediscover them.
+
 #### Current state
 
 Server-side cancellation now exists in the library: `client.cancel_run(run_id)` calls
@@ -179,7 +184,84 @@ Streamlit is not thread-safe — all `st.*` / `container.*` calls must remain on
 main thread. The `render_streaming_response` loop makes UI calls on every event, so
 it cannot simply be moved to a background thread.
 
+The deeper problem is that Streamlit's execution model gives a synchronous script no
+way to observe a click. Widget interactions are only processed on a rerun, but the
+script is blocked inside the streaming loop for the whole duration of the response —
+precisely the window in which the user wants to press Stop. So a Stop button is not an
+additive change to the render loop; it requires inverting that loop's control flow.
+Every viable design therefore has to introduce concurrency (a queue plus a background
+drainer) or move the cancel trigger outside the script run entirely.
+
+Consequences that make this more than a refactor:
+
+- `render_streaming_response` is public API. Splitting it into an IO drainer and a UI
+  renderer changes its internal contract, and it is exercised by both `StreamlitChatbot`
+  render paths plus the AppTest suite.
+- The drainer thread has no `ScriptRunContext`, so any accidental `st.*` call inside it
+  fails at runtime rather than at import time — an easy defect to introduce and a hard
+  one to catch without live AppTest coverage.
+- `@st.fragment` reruns interact with session-state mutation ordering; partial output must
+  be committed to `StoredMessage` history in a way that survives a mid-stream rerun.
+- Cancellation is two operations that can each fail independently (close the connection,
+  then `cancel_run`). A partial failure silently leaves a billed run executing server-side.
+
+#### Alternatives considered
+
+**Custom HTTP route via `st.App` (Streamlit ≥1.57).** `st.App` exposes a Starlette ASGI
+app, so a `/cancel` route could call `cancel_run` outside the script run, sidestepping the
+rerun problem entirely. Verified in the installed Streamlit source: `streamlit run`
+*does* support this — `_main_run` calls `discover_asgi_app()` and, on finding a
+module-level `st.App`/`FastAPI`/`Starlette` assignment via AST analysis, serves it under
+uvicorn instead of `bootstrap.run()`. Also verified that `ScriptRunner.start` runs scripts
+on a separate thread, so the ASGI event loop stays responsive during a script run.
+
+Why it is not currently a path forward:
+
+- **Warehouse runtime: ruled out.** It pins Streamlit ≤1.52.2; `st.App` landed in 1.57.
+- **Container runtime: unverified.** It permits any Streamlit ≥1.50, so the version is
+  attainable, but whether Snowflake's launcher performs ASGI discovery is undocumented
+  and has not been tested. Do not assume either way without deploying a probe.
+- **CSP.** Even where the route is served, driving it from the browser needs an inline
+  `fetch()`, which the documented SiS Content-Security-Policy blocks. This constraint is
+  independent of the two above and applies to every runtime.
+
+**Background runs (`background=True`) as the transport.** Submitting the run detached and
+reattaching with `stream_run(starting_after=N)` makes the run survive a rerun, which is
+appealing: Stop could then be an ordinary button on a normal rerun. Not pursued yet, but
+this is the most promising direction, since it needs no threads and no ASGI route. The open
+question is reattach latency per rerun and how to render smoothly across the cursor.
+
 #### Proposed approach
+
+Split streaming into two responsibilities separated by a `queue.Queue`:
+
+1. **Background thread** — drains the raw SSE iterator (`thread.chat(...)`) and puts
+   events onto the queue. Checks a `threading.Event` stop flag on each iteration;
+   calls `events_iter.close()` when set to synchronously abort the underlying `httpx`
+   TCP connection (leaving this to GC is not guaranteed to be immediate).
+
+2. **Main Streamlit thread** — reads from the queue and performs all `st.*` UI calls.
+   Renders a "Stop" button that sets the stop flag.
+
+The stop handler should also call `client.cancel_run(run_id)`. Closing the HTTP connection
+only stops the client reading; without the cancel the run keeps executing server-side and is
+still billed.
+
+To make the Stop button interactive *during* streaming (Streamlit only processes clicks
+on a full rerun), wrap the streaming UI in `@st.fragment` so the fragment can rerun
+independently while the background thread drains the HTTP connection.
+
+#### Key constraints
+
+- All `st.*` / `container.*` calls must stay on the main thread.
+- `events_iter.close()` must be called explicitly — not left to GC.
+- Closing the connection is not cancellation; call `cancel_run` as well or the run continues
+  to completion and is billed.
+- `render_streaming_response` would need to be refactored into a pure-IO drainer and a
+  pure-UI renderer with a queue between them.
+- `st.fragment` is needed to make the Stop button interactive during streaming.
+- The drainer thread has no `ScriptRunContext`; it must contain no `st.*` calls.
+- SiS CSP blocks inline `fetch()`, so no browser-driven custom-route design will work there.
 
 Split streaming into two responsibilities separated by a `queue.Queue`:
 

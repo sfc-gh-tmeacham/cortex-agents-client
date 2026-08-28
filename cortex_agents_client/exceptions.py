@@ -107,6 +107,12 @@ class RunNotActiveError(ConflictError):
     :meth:`~cortex_agents_client.resources.runs.RunsResource.stream_run` and
     :meth:`~cortex_agents_client.resources.runs.RunsResource.cancel_run`
     raise this error. Retrieve the full response from the thread instead.
+
+    .. note::
+       The 5-minute figure is the documented contract, not observed behaviour.
+       In live testing a completed run was still streamable well past it, so
+       treat the window as a lower bound on availability and do not rely on
+       this error being raised promptly. See ``docs/api_spec.md``.
     """
 
 

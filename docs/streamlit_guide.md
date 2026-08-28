@@ -131,6 +131,18 @@ Both `render_streaming_response` and `render_stored_message` accept an optional 
 
 `StreamlitChatbot` passes `key_prefix` automatically using the pattern `{css_prefix}-{msg_index}` where `css_prefix` is derived from `session_key_prefix` (leading underscore stripped). Manual integration users can pass `key_prefix` explicitly for custom CSS targeting.
 
+### Known limitation: no stop button
+
+The `st` layer consumes the event stream synchronously, so there is no way for a user to
+stop a response once it has started. The core client supports cancellation —
+`background=True`, `stream_run()` and `cancel_run()` are all available and verified live —
+but none of it is wired into `render_streaming_response` or `StreamlitChatbot`.
+
+This is a genuine design obstacle rather than a missing feature: Streamlit only processes
+widget clicks on a rerun, and the script is blocked inside the streaming loop for exactly
+the period in which the user would press Stop. See the "Cancel in-progress streaming
+request" section of `docs/roadmap.md` for the attempted designs and why each was set aside.
+
 ---
 
 ## Minimal Streamlit app

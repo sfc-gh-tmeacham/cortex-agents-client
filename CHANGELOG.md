@@ -5,29 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Documentation
-
-- Corrected the Cortex Analyst live-test documentation in `docs/test_plan.md` and
-  `tests/live/README.md`. It cited a `test_analyst_delta_event_contains_sql` test and three
-  `test_table_event_*` tests that do not exist, and named the runtime tool type as
-  `cortex_analyst_text_to_sql` rather than `system_execute_sql` /
-  `system_agentic_semantic_context`. Added a note distinguishing the runtime event type from
-  the agent-definition tool type, which legitimately still uses the older string.
-- Documented the previously missing test surface in `docs/test_plan.md`: `tests/unit/test_http.py`
-  (including the 409 mapping matrix), `tests/unit/test_exceptions.py`, the `[DONE]` sentinel
-  tests, the integration `TestStreamRun` / `TestCancelRun` classes, and the three live files
-  `test_runs_async.py`, `test_agents.py`, `test_streamlit_live.py`. Added the four undocumented
-  live environment variables plus `LIVE_DUMP_EVENTS`.
-- Corrected stale test totals (239 → 339) in `docs/test_plan.md` and `COCO.md`, and removed the
-  unqualified accuracy claim in the `docs/test_plan.md` header.
-- Fixed `COCO.md`, which described the pre-0.2.0 `select_dtypes(include="object")` column
-  selection as current behaviour, and added `ConflictError`, `RunNotActiveError` and
-  `CortexConnectionError` to its `exceptions.py` inventory. Added `stream_run` / `cancel_run`
-  to the `RunsResource` descriptions in `COCO.md` and `README.md`.
-
-## [0.2.0] — 2026-08-27
+## [0.2.0] — 2026-08-28
 
 ### Added
 
@@ -75,6 +53,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `model=` argument on `runs.run()` and `runs.stream()`. Pass
   `models={"orchestration": "claude-4-sonnet"}` instead. `model=` still works, maps into
   `models`, and emits a `DeprecationWarning`.
+
+### Documentation
+
+- Corrected the Cortex Analyst live-test documentation in `docs/test_plan.md` and
+  `tests/live/README.md`. It cited a `test_analyst_delta_event_contains_sql` test and three
+  `test_table_event_*` tests that do not exist, and named the runtime tool type as
+  `cortex_analyst_text_to_sql` rather than `system_execute_sql` /
+  `system_agentic_semantic_context`. Added a note distinguishing the runtime event type from
+  the agent-definition tool type, which legitimately still uses the older string.
+- Documented the previously missing test surface in `docs/test_plan.md`: `tests/unit/test_http.py`
+  (including the 409 mapping matrix), `tests/unit/test_exceptions.py`, the `[DONE]` sentinel
+  tests, the integration `TestStreamRun` / `TestCancelRun` classes, and the three live files
+  `test_runs_async.py`, `test_agents.py`, `test_streamlit_live.py`. Added the four undocumented
+  live environment variables plus `LIVE_DUMP_EVENTS`.
+- Corrected stale test totals (239 → 339) in `docs/test_plan.md` and `COCO.md`, and removed the
+  unqualified accuracy claim in the `docs/test_plan.md` header.
+- Fixed `COCO.md`, which described the pre-fix `select_dtypes(include="object")` column
+  selection as current behaviour, and added `ConflictError`, `RunNotActiveError` and
+  `CortexConnectionError` to its `exceptions.py` inventory. Added `stream_run` / `cancel_run`
+  to the `RunsResource` descriptions in `COCO.md` and `README.md`.
+- Expanded the "Cancel in-progress streaming request" roadmap item with the obstacles that
+  caused the Streamlit stop-button work to be set aside, and recorded two alternatives: a
+  custom route via `st.App` (`streamlit run` does support ASGI discovery, but the warehouse
+  runtime is too old, container-runtime support is unverified, and SiS CSP blocks the inline
+  `fetch()` it needs) and background runs as the transport.
+- Added a "no stop button" limitation section to `docs/streamlit_guide.md`, noting that
+  cancellation exists in the core client but is not wired into the `st` layer.
+- Added the terminal `event: done` / `data: [DONE]` frame to the streaming example in
+  `docs/event_types.md`, which previously ended at `event: response` despite the document
+  stating elsewhere that every stream ends with that frame.
+- Noted in the `RunNotActiveError` and `stream_run` docstrings that the documented 5-minute run
+  expiry window was not enforced in live testing and should be treated as a lower bound.
 
 ## [0.1.0] — 2025-06-01
 
