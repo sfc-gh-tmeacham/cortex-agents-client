@@ -429,7 +429,7 @@ class TestRoleHeader:
 class TestRunExpiryWindow:
     """The documented 5-minute post-completion window for stream_run.
 
-    Observed on va_demo99 (August 2026): a completed run was **still
+    Observed on a test account (August 2026): a completed run was **still
     streamable 5.5 minutes** after finishing, so the documented window was not
     enforced. The retention period is server-controlled and evidently longer
     or measured differently in practice.

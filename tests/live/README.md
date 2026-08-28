@@ -56,7 +56,7 @@ is populated.
 
 | Variable | Required for | Description |
 |---|---|---|
-| `SNOWFLAKE_ACCOUNT_URL` | All tests | `https://myorg-myaccount.snowflakecomputing.com`. **If your account identifier contains an underscore, use the regional URL instead** (e.g. `https://hha81106.us-east-1.snowflakecomputing.com`). An underscore is not a valid DNS label, so `httpx` rejects the certificate with `CERTIFICATE_VERIFY_FAILED: Hostname mismatch`. `curl` is more lenient, so a working `curl` does not prove the URL works for the client. |
+| `SNOWFLAKE_ACCOUNT_URL` | All tests | `https://myorg-myaccount.snowflakecomputing.com`. **If your account identifier contains an underscore, use the regional URL instead** — the form `https://<account-locator>.<region>.snowflakecomputing.com`, e.g. `https://ab12345.us-east-1.snowflakecomputing.com`. An underscore is not a valid DNS label, so `httpx` rejects the certificate with `CERTIFICATE_VERIFY_FAILED: Hostname mismatch`. `curl` is more lenient, so a working `curl` does not prove the URL works for the client. Find your locator with `SELECT CURRENT_ACCOUNT()` and your region with `SELECT CURRENT_REGION()`. |
 | `SNOWFLAKE_PAT` | All tests | PAT token for `app_owner_role` |
 | `LIVE_AGENT_MINIMAL` | All tests | Fully-qualified path to the minimal agent, e.g. `cac_live_db.cac_live_schema.minimal_agent` |
 | `LIVE_AGENT_FULL` | `test_runs_full.py` only | Fully-qualified path to the Cortex Search agent. Tests in that file are automatically skipped if this variable is absent. |

@@ -348,7 +348,7 @@ exposes it as `SSEEvent.sequence_number` on every event type.
 A run's events are accessible while it is active and for up to **5 minutes** after it completes.
 Connecting after that returns `409 Conflict`; retrieve the full response from the thread instead.
 
-> Observed on va_demo99 in August 2026: a completed run was still streamable 5.5 minutes after
+> Observed on a test account in August 2026: a completed run was still streamable 5.5 minutes after
 > finishing, so this window was not enforced. Treat the 5 minutes as a lower bound on
 > availability, not as a guarantee that the run has expired. Do not rely on a 409 to detect
 > that a run is finished — check the run's terminal `response` event or read the thread.
