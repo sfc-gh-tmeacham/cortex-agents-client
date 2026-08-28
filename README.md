@@ -291,6 +291,10 @@ cursor value for `client.stream_run(run_id, starting_after=...)`. It is `None` i
 omits it. The stream's terminal `[DONE]` marker is consumed by the parser and never reaches
 your loop.
 
+The 18 classes above are the complete set. For the wire format behind each one — the raw
+`event:` / `data:` frames and the `event_type` strings that `UnknownEvent.event_type` reports
+for tools this version does not yet model — see [docs/event_types.md](docs/event_types.md).
+
 ### Non-streaming run
 
 ```python

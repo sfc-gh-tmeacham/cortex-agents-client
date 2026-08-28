@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] — 2026-08-28
+
+### Documentation
+
+- `README.md` now points to `docs/event_types.md` from the end of the "Handling all event
+  types" section, and states explicitly that the 18 classes listed there are the complete set.
+  The README documents the Python classes but not the wire `event_type` strings, and it
+  previously contained no link to the reference that does — so a reader matching a raw SSE
+  frame to a class, or inspecting `UnknownEvent.event_type`, had no signpost. Verified that
+  the README example imports and branches on all 17 registered event classes plus
+  `UnknownEvent`, and that `docs/event_types.md` covers all 17 wire types.
+
 ## [0.2.0] — 2026-08-28
 
 ### Added
