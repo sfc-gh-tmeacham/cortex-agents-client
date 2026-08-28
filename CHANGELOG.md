@@ -29,6 +29,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ConflictError` and `RunNotActiveError` for HTTP 409. `RunNotActiveError` is raised when a
   run is streamed or cancelled outside its 5-minute post-completion window.
 
+### Changed
+
+- Live tests are now deselected by default: `addopts` in `pyproject.toml` is
+  `"--tb=short -m 'not live'"`. Previously `testpaths = ["tests"]` collected the live suite,
+  so a bare `pytest` run by a developer who happened to have the live env vars set would
+  silently reach the network and spend credits. A bare run now behaves identically whether or
+  not credentials are present. Select live tests explicitly with `-m live`, which overrides
+  the default; individual tests still skip when their own env vars are absent.
+
 ### Fixed
 
 - Lite runs sent a bare top-level `"model"` string, which is the pre-September-2025 API schema.

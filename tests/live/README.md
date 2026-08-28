@@ -1,7 +1,9 @@
 # Live Integration Tests
 
 End-to-end tests that run against a real Snowflake account. They are gated behind
-`@pytest.mark.live` and skipped by default in CI.
+`@pytest.mark.live` and **deselected by default** — `pyproject.toml` sets
+`addopts = "--tb=short -m 'not live'"`, so a bare `pytest` never reaches the network or
+spends credits, even if your live env vars are set. Select them explicitly with `-m live`.
 
 ---
 
@@ -128,6 +130,7 @@ LIVE_AGENT_WEB="cac_live_db.cac_live_schema.web_agent" \
 To run all tests *except* live:
 
 ```bash
+# The -m filter is now the default, so a bare `pytest` is equivalent
 uv run pytest tests/ -m "not live" -v
 ```
 

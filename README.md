@@ -1054,7 +1054,8 @@ uv run pytest tests/integration/ -v
 # Streamlit render tests (mocked Streamlit context)
 uv run pytest tests/streamlit/ -v
 
-# All tests except live
+# All tests except live — this is the default, so a bare `uv run pytest` is equivalent.
+# Live tests are deselected via addopts so a bare run never hits the network.
 uv run pytest tests/ -m "not live" -v
 
 # Coverage report

@@ -44,7 +44,10 @@ testpaths = ["tests"]
 markers = [
     "live: requires real Snowflake credentials (deselect with -m 'not live')",
 ]
-addopts = "--tb=short"
+# Live tests are excluded by default so that a bare `pytest` never reaches the
+# network or spends credits, even for a developer who has the live env vars set.
+# Select them explicitly with `-m live`, which overrides this default.
+addopts = "--tb=short -m 'not live'"
 
 [tool.coverage.run]
 source = ["cortex_agents_client"]
