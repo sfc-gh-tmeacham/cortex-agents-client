@@ -273,3 +273,19 @@ class TestTimeoutConfiguration:
             with client.stream("POST", "/api/v2/test", json={}) as lines:
                 list(lines)
         client.close()
+
+
+class TestNonObjectJsonErrorBody:
+    """A JSON error body that is not an object must still raise a typed error."""
+
+    @pytest.mark.parametrize("payload", ['"boom"', "[1, 2]", "42", "null"])
+    def test_non_object_json_body_raises_server_error(
+        self, http_client, httpx_mock: HTTPXMock, payload
+    ):
+        httpx_mock.add_response(
+            status_code=500,
+            content=payload.encode(),
+            headers={"Content-Type": "application/json"},
+        )
+        with pytest.raises(ServerError, match=r"HTTP 500|boom|\[1, 2\]|42|null"):
+            http_client.request("GET", "/api/v2/test")

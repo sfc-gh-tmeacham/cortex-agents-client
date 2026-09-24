@@ -241,6 +241,43 @@ class TestToolExecutor:
         assert "ToolResultEvent" in event_types
         assert "TextEvent" in event_types
 
+    def test_tool_loop_follow_up_sends_only_tool_result(self):
+        """The follow-up request carries only the tool_result, not the original text or attachments."""
+        from cortex_agents_client.models.events import MetadataEvent, ToolUseEvent
+
+        thread, client = self._make_thread()
+        executor = MagicMock(return_value=[{"type": "text", "text": "42"}])
+        tool_event = ToolUseEvent._from_payload({
+            "content_index": 0,
+            "tool_use_id": "toolu_client",
+            "type": "generic",
+            "name": "MyUDF",
+            "input": {},
+            "client_side_execute": True,
+        })
+        meta = MetadataEvent._from_payload(
+            {"metadata": {"role": "assistant", "message_id": 99, "run_id": "r1"}}
+        )
+        streams = iter([iter([tool_event]), iter([meta])])
+        client.runs.stream.side_effect = lambda *a, **kw: next(streams)
+        attachment = {"type": "image", "image": {"url": "x"}}
+
+        list(thread.chat(
+            "DB.SC.AGENT", "Hello", tool_executor=executor, extra_content=[attachment]
+        ))
+
+        first = client.runs.stream.call_args_list[0].args[0][0]["content"]
+        second = client.runs.stream.call_args_list[1].args[0][0]["content"]
+        assert first == [{"type": "text", "text": "Hello"}, attachment]
+        assert second == [{
+            "type": "tool_result",
+            "tool_result": {
+                "tool_use_id": "toolu_client",
+                "content": [{"type": "text", "text": "42"}],
+                "status": "success",
+            },
+        }]
+
     def test_tool_executor_exception_yields_error_result(self):
         """If tool_executor raises, a 'error' status ToolResultEvent is yielded."""
         from cortex_agents_client.models.events import (

@@ -556,3 +556,52 @@ class TestRenderStoredMessage:
             if c.kwargs.get("unsafe_allow_html")
         ]
         assert len(html_calls) == 0
+
+
+class TestAuditRegressions:
+    """Regression tests for defects found in the repo health audit."""
+
+    def test_system_execute_sql_verified_query_used_sets_flag(self):
+        """ToolUseEvent (Apr 2026+ API) with verified_query_used → flag recorded."""
+        container = make_container()
+        use = ToolUseEvent._from_payload({
+            "content_index": 0,
+            "tool_use_id": "toolu_sql",
+            "type": "system_execute_sql",
+            "name": "execute_sql",
+            "input": {"sql": "SELECT 1", "verified_query_used": True},
+        })
+
+        stored = render_streaming_response(event_stream(use), container)
+
+        assert "toolu_sql" in stored.verified_tool_uses
+
+    def test_system_execute_sql_without_verified_flag_not_recorded(self):
+        """ToolUseEvent without verified_query_used → flag not recorded."""
+        container = make_container()
+        use = ToolUseEvent._from_payload({
+            "content_index": 0,
+            "tool_use_id": "toolu_sql",
+            "type": "system_execute_sql",
+            "name": "execute_sql",
+            "input": {"sql": "SELECT 1"},
+        })
+
+        stored = render_streaming_response(event_stream(use), container)
+
+        assert stored.verified_tool_uses == set()
+
+    def test_suggestion_widget_keys_follow_suggestion_key(self):
+        """Two chatbots with different prefixes get distinct suggestion widget keys."""
+        from cortex_agents_client.st.render import _render_suggested_queries
+
+        container = make_container()
+        container.button.return_value = False
+        with patch("streamlit.session_state", {}):
+            _render_suggested_queries(["Q"], container, suggestion_key="a_pending")
+            _render_suggested_queries(["Q"], container, suggestion_key="b_pending")
+
+        keys = [c.kwargs["key"] for c in container.button.call_args_list]
+        assert keys[0].startswith("a_pending_")
+        assert keys[1].startswith("b_pending_")
+        assert keys[0] != keys[1]

@@ -57,8 +57,11 @@ def _raise_for_status(response: httpx.Response, *, resource: str = "resource") -
     request_id = response.headers.get("X-Snowflake-Request-ID")
     try:
         body = response.json()
-        message = body.get("message", response.text)
-    except (ValueError, KeyError):
+    except ValueError:
+        body = None
+    if isinstance(body, dict) and body.get("message"):
+        message = body["message"]
+    else:
         message = response.text or f"HTTP {response.status_code}"
 
     kwargs: dict[str, Any] = {

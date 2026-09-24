@@ -295,6 +295,10 @@ def render_streaming_response(
             # Extract SQL from system_execute_sql (Apr 2026+ Cortex Analyst)
             if event.type == "system_execute_sql" and event.input.get("sql"):
                 stored.analyst_sql[event.tool_use_id] = event.input["sql"]
+            if event.type == "system_execute_sql" and event.input.get(
+                "verified_query_used"
+            ):
+                stored.verified_tool_uses.add(event.tool_use_id)
             if event.permission_options:
                 # Tool requires user approval — stop consuming the stream.
                 # The Streamlit chatbot will show the approval UI on the next
@@ -597,7 +601,7 @@ def _render_suggested_queries(
             query,
             icon=":material/arrow_forward:",
             type="tertiary",
-            key=f"_ca_suggestion_{hash(query)}_{i}",
+            key=f"{suggestion_key}_{hash(query)}_{i}",
         ):
             st.session_state[suggestion_key] = query
             st.rerun()

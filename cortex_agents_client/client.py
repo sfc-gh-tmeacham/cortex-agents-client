@@ -202,14 +202,16 @@ class Thread:
                 if isinstance(event, TextDeltaEvent):
                     print(event.text, end="", flush=True)
         """
-        current_extra = list(extra_content) if extra_content else []
+        # The first request carries the user's text, permission decisions,
+        # and attachments. Tool-loop follow-ups carry only the tool_result so
+        # the user's question is not re-sent as a new turn.
+        content: list[dict[str, Any]] = [{"type": "text", "text": message}]
+        if permission_decisions:
+            content.extend(permission_decisions)
+        if extra_content:
+            content.extend(extra_content)
 
-        for iteration in range(self._MAX_TOOL_ITERATIONS):
-            content: list[dict[str, Any]] = [{"type": "text", "text": message}]
-            if permission_decisions and iteration == 0:
-                content.extend(permission_decisions)
-            if current_extra:
-                content.extend(current_extra)
+        for _ in range(self._MAX_TOOL_ITERATIONS):
 
             messages = [{"role": "user", "content": content}]
             new_assistant_message_id: int | None = None
@@ -282,9 +284,8 @@ class Thread:
             if new_assistant_message_id is not None:
                 self._parent_message_id = new_assistant_message_id
 
-            # Append tool result and loop for the next iteration.
-            current_extra = list(extra_content) if extra_content else []
-            current_extra.append(client_tool_result)
+            # Send only the tool result on the next iteration.
+            content = [client_tool_result]
 
         raise RuntimeError(
             f"Client-side tool execution exceeded {self._MAX_TOOL_ITERATIONS} "
