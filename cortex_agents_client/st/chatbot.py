@@ -597,6 +597,7 @@ class StreamlitChatbot:
             accept_file=self._accept_file,  # type: ignore[arg-type]  # stub omits False; runtime accepts it
             accept_audio=self._accept_audio,
             file_type=self._file_type,
+            submit_mode="stop",
         ):
             self._process_prompt(prompt, thread, append_message)
 
@@ -668,6 +669,7 @@ class StreamlitChatbot:
             accept_file=self._accept_file,  # type: ignore[arg-type]  # stub omits False; runtime accepts it
             accept_audio=self._accept_audio,
             file_type=self._file_type,
+            submit_mode="stop",
         ):
             # Append new messages directly into the scrollable chat area.
             with chat_area:

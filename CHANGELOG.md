@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (Streamlit UI)
+
+- Tool calls render as a connected `type="step"` timeline, live and on history replay,
+  instead of separate compact status boxes.
+- The chat input's send button becomes a stop button while a response streams
+  (`submit_mode="stop"`). A stopped turn keeps the user's message without an answer, and
+  the thread stays on its last completed message.
+- Suggested questions render as native `st.pills` instead of tertiary buttons styled with
+  injected CSS. Selecting one clears the pill, so the same suggestion can be picked again.
+
 ### Fixed
 
 - `Thread.chat()` client-side tools now complete against the live API. Three changes were

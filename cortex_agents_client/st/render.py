@@ -310,10 +310,11 @@ def render_streaming_response(
                 break
             # Paired with result event later
             if show_tool_status:
+                # type="step" joins consecutive tool calls into one timeline.
                 status_ctx = container.status(
                     f":material/build: Using {event.name}...",
                     expanded=False,
-                    type="compact",
+                    type="step",
                 )
                 # Show SQL inside the expander if available
                 if event.tool_use_id in stored.analyst_sql:
@@ -572,11 +573,13 @@ def _render_suggested_queries(
     container: Any,
     suggestion_key: str = "_ca_pending_suggestion",
 ) -> None:
-    """Renders suggested follow-up queries as clickable pill buttons.
+    """Renders suggested follow-up queries as native ``st.pills``.
 
-    When a button is clicked, the query text is stored in session state
-    under *suggestion_key* and a rerun is triggered. The chatbot
-    component picks this up and submits it as the next user message.
+    Selecting a pill stores the query text in session state under
+    *suggestion_key* and clears the pill selection, so the same
+    suggestion can be picked again later. The chatbot component picks up
+    the stored query on the resulting rerun and submits it as the next
+    user message.
 
     Args:
         queries: List of suggested question strings from the agent.
@@ -588,24 +591,22 @@ def _render_suggested_queries(
     if not queries:
         return
 
-    container.markdown(
-        "<style>"
-        "[data-testid='stButton']:has(button[kind='tertiary']) { margin-top: -1.25rem; }"
-        "[data-testid='stButton']:has(button[kind='tertiary']) button { justify-content: flex-start; }"
-        "[data-testid='stButton']:has(button[kind='tertiary']) button p { opacity: 0.6; text-align: left; }"
-        "</style>",
-        unsafe_allow_html=True,
+    pills_key = f"{suggestion_key}_pills"
+
+    def _on_select() -> None:
+        # Callbacks run before the rerun, so the widget value can be cleared
+        # here; otherwise the pill would stay selected and resubmit.
+        selected = st.session_state.get(pills_key)
+        if selected:
+            st.session_state[suggestion_key] = selected
+            st.session_state[pills_key] = None
+
+    container.pills(
+        "Suggested questions",
+        options=queries,
+        key=pills_key,
+        on_change=_on_select,
     )
-    container.caption("Suggested questions")
-    for i, query in enumerate(queries):
-        if container.button(
-            query,
-            icon=":material/arrow_forward:",
-            type="tertiary",
-            key=f"{suggestion_key}_{hash(query)}_{i}",
-        ):
-            st.session_state[suggestion_key] = query
-            st.rerun()
 
 
 def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: bool = False, key_prefix: str | None = None) -> None:
@@ -657,7 +658,7 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
                 f":material/check_circle: {tool_use.name} complete",
                 state="complete",
                 expanded=False,
-                type="compact",
+                type="step",
             ) as ctx:
                 ctx.code(sql, language="sql")
         text = msg.tool_result_text.get(tool_use.tool_use_id)

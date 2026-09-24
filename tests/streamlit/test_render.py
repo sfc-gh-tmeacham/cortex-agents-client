@@ -592,15 +592,28 @@ class TestAuditRegressions:
         from cortex_agents_client.st.render import _render_suggested_queries
 
         container = make_container()
-        container.button.return_value = False
         with patch("streamlit.session_state", {}):
             _render_suggested_queries(["Q"], container, suggestion_key="a_pending")
             _render_suggested_queries(["Q"], container, suggestion_key="b_pending")
 
-        keys = [c.kwargs["key"] for c in container.button.call_args_list]
-        assert keys[0].startswith("a_pending_")
-        assert keys[1].startswith("b_pending_")
-        assert keys[0] != keys[1]
+        keys = [c.kwargs["key"] for c in container.pills.call_args_list]
+        assert keys == ["a_pending_pills", "b_pending_pills"]
+
+    def test_suggestion_pill_selection_sets_pending_and_clears(self):
+        """Selecting a pill stores the query and resets the pill so it can be reused."""
+        from cortex_agents_client.st.render import _render_suggested_queries
+
+        container = make_container()
+        state: dict = {}
+        with patch("streamlit.session_state", state):
+            _render_suggested_queries(["Q1", "Q2"], container, suggestion_key="p")
+            call = container.pills.call_args
+            assert call.kwargs["options"] == ["Q1", "Q2"]
+            state["p_pills"] = "Q2"
+            call.kwargs["on_change"]()
+
+        assert state["p"] == "Q2"
+        assert state["p_pills"] is None
 
     def test_stored_text_holds_all_text_segments(self):
         """text → table → text: StoredMessage.text contains both segments."""
