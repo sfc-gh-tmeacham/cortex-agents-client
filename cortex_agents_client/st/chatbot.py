@@ -380,7 +380,7 @@ class StreamlitChatbot:
         """
         import streamlit as st
 
-        from cortex_agents_client.st.render import render_streaming_response, escape_dollars
+        from cortex_agents_client.st.render import escape_dollars
 
         # Unwrap plain string vs attach-enabled chat_input result
         if isinstance(raw, str):
@@ -492,7 +492,6 @@ class StreamlitChatbot:
         """
         import streamlit as st
 
-        from cortex_agents_client.st.render import render_streaming_response
 
         perm_data = st.session_state[self._pending_permission_key]
         perm_event = perm_data["tool_use_event"]
@@ -595,7 +594,7 @@ class StreamlitChatbot:
             self._process_prompt(suggestion, thread, append_message)
         elif prompt := st.chat_input(
             self._input_placeholder,
-            accept_file=self._accept_file,
+            accept_file=self._accept_file,  # type: ignore[arg-type]  # stub omits False; runtime accepts it
             accept_audio=self._accept_audio,
             file_type=self._file_type,
         ):
@@ -666,7 +665,7 @@ class StreamlitChatbot:
         elif prompt := st.chat_input(
             self._input_placeholder,
             key=self._input_key,
-            accept_file=self._accept_file,
+            accept_file=self._accept_file,  # type: ignore[arg-type]  # stub omits False; runtime accepts it
             accept_audio=self._accept_audio,
             file_type=self._file_type,
         ):

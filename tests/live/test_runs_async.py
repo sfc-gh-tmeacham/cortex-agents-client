@@ -33,7 +33,6 @@ import pytest
 from cortex_agents_client import CortexAgentsClient
 from cortex_agents_client.exceptions import CortexAgentError, RunNotActiveError
 from cortex_agents_client.models.events import (
-    ResponseEvent,
     SSEEvent,
     TextDeltaEvent,
     TextEvent,

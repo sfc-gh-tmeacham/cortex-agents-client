@@ -1,7 +1,6 @@
 """Unit tests for the SSE parser."""
 from __future__ import annotations
 
-import pytest
 
 from cortex_agents_client.sse import parse_sse_stream
 from tests.fixtures.sse_streams import ALL_EVENT_TYPES, stream_of

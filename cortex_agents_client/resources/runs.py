@@ -234,6 +234,8 @@ class RunsResource:
         """
         if agent_path and agent:
             raise ValueError("Pass exactly one of agent_path or agent, not both.")
+        db: str | None
+        sc: str | None
         if agent_path:
             parts = agent_path.rsplit(".", 2)
             if len(parts) == 3:

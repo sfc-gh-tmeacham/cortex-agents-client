@@ -1,9 +1,12 @@
--- Cleanup script: delete all threads tagged origin_application='cac_live'.
---
--- Run this after an interrupted test suite to remove leaked threads.
--- Usage:
---   SNOWFLAKE_ACCOUNT_URL="https://..." SNOWFLAKE_PAT="v2:..." \
---     uv run python tests/live/seed/cleanup_leaked_threads.py
+"""Deletes all threads tagged origin_application='cac_live'.
+
+Run this after an interrupted test suite to remove leaked threads.
+
+Usage::
+
+    SNOWFLAKE_ACCOUNT_URL="https://..." SNOWFLAKE_PAT="v2:..." \
+      uv run python tests/live/seed/cleanup_leaked_threads.py
+"""
 
 from __future__ import annotations
 

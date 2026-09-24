@@ -289,3 +289,27 @@ class TestNonObjectJsonErrorBody:
         )
         with pytest.raises(ServerError, match=r"HTTP 500|boom|\[1, 2\]|42|null"):
             http_client.request("GET", "/api/v2/test")
+
+
+class TestStreamTransportErrors:
+    """Transport failures inside stream() map to typed exceptions."""
+
+    def test_connect_error_during_stream(self, http_client, httpx_mock: HTTPXMock):
+        from cortex_agents_client.exceptions import CortexConnectionError
+
+        httpx_mock.add_exception(httpx.ConnectError("refused"))
+        with pytest.raises(CortexConnectionError, match="refused"):
+            with http_client.stream("POST", "/api/v2/test", json={}) as lines:
+                list(lines)
+
+    def test_other_http_error_during_stream(self, http_client, httpx_mock: HTTPXMock):
+        from cortex_agents_client.exceptions import (
+            CortexAgentError,
+            CortexConnectionError,
+        )
+
+        httpx_mock.add_exception(httpx.RemoteProtocolError("peer closed"))
+        with pytest.raises(CortexAgentError, match="Stream HTTP error") as exc_info:
+            with http_client.stream("POST", "/api/v2/test", json={}) as lines:
+                list(lines)
+        assert not isinstance(exc_info.value, CortexConnectionError)

@@ -40,7 +40,6 @@ class TestInitSession:
         assert st.session_state["_ca_messages"] == []
 
     def test_returns_cached_on_subsequent_calls(self, mock_client):
-        import streamlit as st
 
         with patch(
             "cortex_agents_client.client.CortexAgentsClient",
@@ -134,3 +133,33 @@ class TestAppendMessage:
         msg = MagicMock()
         append_message(msg)
         assert st.session_state["_ca_messages"] == [msg]
+
+
+class TestSisInitSession:
+    """sis_init_session builds the client from SNOWFLAKE_HOST and the token file."""
+
+    def test_uses_env_host_and_token_file(self, tmp_path, monkeypatch):
+        from unittest.mock import patch as _patch
+
+        from cortex_agents_client.auth import SiSContainerAuth
+        from cortex_agents_client.st import session
+
+        token_file = tmp_path / "token"
+        token_file.write_text("tok")
+        monkeypatch.setenv("SNOWFLAKE_HOST", "acme.snowflakecomputing.com")
+        with _patch.object(session, "init_session", return_value="sentinel") as init:
+            assert session.sis_init_session(token_path=str(token_file)) == "sentinel"
+
+        url, auth = init.call_args.args
+        assert url == "https://acme.snowflakecomputing.com"
+        assert isinstance(auth, SiSContainerAuth)
+        assert auth.headers()["Authorization"] == "Bearer tok"
+
+    def test_missing_host_raises(self, tmp_path, monkeypatch):
+        from cortex_agents_client.st import session
+
+        token_file = tmp_path / "token"
+        token_file.write_text("tok")
+        monkeypatch.delenv("SNOWFLAKE_HOST", raising=False)
+        with pytest.raises(EnvironmentError):
+            session.sis_init_session(token_path=str(token_file))

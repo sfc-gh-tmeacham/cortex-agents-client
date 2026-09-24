@@ -44,7 +44,7 @@ _demo_dir = Path(__file__).parent
 if str(_demo_dir) not in sys.path:
     sys.path.insert(0, str(_demo_dir))
 
-import streamlit as st
+import streamlit as st  # noqa: E402 — sys.path must be set first
 from mock_thread import (  # noqa: E402 — sys.path must be set first
     SCENARIO_HINTS,
     SCENARIO_NAMES,
@@ -52,7 +52,7 @@ from mock_thread import (  # noqa: E402 — sys.path must be set first
     MockThread,
 )
 
-from cortex_agents_client.st import StreamlitChatbot
+from cortex_agents_client.st import StreamlitChatbot  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Page configuration

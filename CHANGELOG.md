@@ -25,8 +25,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   README no longer calls the event classes frozen. The demo's dialog snippet defines
   `@st.dialog` outside the button branch.
 
+- `tests/live/seed/cleanup_leaked_threads.py` failed with `SyntaxError` on line 1 because its
+  header used SQL `--` comments. It is now a Python docstring.
+
+### Added
+
+- `py.typed` marker, so type checkers see the package's annotations.
+- `cortex_agents_client.__version__`, read from the installed package metadata.
+- CI workflow running ruff, mypy, and the offline test suite on Python 3.11 and 3.12.
+- ruff and mypy configuration, and both tools in the `dev` extra.
+- Tests for SiS token-file errors after construction, stream connection errors, and
+  `sis_init_session`.
+
 ### Changed
 
+- `httpx` is bounded below 1.0.
 - Passing both `agent_path` and `agent` raises `ValueError`. Previously `agent` was ignored.
 - `background=True` without a `thread_id` raises `ValueError` before the request is sent.
 - The deprecated `PermissionError` and `TimeoutError` aliases are no longer in `__all__`, so

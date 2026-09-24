@@ -20,21 +20,15 @@ from cortex_agents_client.models.events import (
 from tests.fixtures.api_responses import NON_STREAMING_RUN_RESPONSE
 from tests.fixtures.sse_streams import (
     ALL_EVENT_TYPES,
-    ANALYST_DELTA_PAYLOAD,
-    CHART_PAYLOAD,
     ERROR_PAYLOAD,
     METADATA_ASSISTANT_PAYLOAD,
     METADATA_USER_PAYLOAD,
     RESPONSE_PAYLOAD,
-    TABLE_PAYLOAD,
     TEXT_DELTA_PAYLOAD,
     TEXT_PAYLOAD,
     THINKING_DELTA_PAYLOAD,
-    TOOL_RESULT_PAYLOAD,
-    TOOL_USE_PAYLOAD,
     WARNING_PAYLOAD,
 )
-from tests.integration.conftest import ACCOUNT_URL
 
 
 def sse_response(events: list[tuple[str, dict]]) -> httpx.Response:
@@ -338,7 +332,7 @@ class TestNotFoundErrorHierarchy:
 
     def test_thread_not_found_catchable_as_not_found_error(self, ca_client, httpx_mock: HTTPXMock):
         """HTTP 404 on a thread endpoint raises ThreadNotFoundError, catchable as NotFoundError."""
-        from cortex_agents_client.exceptions import NotFoundError, ThreadNotFoundError
+        from cortex_agents_client.exceptions import NotFoundError
         httpx_mock.add_response(
             status_code=404,
             json={"message": "Thread not found", "request_id": "r1"},

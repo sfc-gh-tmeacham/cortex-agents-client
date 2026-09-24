@@ -6,6 +6,7 @@ against the ``/api/v2/databases/{db}/schemas/{schema}/agents`` endpoint family.
 
 from __future__ import annotations
 
+import builtins
 import logging
 from typing import Any
 from urllib.parse import quote
@@ -187,7 +188,7 @@ class AgentsResource:
         if tool_resources:
             body["tool_resources"] = tool_resources
 
-        result = self._http.request(
+        self._http.request(
             "POST",
             self._path(db, sc),
             params={"createMode": create_mode},
@@ -360,7 +361,7 @@ class AgentsResource:
         schema: str | None = None,
         thread_id: int | None = None,
         feedback_message: str | None = None,
-        categories: list[str] | None = None,
+        categories: builtins.list[str] | None = None,
     ) -> None:
         """Submits user feedback for an agent response.
 

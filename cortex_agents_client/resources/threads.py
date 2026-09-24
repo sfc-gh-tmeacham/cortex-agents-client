@@ -9,6 +9,7 @@ most recent thread summary (if any) plus all subsequent conversation messages.
 
 from __future__ import annotations
 
+import builtins
 import logging
 from typing import Any
 
@@ -180,7 +181,7 @@ class ThreadsResource:
         *,
         message_type: str = "conversation",
         page_size: int = 50,
-    ) -> list[ThreadMessage]:
+    ) -> builtins.list[ThreadMessage]:
         """Returns all messages of the specified type in chronological order.
 
         Paginates automatically using the ``last_message_id`` cursor until
@@ -223,7 +224,7 @@ class ThreadsResource:
         all_messages.reverse()
         return all_messages
 
-    def latest_context(self, thread_id: int) -> list[ThreadMessage]:
+    def latest_context(self, thread_id: int) -> builtins.list[ThreadMessage]:
         """Returns the latest compaction summary plus all subsequent messages.
 
         When a thread grows long, Cortex Agents periodically compacts older

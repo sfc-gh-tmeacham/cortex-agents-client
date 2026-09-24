@@ -1,9 +1,6 @@
 """Unit tests for authentication providers."""
 from __future__ import annotations
 
-import os
-import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -57,8 +54,6 @@ def test_oauth_auth_includes_type_header():
 
 def test_jwt_auth_raises_without_cryptography():
     """JWTAuth raises ImportError when cryptography is not importable."""
-    import sys
-    import importlib
 
     # Mock a missing cryptography package only if not installed
     try:
@@ -185,7 +180,6 @@ class TestJWTAuth:
     def _decode(self, token, rsa_key_file):
         """Decode JWT without verifying expiry for claim inspection."""
         from cryptography.hazmat.primitives import serialization
-        from cryptography.hazmat.primitives.asymmetric import rsa as _rsa
         from cryptography.hazmat.backends import default_backend
 
         # Load the private key to derive the public key for verification
@@ -238,3 +232,27 @@ class TestJWTAuth:
         assert "lowercase" not in claims["iss"]
         assert "lowercase" not in claims["sub"]
         assert "LOWERCASE-ORG.LOWERCASE_USER" in claims["sub"]
+
+
+class TestSiSContainerAuthErrorPaths:
+    """headers() raises AuthError when the token file changes after construction."""
+
+    def test_token_file_deleted_after_construction(self, tmp_path):
+        from cortex_agents_client.exceptions import AuthError
+
+        token_file = tmp_path / "token"
+        token_file.write_text("tok")
+        auth = SiSContainerAuth(token_path=token_file)
+        token_file.unlink()
+        with pytest.raises(AuthError, match="Failed to read session token"):
+            auth.headers()
+
+    def test_token_file_emptied_after_construction(self, tmp_path):
+        from cortex_agents_client.exceptions import AuthError
+
+        token_file = tmp_path / "token"
+        token_file.write_text("tok")
+        auth = SiSContainerAuth(token_path=token_file)
+        token_file.write_text("  \n")
+        with pytest.raises(AuthError, match="empty"):
+            auth.headers()

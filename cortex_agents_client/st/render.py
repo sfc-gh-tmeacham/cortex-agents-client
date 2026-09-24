@@ -204,7 +204,6 @@ def render_streaming_response(
             )
         append_message(stored)
     """
-    import streamlit as st
 
     stored = StoredMessage(role="assistant")
 
@@ -439,7 +438,9 @@ def render_streaming_response(
     # it on the StoredMessage if any delta carried it True.
     if accumulated_text and not stored.text:
         stored.text = accumulated_text
-        if stored.is_elicitation:
+        if text_placeholder is None:
+            pass  # deltas always create the placeholder; guard for type safety
+        elif stored.is_elicitation:
             text_placeholder.info(escape_dollars(accumulated_text), icon=":material/contact_support:", title="Clarification needed")
         else:
             text_placeholder.markdown(escape_dollars(accumulated_text))

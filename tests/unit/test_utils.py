@@ -101,7 +101,6 @@ class TestResultSetToDataframe:
 
     def test_column_names_match_row_types(self, table_event_factory):
         """DataFrame columns match rowType names."""
-        import pandas as pd
         from cortex_agents_client.st.render import result_set_to_dataframe
 
         event = table_event_factory(
@@ -197,7 +196,6 @@ class TestToolExecutor:
         from cortex_agents_client.models.events import (
             MetadataEvent,
             TextEvent,
-            ToolResultEvent,
             ToolUseEvent,
         )
 
@@ -282,7 +280,6 @@ class TestToolExecutor:
         """If tool_executor raises, a 'error' status ToolResultEvent is yielded."""
         from cortex_agents_client.models.events import (
             MetadataEvent,
-            TextEvent,
             ToolResultEvent,
             ToolUseEvent,
         )

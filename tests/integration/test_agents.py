@@ -9,7 +9,7 @@ from pytest_httpx import HTTPXMock
 
 from cortex_agents_client.exceptions import AgentNotFoundError, AuthError, CortexPermissionError
 from tests.fixtures.api_responses import AGENT_DESCRIBE_RESPONSE, AGENT_LIST_RESPONSE
-from tests.integration.conftest import ACCOUNT_URL, make_json_response
+from tests.integration.conftest import make_json_response
 
 
 class TestCreateAgent:

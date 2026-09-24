@@ -1,15 +1,12 @@
 """Unit tests for data models."""
 from __future__ import annotations
 
-import pytest
 
 from cortex_agents_client.models.agent import (
     Agent,
     AgentInstructions,
     AgentProfile,
     BudgetConfig,
-    ModelConfig,
-    OrchestrationConfig,
 )
 from cortex_agents_client.models.thread import StoredMessage, ThreadMessage, ThreadMetadata
 
@@ -213,7 +210,7 @@ class TestRepr:
 
     def test_thread_repr(self):
         """Thread repr shows thread_id and parent_message_id."""
-        from cortex_agents_client import CortexAgentsClient, Thread
+        from cortex_agents_client import CortexAgentsClient
         client = CortexAgentsClient(
             "https://myorg-myaccount.snowflakecomputing.com",
             "v2:test_token",

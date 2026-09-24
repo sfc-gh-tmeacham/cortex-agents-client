@@ -28,6 +28,13 @@ Streamlit usage::
     bot.render()
 """
 
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("cortex-agents-client")
+except PackageNotFoundError:  # running from a source tree without install
+    __version__ = "0.0.0"
+
 from cortex_agents_client.auth import JWTAuth, OAuthAuth, PATAuth, SiSContainerAuth
 from cortex_agents_client.auth import account_url_from_env, AuthProvider
 from cortex_agents_client.client import CortexAgentsClient, Thread
@@ -40,13 +47,13 @@ from cortex_agents_client.exceptions import (
     CortexPermissionError,
     CortexTimeoutError,
     NotFoundError,
-    PermissionError,   # deprecated alias for CortexPermissionError
+    PermissionError as PermissionError,  # deprecated alias; kept out of __all__
     RateLimitError,
     RunError,
     RunNotActiveError,
     ServerError,
     ThreadNotFoundError,
-    TimeoutError,      # deprecated alias for CortexTimeoutError
+    TimeoutError as TimeoutError,  # deprecated alias; kept out of __all__
 )
 from cortex_agents_client.models.agent import Agent
 from cortex_agents_client.models.thread import StoredMessage, ThreadDetail, ThreadMessage, ThreadMetadata
@@ -78,6 +85,7 @@ from cortex_agents_client.models.events import (
 from cortex_agents_client.resources.runs import RunResult
 
 __all__ = [
+    "__version__",
     # Core client
     "CortexAgentsClient",
     "Thread",

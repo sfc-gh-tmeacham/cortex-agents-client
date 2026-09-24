@@ -6,11 +6,9 @@ Streamlit calls are mocked to avoid requiring a running Streamlit context.
 """
 from __future__ import annotations
 
-import json
 from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
-import pytest
 
 from cortex_agents_client.models.events import (
     AnalystDeltaEvent,
@@ -33,8 +31,6 @@ from tests.fixtures.sse_streams import (
     CHART_PAYLOAD,
     TABLE_PAYLOAD,
     TEXT_ANNOTATION_PAYLOAD,
-    TEXT_DELTA_PAYLOAD,
-    TEXT_PAYLOAD,
     TOOL_RESULT_PAYLOAD,
     TOOL_USE_PAYLOAD,
     WARNING_PAYLOAD,
