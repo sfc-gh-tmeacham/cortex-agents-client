@@ -63,7 +63,14 @@ class PATAuth(AuthProvider):
 
         Args:
             token: The PAT token string.
+
+        Raises:
+            ValueError: If *token* is empty or whitespace.
         """
+        if not token or not token.strip():
+            raise ValueError(
+                "PAT token is empty. Check that the variable holding it is set."
+            )
         self._token = token
 
     def headers(self) -> dict[str, str]:
@@ -226,7 +233,14 @@ class OAuthAuth(AuthProvider):
 
         Args:
             token: The OAuth access token.
+
+        Raises:
+            ValueError: If *token* is empty or whitespace.
         """
+        if not token or not token.strip():
+            raise ValueError(
+                "OAuth token is empty. Check that the variable holding it is set."
+            )
         self._token = token
 
     def headers(self) -> dict[str, str]:

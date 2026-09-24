@@ -45,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `httpx` is bounded below 1.0.
+- `PATAuth`, `OAuthAuth`, and a plain-string `auth` raise `ValueError` for an empty or
+  whitespace-only token. Previously the client failed on the first request with
+  `Illegal header value b'Bearer '`.
 - Passing both `agent_path` and `agent` raises `ValueError`. Previously `agent` was ignored.
 - `background=True` without a `thread_id` raises `ValueError` before the request is sent.
 - The deprecated `PermissionError` and `TimeoutError` aliases are no longer in `__all__`, so

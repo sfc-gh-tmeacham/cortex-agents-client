@@ -256,3 +256,23 @@ class TestSiSContainerAuthErrorPaths:
         token_file.write_text("  \n")
         with pytest.raises(AuthError, match="empty"):
             auth.headers()
+
+
+class TestEmptyTokenRejected:
+    """An empty token fails at construction, not later as an illegal header."""
+
+    @pytest.mark.parametrize("token", ["", "   ", "\n"])
+    def test_pat_auth_rejects_empty(self, token):
+        with pytest.raises(ValueError, match="PAT token is empty"):
+            PATAuth(token)
+
+    @pytest.mark.parametrize("token", ["", "   "])
+    def test_oauth_auth_rejects_empty(self, token):
+        with pytest.raises(ValueError, match="OAuth token is empty"):
+            OAuthAuth(token)
+
+    def test_client_rejects_empty_string_auth(self):
+        from cortex_agents_client import CortexAgentsClient
+
+        with pytest.raises(ValueError, match="PAT token is empty"):
+            CortexAgentsClient("https://x.snowflakecomputing.com", "")
