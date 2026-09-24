@@ -242,7 +242,7 @@ def render_streaming_response(
             # the current placeholder to remove the shimmer cursor; don't
             # re-render all text into one slot (which would break interleaved
             # table/chart positioning).
-            stored.text = event.text
+            stored.text += event.text
             stored.is_elicitation = event.is_elicitation
             if text_placeholder is not None:
                 if event.is_elicitation:

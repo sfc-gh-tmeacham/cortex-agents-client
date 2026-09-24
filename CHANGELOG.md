@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `Thread.chat()` client-side tool follow-ups send only the `tool_result`. They previously
+  re-sent the user's text and attachments as a new turn on every tool iteration.
+- An HTTP error whose JSON body is not an object (a bare string, list, number, or `null`)
+  now raises the typed exception instead of `AttributeError`.
+- Suggestion button widget keys derive from `suggestion_key`, so two chatbots on one page no
+  longer raise `DuplicateWidgetID`.
+- The verified-query badge now appears for `system_execute_sql` tool uses that report
+  `verified_query_used`, which is how the current Cortex Analyst API signals it.
+- `StoredMessage.text` holds every text segment of a response, not only the last one.
+- `runs.stream_and_collect()` assembles text and thinking per `content_index`, so a block that
+  receives only deltas is no longer dropped when another block has a summary event.
+- `threads.list()` and `agents.list()` log a warning when the response is not a list.
+- Docs: `JWTAuth` example uses `private_key_path`; `docs/test_plan.md` names `HttpClient`; the
+  README no longer calls the event classes frozen. The demo's dialog snippet defines
+  `@st.dialog` outside the button branch.
+
+### Changed
+
+- Passing both `agent_path` and `agent` raises `ValueError`. Previously `agent` was ignored.
+- `background=True` without a `thread_id` raises `ValueError` before the request is sent.
+- The deprecated `PermissionError` and `TimeoutError` aliases are no longer in `__all__`, so
+  `from cortex_agents_client import *` does not shadow the builtins. They remain importable
+  by name.
+
 ## [0.2.1] — 2026-08-28
 
 ### Documentation

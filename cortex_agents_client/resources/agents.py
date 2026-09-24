@@ -6,11 +6,14 @@ against the ``/api/v2/databases/{db}/schemas/{schema}/agents`` endpoint family.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 from urllib.parse import quote
 
 from cortex_agents_client.http import HttpClient
 from cortex_agents_client.models.agent import Agent
+
+logger = logging.getLogger(__name__)
 
 
 class AgentsResource:
@@ -311,6 +314,10 @@ class AgentsResource:
         data = self._http.request("GET", self._path(db, sc), params=params or None, resource="agent")
         if isinstance(data, list):
             return [Agent.from_dict(item) for item in data]
+        logger.warning(
+            "agents.list expected a JSON list, got %s; returning [].",
+            type(data).__name__,
+        )
         return []
 
     def delete(

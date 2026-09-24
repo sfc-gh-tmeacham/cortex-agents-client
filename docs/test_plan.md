@@ -166,7 +166,7 @@ One test per SSE event type, verifying that `event_from_sse(event_type, payload)
 
 ### `tests/unit/test_http.py`
 
-Tests for the transport layer (`SnowflakeHttpClient`):
+Tests for the transport layer (`HttpClient`):
 
 | Class | What it verifies |
 |---|---|

@@ -102,9 +102,9 @@ __all__ = [
     "ThreadNotFoundError",
     "ConflictError",
     "RunNotActiveError",
-    # Deprecated exception aliases
-    "PermissionError",
-    "TimeoutError",
+    # PermissionError and TimeoutError (deprecated aliases) stay importable
+    # by name but are left out of __all__ so a star import cannot shadow the
+    # builtins of the same name.
     # Models
     "Agent",
     "StoredMessage",

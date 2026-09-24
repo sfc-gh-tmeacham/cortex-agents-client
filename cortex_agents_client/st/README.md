@@ -428,7 +428,7 @@ from cortex_agents_client.auth import PATAuth, JWTAuth, OAuthAuth
 auth = PATAuth("v2:local:...")
 
 # Key-pair / JWT
-auth = JWTAuth(account="myorg-myaccount", user="MY_USER", private_key=key_bytes)
+auth = JWTAuth(account="myorg-myaccount", user="MY_USER", private_key_path="/path/to/rsa_key.p8")
 
 # OAuth (you supply the already-obtained bearer token)
 auth = OAuthAuth(oauth_token)

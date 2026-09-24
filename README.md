@@ -1142,7 +1142,7 @@ cortex_agents_client/
 **Design principles**
 
 - **Layered**: HTTP → resources → client facade → optional Streamlit layer
-- **Typed events**: 17 frozen dataclasses; `UnknownEvent` catches future API additions without breaking callers
+- **Typed events**: 17 event dataclasses; `UnknownEvent` catches future API additions without breaking callers
 - **Stateful threads**: `Thread` tracks `parent_message_id` so callers never manage it manually; `fork()` enables branching
 - **Auth pluggability**: `AuthProvider` ABC with four concrete implementations; plain strings auto-wrap as `PATAuth`
 - **Two-path rendering**: live streaming path (`render_streaming_response`) and history replay path (`render_stored_message`) produce equivalent output

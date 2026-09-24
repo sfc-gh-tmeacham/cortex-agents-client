@@ -96,3 +96,14 @@ class TestDeprecatedAliases:
         with pytest.warns(DeprecationWarning, match="CortexTimeoutError"):
             exc = _TE("test")
         assert isinstance(exc, CortexTimeoutError)
+
+
+def test_deprecated_aliases_not_star_exported():
+    """Star import must not shadow builtin PermissionError/TimeoutError."""
+    import cortex_agents_client
+
+    assert "PermissionError" not in cortex_agents_client.__all__
+    assert "TimeoutError" not in cortex_agents_client.__all__
+    # Still importable by name for existing callers.
+    assert cortex_agents_client.PermissionError is not PermissionError
+    assert cortex_agents_client.TimeoutError is not TimeoutError

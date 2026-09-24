@@ -524,19 +524,20 @@ st.title("Sales Dashboard")
 
 # ... your dashboard content ...
 
+@st.dialog("Cortex Agent", width="large")
+def _chat():
+    StreamlitChatbot(
+        account_url=SNOWFLAKE_ACCOUNT_URL,
+        auth=SNOWFLAKE_PAT,
+        agent_path=AGENT_PATH,
+        mode="embedded",
+        height=450,
+        session_key_prefix="_ca_dlg",
+        show_thinking=True,      # set False to hide agent reasoning steps
+        show_tool_status=True,   # set False to hide tool-execution spinners
+    ).render()
+
 if st.button("Ask the agent", icon=":material/chat:", type="primary"):
-    @st.dialog("Cortex Agent", width="large")
-    def _chat():
-        StreamlitChatbot(
-            account_url=SNOWFLAKE_ACCOUNT_URL,
-            auth=SNOWFLAKE_PAT,
-            agent_path=AGENT_PATH,
-            mode="embedded",
-            height=450,
-            session_key_prefix="_ca_dlg",
-            show_thinking=True,      # set False to hide agent reasoning steps
-            show_tool_status=True,   # set False to hide tool-execution spinners
-        ).render()
     _chat()
 """.strip(),
         language="python",

@@ -9,6 +9,7 @@ most recent thread summary (if any) plus all subsequent conversation messages.
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from cortex_agents_client.http import HttpClient
@@ -19,6 +20,8 @@ from cortex_agents_client.models.thread import (
 )
 
 _THREADS_BASE = "/api/v2/cortex/threads"
+
+logger = logging.getLogger(__name__)
 
 
 class ThreadsResource:
@@ -151,6 +154,10 @@ class ThreadsResource:
         )
         if isinstance(data, list):
             return [ThreadMetadata.from_dict(item) for item in data]
+        logger.warning(
+            "threads.list expected a JSON list, got %s; returning [].",
+            type(data).__name__,
+        )
         return []
 
     def delete(self, thread_id: int) -> None:

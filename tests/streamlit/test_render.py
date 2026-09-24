@@ -605,3 +605,13 @@ class TestAuditRegressions:
         assert keys[0].startswith("a_pending_")
         assert keys[1].startswith("b_pending_")
         assert keys[0] != keys[1]
+
+    def test_stored_text_holds_all_text_segments(self):
+        """text → table → text: StoredMessage.text contains both segments."""
+        container = make_container()
+        t1 = TextEvent._from_payload({"content_index": 0, "text": "Before. "})
+        t2 = TextEvent._from_payload({"content_index": 2, "text": "After."})
+
+        stored = render_streaming_response(event_stream(t1, t2), container)
+
+        assert stored.text == "Before. After."

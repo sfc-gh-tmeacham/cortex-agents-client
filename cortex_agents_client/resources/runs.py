@@ -227,7 +227,13 @@ class RunsResource:
         Returns:
             Relative API path string for the agent run endpoint,
             or ``None`` for a lite run.
+
+        Raises:
+            ValueError: If both *agent_path* and *agent* are given, or the
+                path cannot be resolved.
         """
+        if agent_path and agent:
+            raise ValueError("Pass exactly one of agent_path or agent, not both.")
         if agent_path:
             parts = agent_path.rsplit(".", 2)
             if len(parts) == 3:
@@ -297,7 +303,12 @@ class RunsResource:
 
         Returns:
             Request body dict.
+
+        Raises:
+            ValueError: If *background* is ``True`` without a *thread_id*.
         """
+        if background and thread_id is None:
+            raise ValueError("background=True requires a thread_id.")
         body: dict[str, Any] = {
             "messages": messages,
             "stream": stream,
@@ -672,20 +683,37 @@ class RunsResource:
                 error event.
         """
         result = RunResult()
-        accumulated_text = ""
-        accumulated_thinking = ""
+        # Per-block ordered segments. Deltas accumulate into a block's entry
+        # until its summary event replaces them, so a block that never gets a
+        # summary event still contributes its deltas.
+        text_blocks: dict[int, str] = {}
+        thinking_blocks: dict[int, str] = {}
+        text_final: set[int] = set()
+        thinking_final: set[int] = set()
 
         for event in self.stream(messages, **kwargs):
             if isinstance(event, TextDeltaEvent):
-                accumulated_text += event.text  # fallback if no TextEvent arrives
+                if event.content_index not in text_final:
+                    text_blocks[event.content_index] = (
+                        text_blocks.get(event.content_index, "") + event.text
+                    )
             elif isinstance(event, TextEvent):
-                result.text += event.text
-                accumulated_text = ""  # consumed by the summary event
+                if event.content_index in text_final:
+                    text_blocks[event.content_index] += event.text
+                else:
+                    text_blocks[event.content_index] = event.text
+                    text_final.add(event.content_index)
             elif isinstance(event, ThinkingDeltaEvent):
-                accumulated_thinking += event.text  # fallback if no ThinkingEvent arrives
+                if event.content_index not in thinking_final:
+                    thinking_blocks[event.content_index] = (
+                        thinking_blocks.get(event.content_index, "") + event.text
+                    )
             elif isinstance(event, ThinkingEvent):
-                result.thinking = (result.thinking or "") + event.text
-                accumulated_thinking = ""  # consumed by the summary event
+                if event.content_index in thinking_final:
+                    thinking_blocks[event.content_index] += event.text
+                else:
+                    thinking_blocks[event.content_index] = event.text
+                    thinking_final.add(event.content_index)
             elif isinstance(event, TextAnnotationEvent):
                 result.annotations.append(event)
             elif isinstance(event, ToolUseEvent):
@@ -722,12 +750,11 @@ class RunsResource:
                 result.error = event
                 break
 
-        # Commit fallback accumulators — used when the server sends only deltas
-        # without a final summary TextEvent/ThinkingEvent.
-        if accumulated_text and not result.text:
-            result.text = accumulated_text
-        if accumulated_thinking and not result.thinking:
-            result.thinking = accumulated_thinking
+        result.text = "".join(text_blocks[i] for i in sorted(text_blocks))
+        if thinking_blocks:
+            result.thinking = "".join(
+                thinking_blocks[i] for i in sorted(thinking_blocks)
+            )
 
         if result.error:
             raise RunError(

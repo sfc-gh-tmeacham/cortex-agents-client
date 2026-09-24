@@ -106,3 +106,76 @@ class TestExistingFields:
         body = runs._build_body(MESSAGES)
         assert "thread_id" not in body
         assert "parent_message_id" not in body
+
+
+class TestArgumentValidation:
+    """Contradictory or incomplete run arguments fail fast."""
+
+    def test_agent_path_and_agent_together_raise(self, runs):
+        with pytest.raises(ValueError, match="exactly one"):
+            runs._resolve_path(agent_path="DB.SC.A", agent="B")
+
+    def test_background_without_thread_id_raises(self, runs):
+        with pytest.raises(ValueError, match="requires a thread_id"):
+            runs._build_body(MESSAGES, background=True)
+
+
+class TestStreamAndCollectBlocks:
+    """stream_and_collect assembles text per content_index."""
+
+    def _collect(self, runs, events, monkeypatch):
+        monkeypatch.setattr(runs, "stream", lambda *a, **kw: iter(events))
+        return runs.stream_and_collect(MESSAGES)
+
+    def test_block_without_summary_keeps_its_deltas(self, runs, monkeypatch):
+        from cortex_agents_client.models.events import TextDeltaEvent, TextEvent
+
+        events = [
+            TextDeltaEvent._from_payload({"content_index": 0, "text": "A"}),
+            TextEvent._from_payload({"content_index": 0, "text": "A"}),
+            TextDeltaEvent._from_payload({"content_index": 2, "text": "B"}),
+        ]
+        assert self._collect(runs, events, monkeypatch).text == "AB"
+
+    def test_summary_replaces_its_own_deltas(self, runs, monkeypatch):
+        from cortex_agents_client.models.events import TextDeltaEvent, TextEvent
+
+        events = [
+            TextDeltaEvent._from_payload({"content_index": 0, "text": "He"}),
+            TextDeltaEvent._from_payload({"content_index": 0, "text": "llo"}),
+            TextEvent._from_payload({"content_index": 0, "text": "Hello"}),
+            TextEvent._from_payload({"content_index": 3, "text": " world"}),
+        ]
+        assert self._collect(runs, events, monkeypatch).text == "Hello world"
+
+    def test_no_thinking_stays_none(self, runs, monkeypatch):
+        from cortex_agents_client.models.events import TextEvent
+
+        events = [TextEvent._from_payload({"content_index": 0, "text": "x"})]
+        assert self._collect(runs, events, monkeypatch).thinking is None
+
+
+class TestListUnexpectedShape:
+    """list() on a non-list response returns [] and logs a warning."""
+
+    def test_threads_list_logs_on_dict(self, caplog):
+        from unittest.mock import MagicMock
+
+        from cortex_agents_client.resources.threads import ThreadsResource
+
+        http = MagicMock()
+        http.request.return_value = {"error": "unexpected"}
+        with caplog.at_level("WARNING"):
+            assert ThreadsResource(http).list() == []
+        assert "expected a JSON list" in caplog.text
+
+    def test_agents_list_logs_on_dict(self, caplog):
+        from unittest.mock import MagicMock
+
+        from cortex_agents_client.resources.agents import AgentsResource
+
+        http = MagicMock()
+        http.request.return_value = {"error": "unexpected"}
+        with caplog.at_level("WARNING"):
+            assert AgentsResource(http, "DB", "SC").list() == []
+        assert "expected a JSON list" in caplog.text
