@@ -402,7 +402,7 @@ def render_streaming_response(
                 spec = json.loads(event.chart_spec)
                 container.vega_lite_chart(
                     spec,
-                    use_container_width=True,
+                    width="stretch",
                     **({"key": f"{key_prefix}-chart-{len(stored.charts) - 1}"} if key_prefix else {}),
                 )
             except Exception:
@@ -694,7 +694,7 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
                     spec = json.loads(chart_event.chart_spec)
                     container.vega_lite_chart(
                         spec,
-                        use_container_width=True,
+                        width="stretch",
                         **({"key": f"{key_prefix}-chart-{idx}"} if key_prefix else {}),
                     )
                 except Exception:
@@ -727,7 +727,7 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
                 spec = json.loads(chart_event.chart_spec)
                 container.vega_lite_chart(
                     spec,
-                    use_container_width=True,
+                    width="stretch",
                     **({"key": f"{key_prefix}-chart-{i}"} if key_prefix else {}),
                 )
             except Exception:

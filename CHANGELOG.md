@@ -45,6 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - `httpx` is bounded below 1.0.
+- The `streamlit` extra requires Streamlit 1.64 or later. Charts and tables pass
+  `width="stretch"` instead of the deprecated `use_container_width=True`.
 - `PATAuth`, `OAuthAuth`, and a plain-string `auth` raise `ValueError` for an empty or
   whitespace-only token. Previously the client failed on the first request with
   `Illegal header value b'Bearer '`.
