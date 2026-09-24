@@ -234,6 +234,7 @@ class Thread:
                     isinstance(event, ToolUseEvent)
                     and event.client_side_execute
                     and tool_executor is not None
+                    and client_tool_result is None
                 ):
                     yield event
                     try:
@@ -257,11 +258,15 @@ class Thread:
                         "type": "tool_result",
                         "tool_result": {
                             "tool_use_id": event.tool_use_id,
+                            "type": event.type,
+                            "name": event.name,
                             "content": result_content,
                             "status": status,
                         },
                     }
-                    break
+                    # Keep reading so the assistant metadata event (which
+                    # carries the parent_message_id for the follow-up) arrives.
+                    continue
 
                 yield event
 

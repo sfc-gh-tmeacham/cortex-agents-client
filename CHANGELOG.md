@@ -9,8 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- `Thread.chat()` client-side tool follow-ups send only the `tool_result`. They previously
-  re-sent the user's text and attachments as a new turn on every tool iteration.
+- `Thread.chat()` client-side tools now complete against the live API. Three changes were
+  needed, verified end to end on a live account:
+  - The follow-up sends only the `tool_result`, not the user's text and attachments again.
+  - The `tool_result` carries `type` and `name`; without them the server rejects it.
+  - The loop reads the stream to the end so it picks up the assistant `message_id` that
+    follows the tool request. Previously the follow-up went out with the stale
+    `parent_message_id`, and the agent re-requested the tool until the 20-iteration cap.
 - An HTTP error whose JSON body is not an object (a bare string, list, number, or `null`)
   now raises the typed exception instead of `AttributeError`.
 - Suggestion button widget keys derive from `suggestion_key`, so two chatbots on one page no

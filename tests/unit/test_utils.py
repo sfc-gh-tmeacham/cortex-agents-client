@@ -271,10 +271,43 @@ class TestToolExecutor:
             "type": "tool_result",
             "tool_result": {
                 "tool_use_id": "toolu_client",
+                "type": "generic",
+                "name": "MyUDF",
                 "content": [{"type": "text", "text": "42"}],
                 "status": "success",
             },
         }]
+
+    def test_follow_up_uses_assistant_id_emitted_after_tool_use(self):
+        """The metadata event after a client tool_use sets parent_message_id for the follow-up.
+
+        Verified live: without this the server never pairs the result with its
+        tool_use and the agent re-requests the tool until the iteration cap.
+        """
+        from cortex_agents_client.models.events import MetadataEvent, ToolUseEvent
+
+        thread, client = self._make_thread()
+        tool_event = ToolUseEvent._from_payload({
+            "content_index": 0,
+            "tool_use_id": "toolu_client",
+            "type": "generic",
+            "name": "MyUDF",
+            "input": {},
+            "client_side_execute": True,
+        })
+        meta_first = MetadataEvent._from_payload(
+            {"metadata": {"role": "assistant", "message_id": 77, "run_id": "r1"}}
+        )
+        meta_second = MetadataEvent._from_payload(
+            {"metadata": {"role": "assistant", "message_id": 88, "run_id": "r2"}}
+        )
+        streams = iter([iter([tool_event, meta_first]), iter([meta_second])])
+        client.runs.stream.side_effect = lambda *a, **kw: next(streams)
+
+        list(thread.chat("DB.SC.AGENT", "Hi", tool_executor=MagicMock(return_value=[])))
+
+        assert client.runs.stream.call_args_list[1].kwargs["parent_message_id"] == 77
+        assert thread.parent_message_id == 88
 
     def test_tool_executor_exception_yields_error_result(self):
         """If tool_executor raises, a 'error' status ToolResultEvent is yielded."""
