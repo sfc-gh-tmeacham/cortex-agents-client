@@ -41,7 +41,6 @@ Other changes:
 
 - `py.typed` marker, so type checkers see the package's annotations.
 - `cortex_agents_client.__version__`, read from the installed package metadata.
-- CI workflow running ruff, mypy, and the offline test suite on Python 3.11 and 3.12.
 - ruff and mypy configuration, and both tools in the `dev` extra.
 - Tests for SiS token-file errors after construction, stream connection errors, and
   `sis_init_session`.
