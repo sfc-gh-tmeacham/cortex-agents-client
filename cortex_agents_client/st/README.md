@@ -524,6 +524,19 @@ def my_executor(event: ToolUseEvent) -> list[dict]:
 bot = StreamlitChatbot(..., tool_executor=my_executor)
 ```
 
+### Multi-tenancy
+
+`variables` sends session attributes with every run so row access policies can
+filter per tenant. Pass a mapping, or a callable that is invoked once per
+prompt:
+
+```python
+bot = StreamlitChatbot(..., variables=lambda: {"region": tenant_for(st.context.user.email)})
+```
+
+Values default to immutable session attributes. See the main README's
+"Multi-tenancy (session attributes)" section for the row access policy side.
+
 ### Suggested follow-up queries
 
 When the agent returns `response.suggested_queries` events, the chatbot automatically renders them as `st.pills` below the last assistant message. Clicking a suggestion submits it as the next user prompt.

@@ -14,7 +14,7 @@ complete chat UI in two modes:
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import Any, Literal
 
 from cortex_agents_client.models.thread import StoredMessage
@@ -122,6 +122,13 @@ class StreamlitChatbot:
             and returns a list of result content dicts (e.g.
             ``[{"type": "json", "json": {...}}]``). Passed to
             :meth:`~cortex_agents_client.client.Thread.chat` on every run.
+        variables: Optional multi-tenancy session attributes sent with every
+            run, for row access policies to read. Either a mapping (e.g.
+            ``{"region": "NORTH"}``) or a zero-argument callable returning a
+            mapping or ``None``. A callable is invoked once per prompt, so the
+            tenant can be derived from the current viewer (for example
+            ``st.context.user``). Values default to immutable; see
+            :meth:`~cortex_agents_client.resources.RunsResource.stream`.
     """
 
     def __init__(
@@ -144,6 +151,9 @@ class StreamlitChatbot:
         accept_audio: bool = False,
         file_type: list[str] | str | None = None,
         tool_executor: Callable[[Any], list[dict[str, Any]]] | None = None,
+        variables: (
+            Mapping[str, Any] | Callable[[], Mapping[str, Any] | None] | None
+        ) = None,
     ) -> None:
         """Initialises the chatbot component.
 
@@ -167,6 +177,8 @@ class StreamlitChatbot:
             accept_audio: Enable microphone / voice input.
             file_type: Allowed file types when ``accept_file`` is enabled.
             tool_executor: Optional callable for ``client_side_execute=True`` tools.
+            variables: Session attributes mapping, or a per-prompt callable
+                returning one.
         """
         self._account_url = account_url
         self._auth = auth
@@ -188,6 +200,7 @@ class StreamlitChatbot:
         self._accept_audio = accept_audio
         self._file_type = file_type
         self._tool_executor = tool_executor
+        self._variables = variables
         self._pending_permission_key = f"{session_key_prefix}_pending_perm"
         self._agent_spec_key = f"{session_key_prefix}_agent_spec"
         self._suggestion_key = f"{session_key_prefix}_pending_suggestion"
@@ -312,6 +325,12 @@ class StreamlitChatbot:
         last = messages[-1]
         if last.role == "assistant" and last.suggested_queries:
             _render_suggested_queries(last.suggested_queries, st, self._suggestion_key)
+
+    def _resolve_variables(self) -> Mapping[str, Any] | None:
+        """Returns this turn's session attributes, calling a callable once."""
+        if callable(self._variables):
+            return self._variables()
+        return self._variables
 
     def _stream_with_retry(self, stream_factory, container, key_prefix: str, loading_placeholder=None) -> StoredMessage:
         """Streams a response with a single retry on transient errors.
@@ -480,6 +499,9 @@ class StreamlitChatbot:
             #
             # When the API adds multimodal user-message support, wire attachments
             # through the extra_content parameter on thread.chat().
+            # Resolve once per prompt: _stream_with_retry may call the
+            # factory again, and a retry must reuse the same tenant.
+            variables = self._resolve_variables()
             loading_placeholder = st.empty()
             loading_placeholder.markdown(":shimmer[▌]")
             try:
@@ -488,6 +510,7 @@ class StreamlitChatbot:
                         self._agent_path,
                         prompt_text,
                         tool_executor=self._tool_executor,
+                        variables=variables,
                     ),
                     container=st,
                     key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",
@@ -578,6 +601,7 @@ class StreamlitChatbot:
                     "decision": decision,
                 },
             }
+            variables = self._resolve_variables()
             with st.chat_message("assistant"):
                 try:
                     stored = self._stream_with_retry(
@@ -586,6 +610,7 @@ class StreamlitChatbot:
                             original_message,
                             permission_decisions=[permission_item],
                             tool_executor=self._tool_executor,
+                            variables=variables,
                         ),
                         container=st,
                         key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",

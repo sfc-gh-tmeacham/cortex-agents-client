@@ -73,6 +73,7 @@ Also includes the complete Python client library for the Cortex Agents REST API 
   - [Agent management (CRUD)](#agent-management-crud)
   - [Thread management](#thread-management)
   - [Forking conversations](#forking-conversations)
+  - [Multi-tenancy (session attributes)](#multi-tenancy-session-attributes)
   - [Exception handling](#exception-handling)
 - [Streamlit-in-Snowflake (container runtime)](#streamlit-in-snowflake-container-runtime)
   - [Prerequisites — External Access Integrations](#prerequisites--external-access-integrations)
@@ -90,6 +91,7 @@ Also includes the complete Python client library for the Cortex Agents REST API 
   - [File and audio attachments](#file-and-audio-attachments)
   - [Client-side tool execution](#client-side-tool-execution)
   - [Working with table results](#working-with-table-results)
+  - [Multi-tenancy](#multi-tenancy)
   - [Elicitation](#elicitation)
 - [Reference](#reference)
   - [`CortexAgentsClient` parameters](#cortexagentsclient-parameters)
@@ -508,6 +510,38 @@ fork = thread.fork(at_message_id=456)
 for event in fork.chat("MY_AGENT", "What about revenue by region instead?"):
     ...
 ```
+
+### Multi-tenancy (session attributes)
+
+One agent can serve several tenants while keeping their data apart. Pass `variables` to any run; Snowflake sets each one as a session attribute before the agent runs its generated SQL, and a row access policy filters rows on it. See [Multi-tenancy for Cortex Agents](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-multi-tenancy).
+
+```python
+# Shorthand: each value becomes an immutable string/number/boolean attribute
+for event in thread.chat("DB.SCHEMA.MY_AGENT", "Show my sales", variables={"region": "NORTH"}):
+    ...
+
+# Full REST shape is also accepted; is_immutable_session_attribute defaults to True
+client.run(
+    "DB.SCHEMA.MY_AGENT",
+    "Show my sales",
+    variables={"region": {"value": "NORTH", "type": "string"}},
+)
+```
+
+`variables` is accepted by `thread.chat`, `client.stream`, `client.run`, `client.runs.stream`, `client.runs.run` and `client.runs.stream_and_collect`. `thread.chat` sends it on every request of the turn, including client-side tool follow-ups. Leave it out and requests are unchanged.
+
+Pair it with a row access policy that reads the attribute:
+
+```sql
+CREATE OR REPLACE ROW ACCESS POLICY rap_region_filter
+  AS (region_col STRING) RETURNS BOOLEAN ->
+    region_col = SYS_CONTEXT('SNOWFLAKE$SESSION_ATTRIBUTES', 'region');
+
+ALTER TABLE db1.schema1.sales ADD ROW ACCESS POLICY rap_region_filter ON (region);
+```
+
+> [!IMPORTANT]
+> Tenant isolation is a shared responsibility. The library only sends the attributes; your row access policies must enforce the boundary. Keep attributes immutable (the default) so generated SQL cannot change them, and test each policy on its own before relying on it.
 
 ### Exception handling
 
@@ -1012,6 +1046,23 @@ for event in thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt):
         st.dataframe(df.style.highlight_max(axis=0))
 ```
 
+### Multi-tenancy
+
+Pass `variables` to scope every run to a tenant. Give a mapping for a fixed tenant, or a zero-argument callable to work out the tenant per viewer. The callable runs once per prompt:
+
+```python
+TENANT_BY_EMAIL = {"ana@example.com": "NORTH", "raj@example.com": "SOUTH"}
+
+StreamlitChatbot(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    variables=lambda: {"region": TENANT_BY_EMAIL[st.context.user.email]},
+).render()
+```
+
+See [Multi-tenancy (session attributes)](#multi-tenancy-session-attributes) for the row access policy side.
+
 ### Elicitation
 
 When the agent needs clarification it emits a `TextEvent` with `is_elicitation=True`. Both `render_streaming_response` and `render_stored_message` handle this automatically — the message is rendered with `st.info()` instead of plain markdown. In manual integration, check `msg.is_elicitation` on a `StoredMessage` to apply custom styling.
@@ -1055,6 +1106,7 @@ When the agent needs clarification it emits a `TextEvent` with `is_elicitation=T
 | `accept_audio` | No | `False` | Enable microphone input |
 | `file_type` | No | `None` | Allowed extensions, e.g. `["pdf","csv"]` — only applies when `accept_file` is set; `None` = all types |
 | `tool_executor` | No | `None` | Callable for client-side tool execution |
+| `variables` | No | `None` | Session attributes for multi-tenancy: a mapping, or a callable returning one, called once per prompt |
 
 ### CSS targeting via widget keys
 

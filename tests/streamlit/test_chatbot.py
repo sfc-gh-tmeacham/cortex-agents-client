@@ -512,3 +512,89 @@ class TestStopCancelsRun:
                 lambda: iter(self._events("7-1")), container=MagicMock(), key_prefix="k"
             ) == "stored"
         client.cancel_run.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Multi-tenancy variables
+# ---------------------------------------------------------------------------
+
+
+class TestVariables:
+    """``variables`` reaches thread.chat on every chat path."""
+
+    def _make_bot(self, **kw) -> StreamlitChatbot:
+        return StreamlitChatbot(
+            account_url="https://x.snowflakecomputing.com",
+            auth="tok",
+            agent_path="A.B.C",
+            mode="embedded",
+            **kw,
+        )
+
+    def _prompt(self, bot, calls: int = 1):
+        """Runs _process_prompt ``calls`` times; returns the thread mock."""
+        thread = MagicMock()
+        thread.chat.return_value = iter([])
+        mock_st = _mock_st()
+        mock_st.session_state = {}
+
+        def fake_retry(factory, **_kw):
+            # Invoke twice to simulate a retry reusing the same factory.
+            list(factory())
+            list(factory())
+            return MagicMock()
+
+        with patch.dict("sys.modules", {"streamlit": mock_st}), \
+             patch.object(bot, "_stream_with_retry", side_effect=fake_retry):
+            for _ in range(calls):
+                bot._process_prompt("Hi", thread, MagicMock())
+        return thread
+
+    def test_default_sends_none(self):
+        thread = self._prompt(self._make_bot())
+        assert thread.chat.call_args.kwargs["variables"] is None
+
+    def test_static_mapping_forwarded(self):
+        thread = self._prompt(self._make_bot(variables={"region": "NORTH"}))
+        assert thread.chat.call_args.kwargs["variables"] == {"region": "NORTH"}
+
+    def test_callable_invoked_once_per_prompt_and_reused_on_retry(self):
+        tenants = iter(["NORTH", "SOUTH"])
+        resolver = MagicMock(side_effect=lambda: {"region": next(tenants)})
+        thread = self._prompt(self._make_bot(variables=resolver), calls=2)
+        assert resolver.call_count == 2  # once per prompt, not per retry
+        sent = [c.kwargs["variables"] for c in thread.chat.call_args_list]
+        assert sent == [{"region": "NORTH"}] * 2 + [{"region": "SOUTH"}] * 2
+
+    def test_permission_path_forwards(self):
+        from cortex_agents_client.models.events import ToolUseEvent
+
+        bot = self._make_bot(variables={"region": "NORTH"})
+        thread = MagicMock()
+        thread.chat.return_value = iter([])
+        mock_st = _mock_st()
+        perm_event = ToolUseEvent._from_payload({
+            "content_index": 0,
+            "tool_use_id": "t1",
+            "type": "generic",
+            "name": "Tool",
+            "input": {},
+        })
+        mock_st.session_state = {
+            bot._pending_permission_key: {
+                "tool_use_event": perm_event,
+                "original_message": "Hi",
+            }
+        }
+        mock_st.radio.return_value = "allow"
+        mock_st.button.return_value = True
+
+        def fake_retry(factory, **_kw):
+            list(factory())
+            return MagicMock()
+
+        with patch.dict("sys.modules", {"streamlit": mock_st}), \
+             patch.object(bot, "_stream_with_retry", side_effect=fake_retry):
+            bot._render_permission_ui(thread, MagicMock())
+        assert thread.chat.called
+        assert thread.chat.call_args.kwargs["variables"] == {"region": "NORTH"}

@@ -12,7 +12,7 @@ This module provides the two primary entry points for the library:
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from typing import Any
 
 from cortex_agents_client.auth import AuthProvider, PATAuth
@@ -142,6 +142,7 @@ class Thread:
         extra_content: list[dict[str, Any]] | None = None,
         background: bool = False,
         tool_executor: Callable[[ToolUseEvent], list[dict[str, Any]]] | None = None,
+        variables: Mapping[str, Any] | None = None,
     ) -> Iterator[SSEEvent]:
         """Streams a conversation turn, auto-advancing ``parent_message_id``.
 
@@ -183,6 +184,10 @@ class Thread:
                 :class:`~cortex_agents_client.models.events.ToolResultEvent` so
                 renderers can close any status spinners, then automatically
                 sends a follow-up request with the result.
+            variables: Optional session attributes for multi-tenancy (see
+                :meth:`~cortex_agents_client.resources.RunsResource.stream`).
+                Sent on every request of the turn, including client-side
+                tool-loop follow-ups.
 
         Yields:
             All :class:`~cortex_agents_client.models.events.SSEEvent` subclass
@@ -224,6 +229,7 @@ class Thread:
                 parent_message_id=self._parent_message_id,
                 tool_choice=tool_choice,
                 background=background,
+                variables=variables,
             )
 
             for event in event_stream:
@@ -512,6 +518,7 @@ class CortexAgentsClient:
         *,
         thread: Thread | None = None,
         tool_choice: dict[str, Any] | None = None,
+        variables: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> Iterator[SSEEvent]:
         """Convenience method for streaming a single message to an agent.
@@ -526,6 +533,9 @@ class CortexAgentsClient:
             thread: Optional :class:`Thread` to use for context persistence.
                 If provided, ``parent_message_id`` is managed automatically.
             tool_choice: Optional tool selection constraint.
+            variables: Optional session attributes for multi-tenancy (see
+                :meth:`~cortex_agents_client.resources.RunsResource.stream`).
+                Forwarded on both the thread and the one-shot path.
             **kwargs: Additional keyword arguments passed to
                 :meth:`~cortex_agents_client.resources.RunsResource.stream`.
 
@@ -537,12 +547,18 @@ class CortexAgentsClient:
             cortex_agents_client.exceptions.AuthError: On authentication failure.
         """
         if thread is not None:
-            yield from thread.chat(agent_path, message, tool_choice=tool_choice)
+            yield from thread.chat(
+                agent_path, message, tool_choice=tool_choice, variables=variables
+            )
             return
 
         messages = [{"role": "user", "content": [{"type": "text", "text": message}]}]
         yield from self.runs.stream(
-            messages, agent_path=agent_path, tool_choice=tool_choice, **kwargs
+            messages,
+            agent_path=agent_path,
+            tool_choice=tool_choice,
+            variables=variables,
+            **kwargs,
         )
 
     def run(
@@ -552,6 +568,7 @@ class CortexAgentsClient:
         *,
         thread: Thread | None = None,
         tool_choice: dict[str, Any] | None = None,
+        variables: Mapping[str, Any] | None = None,
         **kwargs: Any,
     ) -> RunResult:
         """Convenience method for a non-streaming single-message run.
@@ -564,6 +581,8 @@ class CortexAgentsClient:
                 ``parent_message_id`` automatically. Use
                 :meth:`Thread.chat` for tracked multi-turn conversations.
             tool_choice: Optional tool selection constraint.
+            variables: Optional session attributes for multi-tenancy (see
+                :meth:`~cortex_agents_client.resources.RunsResource.stream`).
             **kwargs: Additional keyword arguments passed to
                 :meth:`~cortex_agents_client.resources.RunsResource.run`.
 
@@ -582,6 +601,7 @@ class CortexAgentsClient:
             thread_id=thread_id,
             parent_message_id=parent_id,
             tool_choice=tool_choice,
+            variables=variables,
             **kwargs,
         )
 

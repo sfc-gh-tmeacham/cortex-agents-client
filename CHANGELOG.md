@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Multi-tenancy session attributes: optional `variables` on `thread.chat`, `client.stream`/`run` and `runs.stream`/`run`/`stream_and_collect`, sent as the `agent:run` `variables` block. Accepts shorthand scalars or the REST shape, defaults to immutable, and is sent on tool-loop follow-ups. `StreamlitChatbot(variables=...)` takes a mapping or a per-prompt callable.
+- `client.stream(thread=...)` now forwards `variables` to `thread.chat`.
 - `StreamlitChatbot(height=...)` accepts a CSS height string, so an embedded chat can fill the viewport, for example inside `st.dialog`.
 
 ## [0.3.0] — 2026-09-24

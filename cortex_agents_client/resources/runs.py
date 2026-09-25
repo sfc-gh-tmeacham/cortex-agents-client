@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import logging
 import warnings
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import quote
 
+from cortex_agents_client._variables import normalize_variables
 from cortex_agents_client.exceptions import RunError
 from cortex_agents_client.http import HttpClient
 from cortex_agents_client.models.events import (
@@ -282,6 +283,7 @@ class RunsResource:
         orchestration: dict[str, Any] | None = None,
         models: dict[str, Any] | None = None,
         model: str | None = None,
+        variables: Mapping[str, Any] | None = None,
     ) -> dict[str, Any]:
         """Builds the request body for an agent:run call.
 
@@ -302,12 +304,15 @@ class RunsResource:
                 ``{"orchestration": "claude-4-sonnet"}``.
             model: Deprecated. Bare orchestration model name, mapped to
                 ``models``. Ignored when ``models`` is also given.
+            variables: Optional session attributes for multi-tenancy. See
+                :meth:`stream`. Omitted from the body when empty.
 
         Returns:
             Request body dict.
 
         Raises:
-            ValueError: If *background* is ``True`` without a *thread_id*.
+            ValueError: If *background* is ``True`` without a *thread_id*, or
+                if *variables* is malformed.
         """
         if background and thread_id is None:
             raise ValueError("background=True requires a thread_id.")
@@ -335,6 +340,9 @@ class RunsResource:
         resolved_models = self._resolve_models(models, model)
         if resolved_models:
             body["models"] = resolved_models
+        resolved_variables = normalize_variables(variables)
+        if resolved_variables:
+            body["variables"] = resolved_variables
         return body
 
     @staticmethod
@@ -396,6 +404,7 @@ class RunsResource:
         orchestration: dict[str, Any] | None = None,
         models: dict[str, Any] | None = None,
         model: str | None = None,
+        variables: Mapping[str, Any] | None = None,
     ) -> Iterator[SSEEvent]:
         """Sends a streaming request to the agent:run endpoint.
 
@@ -433,6 +442,14 @@ class RunsResource:
             models: Inline model config for lite runs, e.g.
                 ``{"orchestration": "claude-4-sonnet"}``.
             model: Deprecated alias for ``models``. Pass ``models`` instead.
+            variables: Optional session attributes for multi-tenancy, set on
+                the Snowflake session before any generated SQL runs so row
+                access policies can read them with
+                ``SYS_CONTEXT('SNOWFLAKE$SESSION_ATTRIBUTES', '<name>')``.
+                Each value is a scalar (``{"region": "NORTH"}``) or a dict in
+                the REST shape (``{"value": ..., "type": ...,
+                "is_immutable_session_attribute": ...}``). Both forms default
+                to immutable. Works on agent-object and lite runs.
 
         Note:
             ``tools``, ``tool_resources``, ``instructions``, ``orchestration``,
@@ -478,6 +495,7 @@ class RunsResource:
             orchestration=orchestration,
             models=models,
             model=model,
+            variables=variables,
         )
 
         with self._http.stream("POST", api_path, json=body) as lines:
@@ -503,6 +521,7 @@ class RunsResource:
         orchestration: dict[str, Any] | None = None,
         models: dict[str, Any] | None = None,
         model: str | None = None,
+        variables: Mapping[str, Any] | None = None,
     ) -> RunResult:
         """Sends a non-streaming request and returns the assembled RunResult.
 
@@ -533,6 +552,8 @@ class RunsResource:
             models: Inline model config for lite runs, e.g.
                 ``{"orchestration": "claude-4-sonnet"}``.
             model: Deprecated alias for ``models``.
+            variables: Optional session attributes for multi-tenancy. See
+                :meth:`stream`.
 
         Returns:
             Fully assembled :class:`RunResult`.
@@ -558,6 +579,7 @@ class RunsResource:
             orchestration=orchestration,
             models=models,
             model=model,
+            variables=variables,
         )
 
         # Try non-streaming request first.
@@ -675,7 +697,8 @@ class RunsResource:
 
         Args:
             messages: List of message dicts.
-            **kwargs: All keyword arguments accepted by :meth:`stream`.
+            **kwargs: All keyword arguments accepted by :meth:`stream`,
+                including ``variables``.
 
         Returns:
             Fully assembled :class:`RunResult`.
