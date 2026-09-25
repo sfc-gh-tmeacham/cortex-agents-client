@@ -6,6 +6,9 @@
 
 Drop-in Cortex Agent chatbot for Streamlit. Add a fully functional, streaming AI chat interface to any Streamlit app in a few lines of code:
 
+> [!NOTE]
+> **Unofficial community project** — not an official Snowflake offering and not supported by Snowflake. See [Disclaimer](#disclaimer).
+
 > [!IMPORTANT]
 > **Requires Streamlit 1.64 or later** (`streamlit>=1.64`). The chat UI uses `st.chat_input(submit_mode="stop")`, `st.status(type="step")` and `st.pills`, which older versions do not have. In Streamlit in Snowflake, pin `streamlit[snowflake]>=1.64` in `pyproject.toml`.
 
