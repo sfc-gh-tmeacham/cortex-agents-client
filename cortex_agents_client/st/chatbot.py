@@ -324,26 +324,74 @@ class StreamlitChatbot:
         Raises:
             Exception: Re-raised after retry is exhausted or for non-transient errors.
         """
+        from streamlit.runtime.scriptrunner import RerunException, StopException
+
         from cortex_agents_client.exceptions import CortexConnectionError, CortexTimeoutError, ServerError
+        from cortex_agents_client.models.events import MetadataEvent
         from cortex_agents_client.st.render import render_streaming_response
+
+        # Latest run_id seen on the stream. Each client-side tool follow-up is
+        # a new run, so this tracks the one currently executing.
+        active_run: dict[str, str] = {}
+
+        def _track_run_id(events):
+            for event in events:
+                if isinstance(event, MetadataEvent) and event.run_id:
+                    active_run["run_id"] = event.run_id
+                yield event
 
         retried = False
         while True:
             try:
                 return render_streaming_response(
-                    stream_factory(),
+                    _track_run_id(stream_factory()),
                     container=container,
                     show_thinking=self._show_thinking,
                     show_tool_status=self._show_tool_status,
                     key_prefix=key_prefix,
                     loading_placeholder=loading_placeholder,
                 )
+            except (StopException, RerunException):
+                # The user pressed stop (or a rerun abandoned this run). Closing
+                # the stream only stops reading; cancel so the run stops
+                # executing and billing server-side, then let Streamlit proceed.
+                self._cancel_run(active_run.get("run_id"))
+                raise
             except (CortexConnectionError, CortexTimeoutError, ServerError) as exc:
                 if not retried:
                     retried = True
                     logger.warning("Transient error, retrying once: %s", exc)
                     continue
                 raise
+
+    def _cancel_run(self, run_id: str | None) -> None:
+        """Cancels an interrupted agent run, logging instead of raising.
+
+        Called while Streamlit is stopping the script, so a failure here must
+        not replace the stop with an error.
+
+        Args:
+            run_id: The run to cancel, or ``None`` if no metadata event had
+                arrived yet (nothing to cancel).
+        """
+        import streamlit as st
+
+        from cortex_agents_client.exceptions import RunNotActiveError
+
+        if not run_id:
+            logger.info("Stream stopped before a run_id arrived; nothing to cancel")
+            return
+        client = st.session_state.get(self._client_key)
+        if client is None:
+            logger.warning("No client in session state; cannot cancel run %s", run_id)
+            return
+        try:
+            client.cancel_run(run_id)
+            logger.info("Cancelled run %s after the stream was stopped", run_id)
+        except RunNotActiveError:
+            logger.info("Run %s had already finished; nothing to cancel", run_id)
+        except Exception:
+            logger.warning("Failed to cancel run %s", run_id, exc_info=True)
 
     def _process_prompt(self, raw: Any, thread, append_message_fn) -> None:
         """Sends a prompt to the agent and renders the response.

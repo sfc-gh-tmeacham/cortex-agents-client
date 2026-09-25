@@ -363,3 +363,107 @@ class TestStreamWithRetry:
         ):
             with pytest.raises(ServerError):
                 bot._stream_with_retry(factory, container=MagicMock(), key_prefix="test-0")
+
+
+class TestStopCancelsRun:
+    """Stopping the script mid-stream cancels the agent run server-side."""
+
+    def _bot(self) -> StreamlitChatbot:
+        return StreamlitChatbot(
+            account_url="https://x.snowflakecomputing.com",
+            auth="tok",
+            agent_path="A.B.C",
+        )
+
+    def _events(self, *run_ids):
+        from cortex_agents_client.models.events import MetadataEvent
+
+        return [
+            MetadataEvent._from_payload(
+                {"metadata": {"role": "user", "message_id": i, "run_id": rid}}
+            )
+            for i, rid in enumerate(run_ids)
+        ]
+
+    def _stop_after_consuming(self, exc):
+        def fake_render(events, **kwargs):
+            list(events)
+            raise exc
+        return fake_render
+
+    @pytest.mark.parametrize("exc_name", ["StopException", "RerunException"])
+    def test_stop_cancels_latest_run_and_reraises(self, exc_name):
+        from streamlit.runtime import scriptrunner
+
+        exc_cls = getattr(scriptrunner, exc_name)
+        exc = exc_cls() if exc_name == "StopException" else exc_cls(None)
+        bot = self._bot()
+        client = MagicMock()
+        state = {bot._client_key: client}
+        with patch("streamlit.session_state", state), patch(
+            "cortex_agents_client.st.render.render_streaming_response",
+            side_effect=self._stop_after_consuming(exc),
+        ):
+            with pytest.raises(exc_cls):
+                bot._stream_with_retry(
+                    lambda: iter(self._events("7-1", "7-3")), container=MagicMock(), key_prefix="k"
+                )
+        client.cancel_run.assert_called_once_with("7-3")
+
+    def test_already_finished_run_is_not_an_error(self):
+        from streamlit.runtime.scriptrunner import StopException
+
+        from cortex_agents_client.exceptions import RunNotActiveError
+
+        bot = self._bot()
+        client = MagicMock()
+        client.cancel_run.side_effect = RunNotActiveError("done", status_code=409)
+        with patch("streamlit.session_state", {bot._client_key: client}), patch(
+            "cortex_agents_client.st.render.render_streaming_response",
+            side_effect=self._stop_after_consuming(StopException()),
+        ):
+            with pytest.raises(StopException):
+                bot._stream_with_retry(
+                    lambda: iter(self._events("7-1")), container=MagicMock(), key_prefix="k"
+                )
+        client.cancel_run.assert_called_once_with("7-1")
+
+    def test_cancel_failure_does_not_replace_stop(self):
+        from streamlit.runtime.scriptrunner import StopException
+
+        bot = self._bot()
+        client = MagicMock()
+        client.cancel_run.side_effect = RuntimeError("network down")
+        with patch("streamlit.session_state", {bot._client_key: client}), patch(
+            "cortex_agents_client.st.render.render_streaming_response",
+            side_effect=self._stop_after_consuming(StopException()),
+        ):
+            with pytest.raises(StopException):
+                bot._stream_with_retry(
+                    lambda: iter(self._events("7-1")), container=MagicMock(), key_prefix="k"
+                )
+
+    def test_stop_before_any_metadata_does_not_cancel(self):
+        from streamlit.runtime.scriptrunner import StopException
+
+        bot = self._bot()
+        client = MagicMock()
+        with patch("streamlit.session_state", {bot._client_key: client}), patch(
+            "cortex_agents_client.st.render.render_streaming_response",
+            side_effect=self._stop_after_consuming(StopException()),
+        ):
+            with pytest.raises(StopException):
+                bot._stream_with_retry(lambda: iter([]), container=MagicMock(), key_prefix="k")
+        client.cancel_run.assert_not_called()
+
+    def test_normal_completion_does_not_cancel(self):
+        bot = self._bot()
+        client = MagicMock()
+        with patch("streamlit.session_state", {bot._client_key: client}), patch(
+            "cortex_agents_client.st.render.render_streaming_response",
+            side_effect=lambda events, **kw: (list(events), "stored")[1],
+        ):
+            assert bot._stream_with_retry(
+                lambda: iter(self._events("7-1")), container=MagicMock(), key_prefix="k"
+            ) == "stored"
+        client.cancel_run.assert_not_called()
