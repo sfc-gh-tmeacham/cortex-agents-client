@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "cortex-agents-client"
-version = "0.2.1"
+version = "0.3.0"
 description = "Python client library for the Snowflake Cortex Agents REST API"
 readme = "README.md"
 license = {text = "Apache-2.0"}

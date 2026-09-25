@@ -5,18 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] — 2026-09-24
 
-### Changed (Streamlit UI)
+### Changed
 
+These changes can break existing callers:
+
+- `PATAuth`, `OAuthAuth`, and a plain-string `auth` raise `ValueError` for an empty or
+  whitespace-only token. Previously the client failed on the first request with
+  `Illegal header value b'Bearer '`.
+- Passing both `agent_path` and `agent` raises `ValueError`. Previously `agent` was ignored.
+- `background=True` without a `thread_id` raises `ValueError` before the request is sent.
+- The deprecated `PermissionError` and `TimeoutError` aliases are no longer in `__all__`, so
+  `from cortex_agents_client import *` does not shadow the builtins. They remain importable
+  by name.
+- The `streamlit` extra requires Streamlit 1.64 or later.
+
+Other changes:
+
+- `httpx` is bounded below 1.0.
+- Charts and tables pass `width="stretch"` instead of the deprecated
+  `use_container_width=True`.
 - Tool calls render as a connected `type="step"` timeline, live and on history replay,
   instead of separate compact status boxes.
 - The chat input's send button becomes a stop button while a response streams
-  (`submit_mode="stop"`). A stopped turn keeps the user's message without an answer, and
-  the thread stays on its last completed message. Stop ends the Streamlit script only: the
-  agent run keeps executing in Snowflake and is billed until it finishes.
+  (`submit_mode="stop"`). Pressing it cancels the agent run with `cancel_run`, so the run
+  stops executing and billing in Snowflake, and then stops the script. A stopped turn keeps
+  the user's message without an answer, and the thread stays on its last completed message.
+  A suggestion selected as a pill does not go through the chat input, so that run shows no
+  stop button.
 - Suggested questions render as native `st.pills` instead of tertiary buttons styled with
   injected CSS. Selecting one clears the pill, so the same suggestion can be picked again.
+
+### Added
+
+- `py.typed` marker, so type checkers see the package's annotations.
+- `cortex_agents_client.__version__`, read from the installed package metadata.
+- CI workflow running ruff, mypy, and the offline test suite on Python 3.11 and 3.12.
+- ruff and mypy configuration, and both tools in the `dev` extra.
+- Tests for SiS token-file errors after construction, stream connection errors, and
+  `sis_init_session`.
 
 ### Fixed
 
@@ -29,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `parent_message_id`, and the agent re-requested the tool until the 20-iteration cap.
 - An HTTP error whose JSON body is not an object (a bare string, list, number, or `null`)
   now raises the typed exception instead of `AttributeError`.
-- Suggestion button widget keys derive from `suggestion_key`, so two chatbots on one page no
+- Suggestion widget keys derive from `suggestion_key`, so two chatbots on one page no
   longer raise `DuplicateWidgetID`.
 - The verified-query badge now appears for `system_execute_sql` tool uses that report
   `verified_query_used`, which is how the current Cortex Analyst API signals it.
@@ -37,35 +65,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `runs.stream_and_collect()` assembles text and thinking per `content_index`, so a block that
   receives only deltas is no longer dropped when another block has a summary event.
 - `threads.list()` and `agents.list()` log a warning when the response is not a list.
+- `tests/live/seed/cleanup_leaked_threads.py` failed with `SyntaxError` on line 1 because its
+  header used SQL `--` comments. It is now a Python docstring.
 - Docs: `JWTAuth` example uses `private_key_path`; `docs/test_plan.md` names `HttpClient`; the
   README no longer calls the event classes frozen. The demo's dialog snippet defines
   `@st.dialog` outside the button branch.
-
-- `tests/live/seed/cleanup_leaked_threads.py` failed with `SyntaxError` on line 1 because its
-  header used SQL `--` comments. It is now a Python docstring.
-
-### Added
-
-- `py.typed` marker, so type checkers see the package's annotations.
-- `cortex_agents_client.__version__`, read from the installed package metadata.
-- CI workflow running ruff, mypy, and the offline test suite on Python 3.11 and 3.12.
-- ruff and mypy configuration, and both tools in the `dev` extra.
-- Tests for SiS token-file errors after construction, stream connection errors, and
-  `sis_init_session`.
-
-### Changed
-
-- `httpx` is bounded below 1.0.
-- The `streamlit` extra requires Streamlit 1.64 or later. Charts and tables pass
-  `width="stretch"` instead of the deprecated `use_container_width=True`.
-- `PATAuth`, `OAuthAuth`, and a plain-string `auth` raise `ValueError` for an empty or
-  whitespace-only token. Previously the client failed on the first request with
-  `Illegal header value b'Bearer '`.
-- Passing both `agent_path` and `agent` raises `ValueError`. Previously `agent` was ignored.
-- `background=True` without a `thread_id` raises `ValueError` before the request is sent.
-- The deprecated `PermissionError` and `TimeoutError` aliases are no longer in `__all__`, so
-  `from cortex_agents_client import *` does not shadow the builtins. They remain importable
-  by name.
 
 ## [0.2.1] — 2026-08-28
 
