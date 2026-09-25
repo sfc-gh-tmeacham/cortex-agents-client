@@ -53,7 +53,7 @@ requires-python = "~=3.11.0"
 version = "0.0.1"
 description = ""
 dependencies = [
-    "streamlit[snowflake]>=1.59",
+    "streamlit[snowflake]>=1.64",
     "pandas",
     "requests",
     "httpx",
@@ -336,7 +336,7 @@ internally — it is the one-liner equivalent of `init_session` for SiS.
 Add to `requirements.txt`:
 
 ```
-streamlit>=1.59
+streamlit>=1.64
 pandas
 requests
 ```
@@ -521,11 +521,11 @@ bot = StreamlitChatbot(..., tool_executor=my_executor)
 
 ### Suggested follow-up queries
 
-When the agent returns `response.suggested_queries` events, the chatbot automatically renders them as compact clickable buttons below the last assistant message. Clicking a suggestion submits it as the next user prompt.
+When the agent returns `response.suggested_queries` events, the chatbot automatically renders them as `st.pills` below the last assistant message. Clicking a suggestion submits it as the next user prompt.
 
 - Suggestions are only shown for the **most recent** assistant message (stale suggestions are hidden).
 - No configuration is needed — if the API returns suggestions, they appear automatically.
-- The session state key `_ca_pending_suggestion` is used internally to pass the clicked query.
+- The session state key `_ca_pending_suggestion` is used internally to pass the clicked query. Selecting a pill clears it, so the same suggestion can be picked again.
 
 ### CSS targeting via widget keys
 

@@ -113,12 +113,12 @@ for msg in get_messages():
 
 ### Suggested follow-up queries
 
-Suggestion buttons are rendered **only for the last assistant message** and **outside** `st.chat_message()`. This is handled by `_render_last_suggestions()` in `chatbot.py`, not by the per-message rendering functions.
+Suggestion pills are rendered **only for the last assistant message** and **outside** `st.chat_message()`. This is handled by `_render_last_suggestions()` in `chatbot.py`, not by the per-message rendering functions.
 
 - During streaming: `SuggestedQueriesEvent` is captured on `StoredMessage.suggested_queries`.
 - After streaming: `st.rerun()` triggers a fresh render cycle.
-- On rerun: `_render_last_suggestions()` checks the last message for suggestions and renders compact tertiary buttons with a "Suggested questions" caption.
-- On click: the query text is stored in `st.session_state["_ca_pending_suggestion"]` and submitted as the next user message on rerun.
+- On rerun: `_render_last_suggestions()` checks the last message for suggestions and renders them with `st.pills` under a "Suggested questions" label.
+- On select: an `on_change` callback stores the query in `st.session_state["_ca_pending_suggestion"]` and clears the pill, and the query is submitted as the next user message on the rerun.
 - Stale suggestions from older messages are intentionally not shown.
 
 ### Empty response fallback
@@ -131,16 +131,21 @@ Both `render_streaming_response` and `render_stored_message` accept an optional 
 
 `StreamlitChatbot` passes `key_prefix` automatically using the pattern `{css_prefix}-{msg_index}` where `css_prefix` is derived from `session_key_prefix` (leading underscore stripped). Manual integration users can pass `key_prefix` explicitly for custom CSS targeting.
 
-### Known limitation: no stop button
+### Known limitation: stop does not cancel the agent run
 
-The `st` layer consumes the event stream synchronously, so there is no way for a user to
-stop a response once it has started. The core client supports cancellation —
-`background=True`, `stream_run()` and `cancel_run()` are all available and verified live —
-but none of it is wired into `render_streaming_response` or `StreamlitChatbot`.
+`StreamlitChatbot` passes `submit_mode="stop"` to `st.chat_input`, so while a response
+streams the send button becomes a stop button. Pressing it stops the Streamlit script
+only. The agent run keeps executing in Snowflake until it finishes and is billed in full,
+and its answer is not shown. The user's message stays in the history without a reply, and
+the thread stays on its last completed message. Suggestions selected as pills do not go
+through the chat input, so those runs show no stop button.
 
-This is a genuine design obstacle rather than a missing feature: Streamlit only processes
-widget clicks on a rerun, and the script is blocked inside the streaming loop for exactly
-the period in which the user would press Stop. See the "Cancel in-progress streaming
+Cancelling the run server-side needs `cancel_run(run_id)` to be called when the user
+presses stop. The core client supports cancellation — `background=True`, `stream_run()`
+and `cancel_run()` are all available and verified live — but none of it is wired into
+`render_streaming_response` or `StreamlitChatbot`, because Streamlit only processes widget
+clicks on a rerun and the script is blocked inside the streaming loop for exactly the
+period in which the user would press stop. See the "Cancel in-progress streaming
 request" section of `docs/roadmap.md` for the attempted designs and why each was set aside.
 
 ---

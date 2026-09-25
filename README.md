@@ -63,7 +63,7 @@ This library is not currently published to PyPI or a public Git repository. Inst
 > version = "0.0.1"
 > description = ""
 > dependencies = [
->     "streamlit[snowflake]>=1.59",
+>     "streamlit[snowflake]>=1.64",
 >     "pandas",
 >     "requests",
 >     "httpx",
@@ -685,7 +685,7 @@ Workspaces is a file-based IDE in Snowsight — you work in files and click Depl
    requires-python = "~=3.11.0"
    version = "0.1.0"
    dependencies = [
-       "streamlit[snowflake]>=1.59",
+       "streamlit[snowflake]>=1.64",
        "pandas",
        "requests",
        "httpx",
@@ -791,7 +791,7 @@ For Streamlit apps running locally or on an external host (not inside Snowflake)
 Add to `requirements.txt`:
 
 ```
-streamlit>=1.59
+streamlit>=1.64
 pandas
 requests
 ```
@@ -1075,8 +1075,8 @@ SNOWFLAKE_ACCOUNT_URL="https://..." SNOWFLAKE_PAT="v2:..." SNOWFLAKE_AGENT_PATH=
 A fully interactive demo app is included at `streamlit_demo/`. It exercises all event types and layout modes without a Snowflake account — responses come from pre-canned event streams in `streamlit_demo/mock_thread.py`.
 
 ```bash
-# No credentials needed
-uv run streamlit run streamlit_demo/app.py
+# No credentials needed. The env vars avoid a PyArrow crash on macOS ARM64.
+ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run streamlit_demo/app.py
 ```
 
 ### Architecture

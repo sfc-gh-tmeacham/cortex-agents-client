@@ -326,7 +326,7 @@ A Vega-Lite chart specification. Emitted by the "Data to Chart" tool after Analy
 
 `chart_spec` is a JSON string (not a dict) — parse with `json.loads()`.
 
-**Streamlit rendering:** `container.vega_lite_chart(json.loads(chart_spec), use_container_width=True)  # or width="stretch" on Streamlit >=1.44`
+**Streamlit rendering:** `container.vega_lite_chart(json.loads(chart_spec), width="stretch")`
 
 ---
 
@@ -453,7 +453,7 @@ Suggested follow-up questions the agent recommends based on the conversation con
 
 **Dataclass:** `SuggestedQueriesEvent` — fields: `content_index`, `queries` (list of query strings extracted from the payload).
 
-**Streamlit rendering:** Rendered as compact tertiary buttons below the last assistant message with a "Suggested follow-ups" caption. Clicking a button submits that query as the next user message.
+**Streamlit rendering:** Rendered as `st.pills` below the last assistant message under a "Suggested questions" label. Selecting a pill submits that query as the next user message.
 
 ---
 

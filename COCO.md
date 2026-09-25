@@ -52,8 +52,10 @@ prefix to run multiple chatbots on one page without collisions.
 Keys include: `{prefix}_client`, `{prefix}_thread`, `{prefix}_messages`,
 `{prefix}_input`, `{prefix}_pending_perm`, `{prefix}_agent_spec`, `{prefix}_pending_suggestion`.
 
-### Streamlit version requirement: ≥ 1.59
+### Streamlit version requirement: ≥ 1.64
 Required for:
+- `type="step"` on `st.status` (1.63), used for the tool-call timeline
+- `submit_mode="stop"` on `st.chat_input`
 - `st.chat_input` in any container (embedded mode, replaces old `st.form` workaround)
 - `accept_file` / `accept_audio` params on `st.chat_input`
 - `key` param on `st.chat_input` (needed for embedded mode placement)
@@ -150,10 +152,10 @@ New event type `response.suggested_queries`. Parsed into `SuggestedQueriesEvent`
 a `queries: list[str]` field. Stored on `StoredMessage.suggested_queries`.
 
 ### Suggested questions UI
-`_render_suggested_queries()` renders compact tertiary buttons. Shown:
+`_render_suggested_queries()` renders `st.pills` with an `on_change` callback. Shown:
 - On new threads: agent's `sample_questions` (from agent spec, first 5)
 - After responses: `suggested_queries` from the last assistant message
-Clicking submits the query as the next user prompt via `st.rerun()`.
+Selecting a pill stores the query and clears the pill; the query is submitted as the next user prompt on the rerun.
 
 ### SQL in tool expander
 When `show_tool_status=True`, the status expander for `system_execute_sql` tools
