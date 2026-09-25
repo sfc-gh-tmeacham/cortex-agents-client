@@ -1102,8 +1102,8 @@ When the agent needs clarification it emits a `TextEvent` with `is_elicitation=T
 | `session_key_prefix` | No | `"_ca"` | `st.session_state` key prefix — change when running multiple bots on one page |
 | `default_database` | No | `None` | Default database |
 | `default_schema` | No | `None` | Default schema |
-| `accept_file` | No | `False` | `True`, `"multiple"`, `"directory"`, or `False` |
-| `accept_audio` | No | `False` | Enable microphone input |
+| `accept_file` | No | `False` | `True`, `"multiple"`, `"directory"`, or `False`. Attachments are displayed and replayed but **not forwarded to the agent** |
+| `accept_audio` | No | `False` | Enable microphone input. Recordings are displayed and replayed but **not forwarded to the agent** |
 | `file_type` | No | `None` | Allowed extensions, e.g. `["pdf","csv"]` — only applies when `accept_file` is set; `None` = all types |
 | `tool_executor` | No | `None` | Callable for client-side tool execution |
 | `variables` | No | `None` | Session attributes for multi-tenancy: a mapping, or a callable returning one, called once per prompt |

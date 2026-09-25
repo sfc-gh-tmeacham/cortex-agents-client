@@ -556,10 +556,10 @@ derived from `session_key_prefix` (leading underscore stripped).
 
 | Widget | Key format | CSS class |
 |---|---|---|
-| Thinking expander | `{prefix}-{i}-thinking` | `.st-key-ca-{i}-thinking` |
-| Table dataframe | `{prefix}-{i}-table-{n}` | `.st-key-ca-{i}-table-0` |
-| Chart container | `{prefix}-{i}-chart-{n}` | `.st-key-ca-{i}-chart-0` |
-| Sources expander | `{prefix}-{i}-sources` | `.st-key-ca-{i}-sources` |
+| Thinking expander | `{css_prefix}-{i}-thinking` | `.st-key-ca-{i}-thinking` |
+| Table dataframe | `{css_prefix}-{i}-table-{n}` | `.st-key-ca-{i}-table-0` |
+| Chart container | `{css_prefix}-{i}-chart-{n}` | `.st-key-ca-{i}-chart-0` |
+| Sources expander | `{css_prefix}-{i}-sources` | `.st-key-ca-{i}-sources` |
 
 Default `session_key_prefix` is `"_ca"` → `css_prefix` = `"ca"`.
 
@@ -576,7 +576,7 @@ Manual integration users can pass `key_prefix` directly to
 | `sis_init_session(origin_application, ...)` | Same as `init_session` but reads credentials from SiS container environment |
 | `get_messages(key="_ca_messages")` | Returns the current `list[StoredMessage]` |
 | `append_message(msg, key="_ca_messages")` | Appends a message to history |
-| `reset_thread(account_url, auth, ...)` | Clears history and starts a new thread |
+| `reset_thread(*, client_key=..., thread_key=..., messages_key=..., origin_application=None)` | Clears history and starts a new thread, reusing the client already in session state |
 
 ---
 

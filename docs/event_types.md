@@ -53,9 +53,24 @@ Complete text block after all deltas have been sent. Always follows a series of 
 {
   "content_index": 0,
   "text": "The total revenue for 2025 was $4.2 billion, up 5% from 2024 [^1].",
+  "annotations": [
+    {
+      "type": "cortex_search_citation",
+      "index": 1,
+      "search_result_id": "cs_61987ff6-6d56-4695-83c0-1e7cfed818c7",
+      "doc_id": "4ac085cb-82d0-4eb4-94f3-2672aa0599a2",
+      "doc_title": "Earnings Report Q4 2025",
+      "text": "Revenue for 2025 was $4.2B based on consolidated financials."
+    }
+  ],
   "is_elicitation": false
 }
 ```
+
+> **`annotations`**: present when the text carries `[^N]` citation markers, and parsed into
+> `TextEvent.annotations` (defaults to `[]` when absent). The same citations also arrive as
+> separate `response.text.annotation` events — see below — so a renderer should pick one
+> source rather than showing both.
 
 > **`is_elicitation`**: `true` when the agent is asking the user a clarifying question rather than delivering an answer. Render with `st.info()` instead of `st.markdown()` to visually distinguish the prompt.
 

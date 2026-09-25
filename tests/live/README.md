@@ -71,6 +71,8 @@ is populated.
 | `LIVE_AGENT_WEB` | `test_runs_web.py` only | Fully-qualified path to the web search agent. Tests in that file are automatically skipped if absent. Requires web search enabled at account level. |
 | `LIVE_SLOW` | `TestRunExpiryWindow` only | Set to `1` to run the ~6 minute run-expiry test in `test_runs_async.py`. Skipped otherwise. |
 | `LIVE_TIMEOUT` | Optional, all tests | Client read timeout in seconds (default `120`). Raise to `300` for the Cortex Analyst suite, which can be slow. Also used as the `AppTest` script timeout. |
+| `LIVE_SKIP_TEARDOWN` | Optional, all tests | Set to `1` to skip teardown. **Teardown drops `CAC_LIVE_DB`, its schema and `cac_live_wh`**, so set this whenever the account holds other seeded objects you want to keep. |
+| `LIVE_DUMP_EVENTS` | Optional, all tests | Set to `1` to always write captured SSE events to `captures/<test_name>.json`, not only on failure. |
 | `LIVE_APPTEST_AGENT` | Set automatically | Used internally by `test_streamlit_live.py` to point the AppTest app at a non-default agent. Do not set by hand. |
 
 ---

@@ -4,7 +4,7 @@ Living document describing the test suite for `cortex_agents_client`.
 Test names and file paths are kept in sync with the code on disk; if you find a
 discrepancy, the code is authoritative.
 
-**Current totals:** 339 passing, 1 skipped (JWT-missing-cryptography path skipped when `cryptography` is installed), excluding the `live` suite, which requires credentials.
+**Current totals:** 422 passing, 1 skipped (JWT-missing-cryptography path skipped when `cryptography` is installed), excluding the `live` suite, which requires credentials.
 
 ---
 
@@ -24,7 +24,8 @@ tests/
 │   ├── test_models.py           # Agent, ThreadMetadata, ThreadMessage, StoredMessage
 │   ├── test_run_body.py         # agent:run body: models vs deprecated model, orchestration, background
 │   ├── test_sse_parser.py       # SSE wire-level parsing + terminal [DONE] sentinel
-│   └── test_utils.py            # agent path resolution, result_set_to_dataframe, Thread.chat tool_executor
+│   ├── test_utils.py            # agent path resolution, result_set_to_dataframe, Thread.chat tool_executor
+│   └── test_variables.py        # multi-tenancy variables: normalisation, body emission, forwarding
 ├── integration/
 │   ├── conftest.py              # ca_client, pat_auth, http_client, make_sse_response, make_sse_httpx_response
 │   ├── test_agents.py           # AgentsResource CRUD + feedback
@@ -43,6 +44,7 @@ tests/
     ├── test_runs_full.py        # ToolUseEvent, ToolResultEvent, TextAnnotationEvent (Cortex Search agent)
     ├── test_runs_analyst.py     # ToolUseEvent (system_execute_sql), SQL via ToolUseEvent.input, verified query
     ├── test_runs_web.py         # ToolUseEvent (web_search), ToolResultEvent, non-empty text (web agent)
+    ├── test_runs_multitenancy.py # multi-tenancy variables end-to-end: row access policy scoping
     ├── test_runs_async.py       # background runs, stream_run reconnect, starting_after, cancel_run + 409, Thread.chat(background), lite models/orchestration, X-Snowflake-Role
     ├── test_agents.py           # agent CRUD lifecycle, createMode, ifExists, agent- and request-level feedback
     ├── test_streamlit_live.py   # AppTest against a live agent: render pipeline, history replay, Analyst dataframe
@@ -57,6 +59,7 @@ tests/
         ├── 04_semantic_view.sql       # sales table + semantic view DDL
         ├── 05_analyst_agent.sql       # Cortex Analyst agent DDL
         ├── 06_web_search_agent.sql    # web search agent DDL
+        ├── 07_multitenancy.sql        # scoped table + row access policy + agent, for variables tests
         ├── teardown.sql               # DROP all test objects
         ├── teardown.py                # run teardown.sql via snowflake-connector
         ├── cleanup_leaked_threads.py  # sweep origin_application='cac_live' threads
@@ -251,6 +254,54 @@ Tests `Thread.chat()` with client-side `tool_executor` callback:
 
 ---
 
+### `tests/unit/test_variables.py`
+
+Covers the optional `variables` argument (multi-tenancy session attributes).
+
+#### `TestNormalize`
+
+Tests `normalize_variables()` from `cortex_agents_client._variables`:
+
+| Test | What it verifies |
+|---|---|
+| `test_none_and_empty_return_none` | `None` and `{}` both produce `None`, so no key is sent |
+| `test_shorthand_string` | A bare value expands to `{value, type, is_immutable_session_attribute}` |
+| `test_shorthand_type_inference` | Parametrized: `str` → `string`, `int`/`float` → `number`, `bool` → `boolean` |
+| `test_full_form_passthrough` | A full dict is preserved as given |
+| `test_full_form_defaults_type_and_immutable` | Missing `type` is inferred; `is_immutable_session_attribute` defaults to `True` |
+| `test_full_form_explicit_false_respected` | An explicit `is_immutable_session_attribute=False` is not overwritten |
+| `test_full_form_explicit_type_kept` | An explicit `type` is never replaced by inference |
+| `test_input_not_mutated` | The caller's mapping is copied, not modified in place |
+| `test_invalid_raises_value_error` | Parametrized: `None` value, missing `value` key, unsupported type, NaN, infinity, empty name |
+| `test_non_mapping_raises_value_error` | A non-mapping `variables` argument raises `ValueError` |
+
+#### `TestBuildBody`
+
+Tests `RunsResource._build_body()`:
+
+| Test | What it verifies |
+|---|---|
+| `test_omitted_has_no_variables_key` | No `variables` key when the argument is absent |
+| `test_omitted_body_unchanged` | The body is byte-identical to the pre-feature body |
+| `test_shorthand_normalised_into_body` | Shorthand values are expanded in the emitted body |
+| `test_invalid_raises_before_http` | Validation fails before any HTTP request is made |
+
+#### `TestRunsForwarding`, `TestClientForwarding`, `TestThreadChat`
+
+| Test | What it verifies |
+|---|---|
+| `test_stream_sends_variables` | `runs.stream()` forwards `variables` |
+| `test_run_sends_variables` | `runs.run()` forwards `variables` |
+| `test_stream_and_collect_forwards_variables` | `stream_and_collect()` forwards `variables` |
+| `test_stream_without_thread` | `client.stream()` forwards on the threadless branch |
+| `test_stream_with_thread_forwards_to_chat` | `client.stream(thread=...)` forwards through `Thread.chat` |
+| `test_run_forwards` / `test_run_with_thread_forwards` | `client.run()` forwards on both branches |
+| `test_chat_forwards_variables` | `Thread.chat()` forwards `variables` |
+| `test_chat_default_sends_none` | Default omits the key |
+| `test_tool_loop_follow_up_carries_variables` | Tool-result follow-up requests carry the same `variables` |
+
+---
+
 ## Integration tests
 
 Fixtures (defined in `tests/integration/conftest.py`):
@@ -381,7 +432,6 @@ Items not yet implemented — candidates for future test sprints:
 
 | Area | Description |
 |---|---|
-| HTTP connection errors | `httpx.ConnectError` → `CortexAgentError`; `httpx.TimeoutException` → `CortexTimeoutError`. Requires patching at transport level. |
 | `Thread.chat()` tool_choice body | Verify `tool_choice` dict is sent correctly in the run request body. |
 | `Thread.chat()` permission_decisions body | Verify `permission_decisions` content items are sent in the user message. |
 | Thread `update` 404 | `threads.update()` on a non-existent thread raises `ThreadNotFoundError`. |
@@ -411,7 +461,8 @@ See [`tests/live/README.md`](../tests/live/README.md) for setup instructions.
 | `LIVE_AGENT_FULL` | `test_runs_full.py` | Fully-qualified path to the Cortex Search agent |
 | `LIVE_AGENT_ANALYST` | `test_runs_analyst.py` | Fully-qualified path to the Cortex Analyst agent |
 | `LIVE_AGENT_WEB` | `test_runs_web.py` | Fully-qualified path to the web search agent (requires account-level web search enabled) |
-| `LIVE_APPTEST_AGENT` | `test_streamlit_live.py` | Overrides the agent used by `apps/live_chat_app.py`; falls back to `LIVE_AGENT_MINIMAL` |
+| `LIVE_AGENT_MULTITENANCY` | `test_runs_multitenancy.py` | Fully-qualified path to the multi-tenancy agent created by `seed/07_multitenancy.sql` |
+| `LIVE_APPTEST_AGENT` | `test_streamlit_live.py` | Set automatically by `test_streamlit_live.py` to point the AppTest app at a non-default agent; falls back to `LIVE_AGENT_MINIMAL`. Not intended to be set by hand |
 | `LIVE_SKIP_TEARDOWN` | Optional | Set to `1` to skip teardown. **Teardown drops `CAC_LIVE_DB`**, so set this unless you intend that |
 | `LIVE_TIMEOUT` | Optional | Client read timeout in seconds (default 120; `test_streamlit_live.py` defaults to 180) |
 | `LIVE_SLOW` | Optional | Set to `1` to run the ~6-minute run-expiry test in `test_runs_async.py`, which is otherwise skipped |
@@ -532,3 +583,28 @@ Drives `apps/live_chat_app.py` through `streamlit.testing.v1.AppTest`. Honours `
 | `test_tool_result_status_is_success` | All `ToolResultEvent.status == 'success'` |
 | `test_response_event_completed` | Final `ResponseEvent(status='completed')` |
 | `test_text_is_non_empty` | Assembled text from deltas is non-empty |
+
+---
+
+### `tests/live/test_runs_multitenancy.py` (multi-tenancy session attributes)
+
+Requires `LIVE_AGENT_MULTITENANCY`. Seeded by `seed/07_multitenancy.sql`, which creates a
+dedicated table, attaches a row access policy reading
+`SYS_CONTEXT('SNOWFLAKE$SESSION_ATTRIBUTES', 'tenant_region')`, and builds an agent over it.
+The policy is attached only to the seeded table, never to a pre-existing one.
+
+#### `TestTenantIsolation`
+
+| Test | Description |
+|---|---|
+| `test_no_variables_returns_no_rows` | Fail-closed: with no `variables`, the attribute is NULL and the policy returns zero rows |
+| `test_tenant_sees_only_own_region` | Shorthand `variables={"tenant_region": "North"}` returns only that region's rows |
+| `test_full_rest_form_scopes_run` | The full `{value, type, is_immutable_session_attribute}` form scopes the run identically |
+| `test_numeric_attribute_accepted` | `type: "number"` is accepted by the API and scopes the run |
+
+#### `TestScopePersistsAcrossRequests`
+
+| Test | Description |
+|---|---|
+| `test_second_turn_on_same_thread_still_scoped` | A second turn on the same thread stays scoped to the same tenant |
+| `test_background_run_resumed_keeps_scope` | Attributes survive a `stream_run` reconnect to a background run |
