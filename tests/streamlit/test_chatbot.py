@@ -1,4 +1,4 @@
-"""Unit tests for StreamlitChatbot — fullpage and embedded modes.
+"""Unit tests for CortexAgentChat — fullpage and embedded modes.
 
 These tests verify:
 - Constructor parameters are stored correctly.
@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from streamlit_cortex_agents.chat.chatbot import StreamlitChatbot
+from streamlit_cortex_agents.chat.chatbot import CortexAgentChat
 
 
 # ---------------------------------------------------------------------------
@@ -25,11 +25,11 @@ from streamlit_cortex_agents.chat.chatbot import StreamlitChatbot
 # ---------------------------------------------------------------------------
 
 
-class TestStreamlitChatbotInit:
+class TestCortexAgentChatInit:
     """Verify __init__ stores all parameters correctly."""
 
     def test_defaults(self):
-        bot = StreamlitChatbot(
+        bot = CortexAgentChat(
             account_url="https://example.snowflakecomputing.com",
             auth="my_pat",
             agent_path="DB.SC.AGENT",
@@ -52,7 +52,7 @@ class TestStreamlitChatbotInit:
         assert bot._file_type is None
 
     def test_embedded_mode_params_stored(self):
-        bot = StreamlitChatbot(
+        bot = CortexAgentChat(
             account_url="https://example.snowflakecomputing.com",
             auth="my_pat",
             agent_path="DB.SC.AGENT",
@@ -66,7 +66,7 @@ class TestStreamlitChatbotInit:
         assert bot._input_key == "chat_input"
 
     def test_session_key_prefix_propagates(self):
-        bot = StreamlitChatbot(
+        bot = CortexAgentChat(
             account_url="https://x.snowflakecomputing.com",
             auth="tok",
             agent_path="A.B.C",
@@ -78,7 +78,7 @@ class TestStreamlitChatbotInit:
         assert bot._input_key == "mybot_input"
 
     def test_accept_file_params_stored(self):
-        bot = StreamlitChatbot(
+        bot = CortexAgentChat(
             account_url="https://x.snowflakecomputing.com",
             auth="tok",
             agent_path="A.B.C",
@@ -99,8 +99,8 @@ class TestStreamlitChatbotInit:
 class TestRenderDispatch:
     """Verify render() calls the correct private method based on mode."""
 
-    def _make_bot(self, mode="fullpage") -> StreamlitChatbot:
-        return StreamlitChatbot(
+    def _make_bot(self, mode="fullpage") -> CortexAgentChat:
+        return CortexAgentChat(
             account_url="https://x.snowflakecomputing.com",
             auth="tok",
             agent_path="A.B.C",
@@ -124,7 +124,7 @@ class TestRenderDispatch:
             mock_fp.assert_not_called()
 
     def test_invalid_mode_raises_value_error(self):
-        bot = StreamlitChatbot(
+        bot = CortexAgentChat(
             account_url="https://x.snowflakecomputing.com",
             auth="tok",
             agent_path="A.B.C",
@@ -155,8 +155,8 @@ def _mock_st():
 class TestRenderFullpage:
     """Verify full-page rendering uses st.chat_input and sidebar button."""
 
-    def _make_bot(self, **kw) -> StreamlitChatbot:
-        return StreamlitChatbot(
+    def _make_bot(self, **kw) -> CortexAgentChat:
+        return CortexAgentChat(
             account_url="https://x.snowflakecomputing.com",
             auth="tok",
             agent_path="A.B.C",
@@ -170,8 +170,8 @@ class TestRenderFullpage:
         mock_st = _mock_st()
         mock_st.chat_input.return_value = None  # no input this run
 
-        with patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._init") as mock_init, \
-             patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._render_message_history"), \
+        with patch("streamlit_cortex_agents.chat.chatbot.CortexAgentChat._init") as mock_init, \
+             patch("streamlit_cortex_agents.chat.chatbot.CortexAgentChat._render_message_history"), \
              patch.dict("sys.modules", {"streamlit": mock_st}):
             mock_init.return_value = (mock_thread, MagicMock(), MagicMock(), MagicMock())
             bot._render_fullpage()
@@ -184,8 +184,8 @@ class TestRenderFullpage:
         mock_st = _mock_st()
         mock_st.chat_input.return_value = None
 
-        with patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._init") as mock_init, \
-             patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._render_message_history"), \
+        with patch("streamlit_cortex_agents.chat.chatbot.CortexAgentChat._init") as mock_init, \
+             patch("streamlit_cortex_agents.chat.chatbot.CortexAgentChat._render_message_history"), \
              patch.dict("sys.modules", {"streamlit": mock_st}):
             mock_init.return_value = (mock_thread, MagicMock(), MagicMock(), MagicMock())
             bot._render_fullpage()
@@ -198,8 +198,8 @@ class TestRenderFullpage:
         mock_st = _mock_st()
         mock_st.chat_input.return_value = None
 
-        with patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._init") as mock_init, \
-             patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._render_message_history"), \
+        with patch("streamlit_cortex_agents.chat.chatbot.CortexAgentChat._init") as mock_init, \
+             patch("streamlit_cortex_agents.chat.chatbot.CortexAgentChat._render_message_history"), \
              patch.dict("sys.modules", {"streamlit": mock_st}):
             mock_init.return_value = (MagicMock(), MagicMock(), MagicMock(), MagicMock())
             bot._render_fullpage()
@@ -217,8 +217,8 @@ class TestRenderFullpage:
 class TestRenderEmbedded:
     """Verify embedded rendering uses inline st.chat_input (Streamlit ≥ 1.59)."""
 
-    def _make_bot(self, **kw) -> StreamlitChatbot:
-        return StreamlitChatbot(
+    def _make_bot(self, **kw) -> CortexAgentChat:
+        return CortexAgentChat(
             account_url="https://x.snowflakecomputing.com",
             auth="tok",
             agent_path="A.B.C",
@@ -245,9 +245,9 @@ class TestRenderEmbedded:
 
         mock_st.chat_input.return_value = prompt
 
-        with patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._init") as mock_init, \
-             patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._render_message_history"), \
-             patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._process_prompt") as mock_proc, \
+        with patch("streamlit_cortex_agents.chat.chatbot.CortexAgentChat._init") as mock_init, \
+             patch("streamlit_cortex_agents.chat.chatbot.CortexAgentChat._render_message_history"), \
+             patch("streamlit_cortex_agents.chat.chatbot.CortexAgentChat._process_prompt") as mock_proc, \
              patch.dict("sys.modules", {"streamlit": mock_st}):
             mock_init.return_value = (MagicMock(), MagicMock(), MagicMock(), MagicMock())
             bot._render_embedded()
@@ -265,7 +265,7 @@ class TestRenderEmbedded:
 
     def test_css_height_injects_scoped_style(self):
         """A string height keys the container and styles its wrapper."""
-        bot = StreamlitChatbot(
+        bot = CortexAgentChat(
             account_url="https://x.snowflakecomputing.com",
             auth="tok",
             agent_path="A.B.C",
@@ -285,7 +285,7 @@ class TestRenderEmbedded:
 
     def test_css_height_strips_rule_breakers(self):
         """Semicolons and braces cannot escape the injected rule."""
-        bot = StreamlitChatbot(
+        bot = CortexAgentChat(
             account_url="https://x.snowflakecomputing.com",
             auth="tok",
             agent_path="A.B.C",
@@ -362,7 +362,7 @@ class TestStreamWithRetry:
     """Verifies that _stream_with_retry uses a factory callable correctly."""
 
     def _make_bot(self):
-        return StreamlitChatbot(
+        return CortexAgentChat(
             account_url="https://test.snowflakecomputing.com",
             auth="v2:tok",
             agent_path="DB.SC.AGENT",
@@ -413,8 +413,8 @@ class TestStreamWithRetry:
 class TestStopCancelsRun:
     """Stopping the script mid-stream cancels the agent run server-side."""
 
-    def _bot(self) -> StreamlitChatbot:
-        return StreamlitChatbot(
+    def _bot(self) -> CortexAgentChat:
+        return CortexAgentChat(
             account_url="https://x.snowflakecomputing.com",
             auth="tok",
             agent_path="A.B.C",
@@ -522,8 +522,8 @@ class TestStopCancelsRun:
 class TestVariables:
     """``variables`` reaches thread.chat on every chat path."""
 
-    def _make_bot(self, **kw) -> StreamlitChatbot:
-        return StreamlitChatbot(
+    def _make_bot(self, **kw) -> CortexAgentChat:
+        return CortexAgentChat(
             account_url="https://x.snowflakecomputing.com",
             auth="tok",
             agent_path="A.B.C",

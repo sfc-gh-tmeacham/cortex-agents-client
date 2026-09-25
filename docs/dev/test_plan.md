@@ -32,7 +32,7 @@ tests/
 │   ├── test_runs.py             # RunsResource streaming + Thread class multi-turn
 │   └── test_threads.py          # ThreadsResource CRUD + pagination helpers
 ├── streamlit/
-│   ├── test_chatbot.py          # StreamlitChatbot constructor + render dispatch
+│   ├── test_chatbot.py          # CortexAgentChat constructor + render dispatch
 │   ├── test_column_config.py    # _markdown_column_config dtype selection (object + StringDtype)
 │   ├── test_render.py           # render_streaming_response + render_stored_message
 │   └── test_session.py          # init_session, reset_thread, get_messages, append_message
@@ -370,7 +370,7 @@ Both files use `unittest.mock.MagicMock` and `patch.dict("sys.modules", ...)` to
 
 | Class | Tests |
 |---|---|
-| `TestStreamlitChatbotInit` | `test_defaults`, `test_embedded_mode_params_stored`, `test_session_key_prefix_propagates`, `test_accept_file_params_stored` |
+| `TestCortexAgentChatInit` | `test_defaults`, `test_embedded_mode_params_stored`, `test_session_key_prefix_propagates`, `test_accept_file_params_stored` |
 | `TestRenderDispatch` | `test_fullpage_dispatches_to_render_fullpage`, `test_embedded_dispatches_to_render_embedded`, `test_invalid_mode_raises_value_error` |
 | `TestRenderFullpage` | `test_calls_chat_input`, `test_no_sidebar_button_when_disabled`, `test_accept_file_passed_to_chat_input` |
 | `TestRenderEmbedded` | `test_uses_chat_input_not_form`, `test_scrollable_container_with_correct_height`, `test_process_prompt_called_when_chat_input_returns_text`, `test_process_prompt_not_called_when_chat_input_returns_none`, `test_chat_input_uses_input_key`, `test_no_new_conversation_button_when_disabled`, `test_sidebar_not_used_in_embedded_mode` |
@@ -437,7 +437,7 @@ Items not yet implemented — candidates for future test sprints:
 | Thread `update` 404 | `threads.update()` on a non-existent thread raises `ThreadNotFoundError`. |
 | Mock-based AppTest for CI | `tests/live/test_streamlit_live.py` covers the render pipeline but needs live credentials. A mock-driven AppTest over `streamlit_demo/mock_thread.py` would give the same structural coverage in CI. |
 
-> `StreamlitChatbot` AppTest integration was previously listed here. It is now implemented in
+> `CortexAgentChat` AppTest integration was previously listed here. It is now implemented in
 > `tests/live/test_streamlit_live.py`. It was worth the complexity: the first run surfaced a
 > real defect in `_markdown_column_config` that no mock-based test could reach.
 

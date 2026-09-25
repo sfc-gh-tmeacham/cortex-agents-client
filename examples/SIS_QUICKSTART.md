@@ -58,7 +58,7 @@ users come specifically to talk to the agent.
 ```python
 # sis_fullpage.py
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # not sensitive — hardcode your agent path
@@ -70,7 +70,7 @@ st.set_page_config(
 )
 st.title("My Agent")
 
-StreamlitChatbot(
+CortexAgentChat(
     account_url=account_url_from_env(),
     auth=SiSContainerAuth(),
     agent_path=AGENT_PATH,
@@ -96,7 +96,7 @@ Key points:
 ```python
 # sis_embedded.py
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # not sensitive — hardcode your agent path
@@ -119,7 +119,7 @@ with dash_col:
 
 with chat_col:
     st.subheader(":material/smart_toy: Ask the agent")
-    StreamlitChatbot(
+    CortexAgentChat(
         account_url=account_url_from_env(),
         auth=SiSContainerAuth(),
         agent_path=AGENT_PATH,
@@ -145,7 +145,7 @@ Key points:
 ```python
 # sis_dialog.py
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # not sensitive — hardcode your agent path
@@ -164,7 +164,7 @@ st.dataframe(
 # Define the dialog at module scope so it persists across reruns
 @st.dialog("Cortex Agent", width="large")
 def _chat() -> None:
-    StreamlitChatbot(
+    CortexAgentChat(
         account_url=account_url_from_env(),
         auth=SiSContainerAuth(),
         agent_path=AGENT_PATH,
@@ -189,11 +189,11 @@ If you already have a deployed SiS container runtime app, the only changes are:
 3. Add the import and a single `.render()` call where you want the chat to appear:
 
 ```python
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 # Drop into any existing page — fullpage, a column, a tab, or inside @st.dialog
-StreamlitChatbot(
+CortexAgentChat(
     account_url=account_url_from_env(),
     auth=SiSContainerAuth(),
     agent_path="MY_DB.MY_SCHEMA.MY_AGENT",

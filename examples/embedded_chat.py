@@ -9,7 +9,7 @@ Requires .streamlit/secrets.toml with:
 """
 
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"
 
@@ -43,8 +43,8 @@ st.divider()
 # ---------------------------------------------------------------------------
 # Shared chatbot factory
 # ---------------------------------------------------------------------------
-def _make_bot(prefix: str, height: int | str = 450) -> StreamlitChatbot:
-    return StreamlitChatbot(
+def _make_bot(prefix: str, height: int | str = 450) -> CortexAgentChat:
+    return CortexAgentChat(
         account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
         auth=st.secrets["SNOWFLAKE_PAT"],
         agent_path=AGENT_PATH,

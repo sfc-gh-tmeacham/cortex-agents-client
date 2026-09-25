@@ -26,7 +26,7 @@ streamlit_cortex_agents/
 │   ├── runs.py        # RunsResource — agent:run, plus run stream (GET) and cancel (POST) endpoints
 │   └── threads.py     # ThreadsResource (thread CRUD)
 └── st/
-    ├── chatbot.py     # StreamlitChatbot — drop-in full-page or embedded chat component
+    ├── chatbot.py     # CortexAgentChat — drop-in full-page or embedded chat component
     ├── render.py      # render_streaming_response(), render_stored_message(), helpers
     └── session.py     # st.session_state helpers: init_session, sis_init_session, get_messages, append_message
 ```
@@ -46,7 +46,7 @@ Callers never manage message IDs manually. `init_session()` in `session.py` stor
 thread in `st.session_state` so it survives reruns.
 
 ### Session state key prefix
-Every `StreamlitChatbot` uses a `session_key_prefix` (default `_ca`) to namespace its
+Every `CortexAgentChat` uses a `session_key_prefix` (default `_ca`) to namespace its
 session state keys (`_ca_client`, `_ca_thread`, `_ca_messages`, `_ca_input`, `_ca_pending_perm`). Change the
 prefix to run multiple chatbots on one page without collisions.
 Keys include: `{prefix}_client`, `{prefix}_thread`, `{prefix}_messages`,
@@ -165,7 +165,7 @@ displays the generated SQL via `st.code(sql, language="sql")` — matching CoWor
 
 ## File and audio attachments — current state and roadmap
 
-`StreamlitChatbot` accepts `accept_file`, `accept_audio`, `file_type` params.
+`CortexAgentChat` accepts `accept_file`, `accept_audio`, `file_type` params.
 Files are displayed in the user bubble and stored in `StoredMessage.attachments`
 for rerun replay. **They are NOT forwarded to the agent.**
 
@@ -198,7 +198,7 @@ Tests: 339 passing, 1 skipped, excluding the credentialed `live` suite (`tests/`
 ```
 tests/
 ├── unit/          # core client, auth, SSE parsing, event models
-├── streamlit/     # StreamlitChatbot, render functions, session helpers (mocked st)
+├── streamlit/     # CortexAgentChat, render functions, session helpers (mocked st)
 ├── integration/   # mocked HTTP tests via pytest-httpx; no Snowflake account required
 └── fixtures/      # shared SSE event payloads
 ```

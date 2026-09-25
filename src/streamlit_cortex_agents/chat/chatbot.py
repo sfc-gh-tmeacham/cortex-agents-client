@@ -1,6 +1,6 @@
 """High-level Streamlit chatbot component for Cortex Agents.
 
-Provides :class:`StreamlitChatbot`, a drop-in component that renders a
+Provides :class:`CortexAgentChat`, a drop-in component that renders a
 complete chat UI in two modes:
 
 - ``"fullpage"`` (default): traditional full-page chat with ``st.chat_input``
@@ -23,7 +23,7 @@ from streamlit_cortex_agents.client.models.events import ErrorEvent
 logger = logging.getLogger(__name__)
 
 
-class StreamlitChatbot:
+class CortexAgentChat:
     """A drop-in Streamlit chatbot component backed by a Cortex Agent.
 
     Renders a complete chat interface including message history replay,
@@ -40,7 +40,7 @@ class StreamlitChatbot:
 
         .. code-block:: python
 
-            bot = StreamlitChatbot(account_url=..., auth=..., agent_path=...)
+            bot = CortexAgentChat(account_url=..., auth=..., agent_path=...)
             bot.render()
 
     **embedded**
@@ -59,7 +59,7 @@ class StreamlitChatbot:
             with dash_col:
                 st.write("Your dashboard content here")
             with chat_col:
-                bot = StreamlitChatbot(
+                bot = CortexAgentChat(
                     account_url=..., auth=..., agent_path=...,
                     mode="embedded",
                     height=500,
@@ -69,7 +69,7 @@ class StreamlitChatbot:
             # Dialog: chat opens in a modal overlay
             @st.dialog("Ask the agent", width="large")
             def open_chat():
-                bot = StreamlitChatbot(
+                bot = CortexAgentChat(
                     account_url=..., auth=..., agent_path=...,
                     mode="embedded",
                     height=400,

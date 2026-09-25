@@ -92,7 +92,7 @@ for most use cases.
 
 #### Current state
 
-`StreamlitChatbot` accepts `accept_file`, `accept_audio`, and `file_type` parameters
+`CortexAgentChat` accepts `accept_file`, `accept_audio`, and `file_type` parameters
 that enable the corresponding controls on `st.chat_input` (Streamlit ≥ 1.59). When a
 user uploads a file or records audio, those attachments are:
 
@@ -159,7 +159,7 @@ items. Only the upload + wiring step is missing.
 
 ### Cancel in-progress streaming request
 
-**Status: implemented in 0.3.0** without the concurrency designs below. `StreamlitChatbot`
+**Status: implemented in 0.3.0** without the concurrency designs below. `CortexAgentChat`
 uses `st.chat_input(submit_mode="stop")`; pressing stop raises `StopException` at the next
 streamed event, and `_stream_with_retry` catches it, calls `cancel_run(run_id)`, and
 re-raises. See "Stopping a response" in `docs/streamlit_guide.md`. The rest of this section
@@ -197,7 +197,7 @@ drainer) or move the cancel trigger outside the script run entirely.
 Consequences that make this more than a refactor:
 
 - `render_streaming_response` is public API. Splitting it into an IO drainer and a UI
-  renderer changes its internal contract, and it is exercised by both `StreamlitChatbot`
+  renderer changes its internal contract, and it is exercised by both `CortexAgentChat`
   render paths plus the AppTest suite.
 - The drainer thread has no `ScriptRunContext`, so any accidental `st.*` call inside it
   fails at runtime rather than at import time — an easy defect to introduce and a hard
@@ -293,7 +293,7 @@ section). Optional `variables` on every run entry
 point, sent as the `agent:run` `variables` block, so one agent can serve several tenants
 with row access policies enforcing the boundary. Accepts shorthand scalars or the REST
 shape; both default to immutable. `Thread.chat` sends them on client-side tool-loop
-follow-ups, and `StreamlitChatbot` takes a mapping or a per-prompt callable.
+follow-ups, and `CortexAgentChat` takes a mapping or a per-prompt callable.
 
 Verified live against a row access policy: two tenants saw disjoint rows, a second turn on
 one thread stayed scoped, a resumed background run stayed scoped, and a request with no

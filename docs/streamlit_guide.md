@@ -129,11 +129,11 @@ When the stream completes with no visible content (no text, tables, charts, erro
 
 Both `render_streaming_response` and `render_stored_message` accept an optional `key_prefix` parameter. When provided, widgets that accept Streamlit's `key` parameter get stable CSS classes (`.st-key-{prefix}-thinking`, `.st-key-{prefix}-sources`, `.st-key-{prefix}-table-{i}`, `.st-key-{prefix}-chart-{i}`).
 
-`StreamlitChatbot` passes `key_prefix` automatically using the pattern `{css_prefix}-{msg_index}` where `css_prefix` is derived from `session_key_prefix` (leading underscore stripped). Manual integration users can pass `key_prefix` explicitly for custom CSS targeting.
+`CortexAgentChat` passes `key_prefix` automatically using the pattern `{css_prefix}-{msg_index}` where `css_prefix` is derived from `session_key_prefix` (leading underscore stripped). Manual integration users can pass `key_prefix` explicitly for custom CSS targeting.
 
 ### Stopping a response
 
-`StreamlitChatbot` passes `submit_mode="stop"` to `st.chat_input`, so while a response
+`CortexAgentChat` passes `submit_mode="stop"` to `st.chat_input`, so while a response
 streams the send button becomes a stop button. Pressing it makes Streamlit raise
 `StopException` at the script's next yield point, which is the next streamed event. The
 chatbot catches it, calls `client.cancel_run(run_id)` with the `run_id` from the run's
@@ -153,13 +153,13 @@ triggered mid-stream (`RerunException`) cancels the run the same way.
 
 Cancel-on-stop is covered by mocked unit tests; cancelling a non-background streaming run
 has not yet been verified against a live account. `render_streaming_response` on its own
-does not cancel — only `StreamlitChatbot` does.
+does not cancel — only `CortexAgentChat` does.
 
 ---
 
 ## Per-viewer tenant resolution
 
-`StreamlitChatbot(variables=...)` accepts a mapping or a zero-argument callable. The
+`CortexAgentChat(variables=...)` accepts a mapping or a zero-argument callable. The
 callable exists because in a multi-tenant app the tenant is a property of the current
 viewer, not of the app, and `st.context.user` is only available during a run.
 
@@ -187,9 +187,9 @@ it runs on a later rerun, after the user approves the tool.
 ```python
 # app.py
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 
-bot = StreamlitChatbot(
+bot = CortexAgentChat(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
     auth=st.secrets["SNOWFLAKE_PAT"],
     agent_path="MY_DB.MY_SCHEMA.MY_AGENT",

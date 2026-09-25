@@ -3,9 +3,9 @@
 Add a streaming Cortex Agent chat interface to a Streamlit app::
 
     import streamlit as st
-    from streamlit_cortex_agents import StreamlitChatbot
+    from streamlit_cortex_agents import CortexAgentChat
 
-    bot = StreamlitChatbot(
+    bot = CortexAgentChat(
         account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
         auth=st.secrets["SNOWFLAKE_PAT"],
         agent_path="DB.SCHEMA.MY_AGENT",

@@ -1,7 +1,7 @@
 """Mock thread and client for the streamlit-cortex-agents UI demo.
 
 Provides :class:`MockThread` and :class:`MockClient` — drop-in replacements
-that are pre-seeded into ``st.session_state`` so :class:`~streamlit_cortex_agents.chat.chatbot.StreamlitChatbot`
+that are pre-seeded into ``st.session_state`` so :class:`~streamlit_cortex_agents.chat.chatbot.CortexAgentChat`
 works without a real Snowflake connection.
 
 Each *scenario* is a generator function that yields

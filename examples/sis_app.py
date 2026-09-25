@@ -25,7 +25,7 @@ Upload this file and your streamlit_cortex_agents/ directory to the stage path a
 import os
 
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 # Agent path — set as a constant or read from an environment variable.
@@ -36,7 +36,7 @@ AGENT_PATH = os.environ.get("AGENT_PATH", "MY_DB.MY_SCHEMA.MY_AGENT")
 st.set_page_config(page_title="Cortex Agent Chat", page_icon=":material/smart_toy:", layout="wide")
 st.title("Cortex Agent Chat")
 
-bot = StreamlitChatbot(
+bot = CortexAgentChat(
     account_url=account_url_from_env(),
     auth=SiSContainerAuth(),
     agent_path=AGENT_PATH,

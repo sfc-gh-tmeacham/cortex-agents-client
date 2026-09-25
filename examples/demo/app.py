@@ -52,7 +52,7 @@ from mock_thread import (  # noqa: E402 — sys.path must be set first
     MockThread,
 )
 
-from streamlit_cortex_agents.chat import StreamlitChatbot  # noqa: E402
+from streamlit_cortex_agents.chat import CortexAgentChat  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Page configuration
@@ -186,7 +186,7 @@ def page_fullpage() -> None:
         Reasoning="on" if show_thinking else "off",
         **{"Tool status": "on" if show_tool_status else "off"},
     )
-    StreamlitChatbot(
+    CortexAgentChat(
         account_url="mock://localhost",
         auth="mock_token",
         agent_path="DEMO.DEMO.DEMO_AGENT",
@@ -255,7 +255,7 @@ def page_embedded() -> None:
 
     with chat_col:
         st.subheader(":material/smart_toy: Ask the agent")
-        StreamlitChatbot(
+        CortexAgentChat(
             account_url="mock://localhost",
             auth="mock_token",
             agent_path="DEMO.DEMO.DEMO_AGENT",
@@ -286,7 +286,7 @@ def page_dialog() -> None:
             if st.button("Close", icon=":material/close:", type="tertiary"):
                 st.session_state.chat_dialog_open = False
                 st.rerun()
-        StreamlitChatbot(
+        CortexAgentChat(
             account_url="mock://localhost",
             auth="mock_token",
             agent_path="DEMO.DEMO.DEMO_AGENT",
@@ -418,7 +418,7 @@ ALTER STREAMLIT my_db.my_schema.my_agent_app
     st.code(
         """
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"
@@ -426,7 +426,7 @@ AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"
 st.set_page_config(layout="wide")
 st.title("My Agent")
 
-StreamlitChatbot(
+CortexAgentChat(
     account_url=account_url_from_env(),  # reads SNOWFLAKE_HOST env var
     auth=SiSContainerAuth(),             # reads /snowflake/session/token
     agent_path=AGENT_PATH,
@@ -443,7 +443,7 @@ StreamlitChatbot(
     st.code(
         """
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 
 SNOWFLAKE_ACCOUNT_URL = st.secrets["SNOWFLAKE_ACCOUNT_URL"]
 SNOWFLAKE_PAT         = st.secrets["SNOWFLAKE_PAT"]
@@ -452,7 +452,7 @@ AGENT_PATH            = "MY_DB.MY_SCHEMA.MY_AGENT"
 st.set_page_config(layout="wide")
 st.title("My Agent")
 
-StreamlitChatbot(
+CortexAgentChat(
     account_url=SNOWFLAKE_ACCOUNT_URL,
     auth=SNOWFLAKE_PAT,
     agent_path=AGENT_PATH,
@@ -469,7 +469,7 @@ StreamlitChatbot(
     st.code(
         """
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 
 SNOWFLAKE_ACCOUNT_URL = st.secrets["SNOWFLAKE_ACCOUNT_URL"]
 SNOWFLAKE_PAT         = st.secrets["SNOWFLAKE_PAT"]
@@ -486,7 +486,7 @@ with dash_col:
 
 with chat_col:
     st.subheader(":material/smart_toy: Ask the agent")
-    StreamlitChatbot(
+    CortexAgentChat(
         account_url=SNOWFLAKE_ACCOUNT_URL,
         auth=SNOWFLAKE_PAT,
         agent_path=AGENT_PATH,
@@ -506,7 +506,7 @@ with chat_col:
     st.code(
         """
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 
 SNOWFLAKE_ACCOUNT_URL = st.secrets["SNOWFLAKE_ACCOUNT_URL"]
 SNOWFLAKE_PAT         = st.secrets["SNOWFLAKE_PAT"]
@@ -519,7 +519,7 @@ st.title("Sales Dashboard")
 
 @st.dialog("Cortex Agent", width="large")
 def _chat():
-    StreamlitChatbot(
+    CortexAgentChat(
         account_url=SNOWFLAKE_ACCOUNT_URL,
         auth=SNOWFLAKE_PAT,
         agent_path=AGENT_PATH,

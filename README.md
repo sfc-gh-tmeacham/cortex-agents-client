@@ -17,12 +17,12 @@ Drop-in Cortex Agent chatbot for Streamlit. Add a fully functional, streaming AI
 ```python
 # streamlit-app.py — Full-page chatbot (chat input pinned to bottom)
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # ← swap this
 
-StreamlitChatbot(
+CortexAgentChat(
     account_url=account_url_from_env(),
     auth=SiSContainerAuth(),
     agent_path=AGENT_PATH,
@@ -36,10 +36,10 @@ StreamlitChatbot(
 **External Streamlit (local / hosted):**
 
 ```python
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 import streamlit as st
 
-StreamlitChatbot(
+CortexAgentChat(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
     auth=st.secrets["SNOWFLAKE_PAT"],
     agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
@@ -95,7 +95,7 @@ Also includes the complete Python client library for the Cortex Agents REST API 
   - [Elicitation](#elicitation)
 - [Reference](#reference)
   - [`CortexAgentsClient` parameters](#cortexagentsclient-parameters)
-  - [`StreamlitChatbot` parameters](#streamlitchatbot-parameters)
+  - [`CortexAgentChat` parameters](#cortexagentchat-parameters)
   - [CSS targeting via widget keys](#css-targeting-via-widget-keys)
   - [Secrets and environment variables](#secrets-and-environment-variables)
   - [Running tests](#running-tests)
@@ -698,10 +698,10 @@ auth        = SiSContainerAuth()       # reads /snowflake/session/token on every
 
 ```python
 # streamlit-app.py
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
-StreamlitChatbot(
+CortexAgentChat(
     account_url=account_url_from_env(),
     auth=SiSContainerAuth(),
     agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
@@ -906,11 +906,11 @@ The agent path is not sensitive — hardcode it directly in your app code.
 ```python
 # app.py
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 
 st.title("Revenue Assistant")
 
-StreamlitChatbot(
+CortexAgentChat(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
     auth=st.secrets["SNOWFLAKE_PAT"],
     agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
@@ -969,7 +969,7 @@ if prompt := st.chat_input("Ask a question..."):
 Renders the chat inside a scrollable container — useful for dashboards where the chat sits alongside other components.
 
 ```python
-StreamlitChatbot(
+CortexAgentChat(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
     auth=st.secrets["SNOWFLAKE_PAT"],
     agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
@@ -983,7 +983,7 @@ StreamlitChatbot(
 ```python
 @st.dialog("Ask the agent", width="large")
 def chat_dialog():
-    StreamlitChatbot(
+    CortexAgentChat(
         account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
         auth=st.secrets["SNOWFLAKE_PAT"],
         agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
@@ -1000,7 +1000,7 @@ A string height is applied with CSS that targets Streamlit's internal DOM (verif
 Files and audio are displayed in the user's chat bubble and stored for replay across reruns, but are **not forwarded to the agent** — only the text prompt is sent.
 
 ```python
-StreamlitChatbot(
+CortexAgentChat(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
     auth=st.secrets["SNOWFLAKE_PAT"],
     agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
@@ -1022,7 +1022,7 @@ def my_tool_executor(event: ToolUseEvent) -> list[dict]:
         return [{"type": "json", "json": {"user": st.context.user.email}}]
     return [{"type": "text", "text": "unknown tool"}]
 
-StreamlitChatbot(
+CortexAgentChat(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
     auth=st.secrets["SNOWFLAKE_PAT"],
     agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
@@ -1053,7 +1053,7 @@ Pass `variables` to scope every run to a tenant. Give a mapping for a fixed tena
 ```python
 TENANT_BY_EMAIL = {"ana@example.com": "NORTH", "raj@example.com": "SOUTH"}
 
-StreamlitChatbot(
+CortexAgentChat(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
     auth=st.secrets["SNOWFLAKE_PAT"],
     agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
@@ -1083,7 +1083,7 @@ When the agent needs clarification it emits a `TextEvent` with `is_elicitation=T
 | `origin_application` | No | `None` | Label attached to threads for monitoring (max 16 bytes) |
 | `role` | No | `None` | Snowflake role sent as `X-Snowflake-Role`. Note that Cortex Agents derives tool permissions from the user's **default** role regardless of this header. |
 
-### `StreamlitChatbot` parameters
+### `CortexAgentChat` parameters
 
 `account_url`, `auth`, and `agent_path` are always required. `agent_path` is not sensitive — hardcode it directly.
 
@@ -1223,7 +1223,7 @@ streamlit_cortex_agents/
 └── st/
     ├── session.py    init_session(), sis_init_session(), reset_thread(), get_messages()
     ├── render.py     render_streaming_response(), render_stored_message(), result_set_to_dataframe(), escape_dollars()
-    ├── chatbot.py    StreamlitChatbot (drop-in component)
+    ├── chatbot.py    CortexAgentChat (drop-in component)
     └── README.md     Streamlit integration guide (travels with the folder when copied)
 ```
 
@@ -1236,7 +1236,7 @@ streamlit_cortex_agents/
 └──────────────────┬──────────────────────────────┬────────────────┘
                    │                              │
         ┌──────────▼──────────┐        ┌──────────▼───────────────┐
-        │  CortexAgentsClient │        │    StreamlitChatbot      │
+        │  CortexAgentsClient │        │    CortexAgentChat      │
         │  (client.py)        │        │    (st/chatbot.py)       │
         │  + Thread wrapper   │        │    fullpage / embedded   │
         └─────────┬───────────┘        └──────────┬───────────────┘

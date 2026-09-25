@@ -183,12 +183,12 @@ from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_fr
 ```python
 # streamlit-app.py — Full-page chatbot (chat input pinned to bottom)
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # ← swap this
 
-StreamlitChatbot(
+CortexAgentChat(
     account_url=account_url_from_env(),
     auth=SiSContainerAuth(),
     agent_path=AGENT_PATH,
@@ -204,7 +204,7 @@ StreamlitChatbot(
 ```python
 # streamlit-app.py — Dashboard + chat side by side
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # ← swap this
@@ -220,7 +220,7 @@ with dash_col:
 
 with chat_col:
     st.subheader("Ask the agent")
-    StreamlitChatbot(
+    CortexAgentChat(
         account_url=account_url_from_env(),
         auth=SiSContainerAuth(),
         agent_path=AGENT_PATH,
@@ -243,7 +243,7 @@ call **at the end of the script** (after all other content).
 ```python
 # streamlit-app.py — Chat opens in a modal dialog that stays open across reruns
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # ← swap this
@@ -263,7 +263,7 @@ def _chat_dialog():
         if st.button("Close", icon=":material/close:", type="tertiary"):
             st.session_state.chat_dialog_open = False
             st.rerun()
-    StreamlitChatbot(
+    CortexAgentChat(
         account_url=account_url_from_env(),
         auth=SiSContainerAuth(),
         agent_path=AGENT_PATH,
@@ -362,9 +362,9 @@ The agent path is not sensitive — hardcode it directly in your app code.
 ```python
 # app.py
 import streamlit as st
-from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.chat import CortexAgentChat
 
-StreamlitChatbot(
+CortexAgentChat(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
     auth=st.secrets["SNOWFLAKE_PAT"],
     agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
@@ -438,7 +438,7 @@ auth = OAuthAuth(oauth_token)
 
 ---
 
-## StreamlitChatbot options
+## CortexAgentChat options
 
 These apply to both deployment environments.
 
@@ -448,7 +448,7 @@ These apply to both deployment environments.
 button appears in the sidebar.
 
 ```python
-bot = StreamlitChatbot(
+bot = CortexAgentChat(
     account_url=...,
     auth=...,
     agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
@@ -476,7 +476,7 @@ dash_col, chat_col = st.columns([2, 1])
 with dash_col:
     st.write("Your dashboard content")
 with chat_col:
-    StreamlitChatbot(
+    CortexAgentChat(
         account_url=..., auth=..., agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
         mode="embedded", height=500,
     ).render()
@@ -486,7 +486,7 @@ with chat_col:
 # Modal dialog
 @st.dialog("Ask the agent", width="large")
 def open_chat():
-    StreamlitChatbot(
+    CortexAgentChat(
         account_url=..., auth=..., agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
         mode="embedded", height="calc(100vh - 300px)",
     ).render()
@@ -498,7 +498,7 @@ if st.button("Open chat", icon=":material/chat:"):
 ### File and audio attachments
 
 ```python
-bot = StreamlitChatbot(
+bot = CortexAgentChat(
     ...,
     accept_file="multiple",   # True / "multiple" / "directory"
     file_type=["pdf", "csv"], # None accepts all types
@@ -509,8 +509,8 @@ bot = StreamlitChatbot(
 ### Multiple chatbots on one page
 
 ```python
-bot1 = StreamlitChatbot(..., agent_path="DB.SCHEMA.AGENT_A", session_key_prefix="_bot1")
-bot2 = StreamlitChatbot(..., agent_path="DB.SCHEMA.AGENT_B", session_key_prefix="_bot2")
+bot1 = CortexAgentChat(..., agent_path="DB.SCHEMA.AGENT_A", session_key_prefix="_bot1")
+bot2 = CortexAgentChat(..., agent_path="DB.SCHEMA.AGENT_B", session_key_prefix="_bot2")
 ```
 
 ### Client-side tool execution
@@ -521,7 +521,7 @@ from streamlit_cortex_agents.client.models.events import ToolUseEvent
 def my_executor(event: ToolUseEvent) -> list[dict]:
     return [{"type": "json", "json": {"result": "value"}}]
 
-bot = StreamlitChatbot(..., tool_executor=my_executor)
+bot = CortexAgentChat(..., tool_executor=my_executor)
 ```
 
 ### Multi-tenancy
@@ -531,7 +531,7 @@ filter per tenant. Pass a mapping, or a callable that is invoked once per
 prompt:
 
 ```python
-bot = StreamlitChatbot(..., variables=lambda: {"region": tenant_for(st.context.user.email)})
+bot = CortexAgentChat(..., variables=lambda: {"region": tenant_for(st.context.user.email)})
 ```
 
 Values default to immutable session attributes. See the main README's
