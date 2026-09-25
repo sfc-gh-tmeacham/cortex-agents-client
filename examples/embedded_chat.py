@@ -99,6 +99,22 @@ else:
     # across reruns. Calling the decorated function opens the modal.
     @st.dialog("Cortex Agent", width="large")
     def _chat_dialog() -> None:
+        # st.dialog has no height option and sizes to its content. This CSS
+        # grows the chat's scrollable message area so the modal fills the
+        # viewport; 300px leaves room for the dialog title, the New
+        # conversation button, the chat input and the dialog's margins. The
+        # scroll area is a flex child, so the height goes on its wrapper. It
+        # targets Streamlit's internal DOM (verified on 1.64), which is not a
+        # public API and may change on upgrade.
+        st.html(
+            """<style>
+            [data-testid="stDialog"] [data-testid="stLayoutWrapper"]:has(
+                > [data-testid="stVerticalBlock"][overflow="auto"]
+            ) {
+                height: calc(100vh - 300px) !important;
+            }
+            </style>"""
+        )
         _make_bot("dlg").render()
 
     if st.button(
