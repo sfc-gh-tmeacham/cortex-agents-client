@@ -314,6 +314,20 @@ Items identified but not yet specced out.
 
 ## Completed
 
+### Multi-tenancy session attributes
+
+**Status: implemented, unreleased** (on `main` after 0.3.0; see the CHANGELOG's Unreleased
+section). Optional `variables` on every run entry
+point, sent as the `agent:run` `variables` block, so one agent can serve several tenants
+with row access policies enforcing the boundary. Accepts shorthand scalars or the REST
+shape; both default to immutable. `Thread.chat` sends them on client-side tool-loop
+follow-ups, and `StreamlitChatbot` takes a mapping or a per-prompt callable.
+
+Verified live against a row access policy: two tenants saw disjoint rows, a second turn on
+one thread stayed scoped, a resumed background run stayed scoped, and a request with no
+attribute returned nothing rather than everything. See
+[api_spec.md](api_spec.md#request-body) for the findings that are not in the public doc.
+
 ### API-consistency improvements
 
 All four items below were implemented and are no longer deferred.

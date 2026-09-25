@@ -157,6 +157,31 @@ does not cancel — only `StreamlitChatbot` does.
 
 ---
 
+## Per-viewer tenant resolution
+
+`StreamlitChatbot(variables=...)` accepts a mapping or a zero-argument callable. The
+callable exists because in a multi-tenant app the tenant is a property of the current
+viewer, not of the app, and `st.context.user` is only available during a run.
+
+The callable is invoked **once per prompt, before the `thread.chat` factory is built**:
+
+```python
+variables = self._resolve_variables()      # once, here
+stored = self._stream_with_retry(
+    lambda: thread.chat(..., variables=variables),   # closure captures the resolved value
+    ...
+)
+```
+
+The ordering matters. `_stream_with_retry` may call the factory a second time after a
+transient failure (see [Stopping a response](#stopping-a-response) for the other reason it
+re-invokes). Resolving inside the lambda would call the callable again on that retry, so a
+retry could send a different tenant than the first attempt — the same question answered
+against someone else's data. Resolving outside pins one tenant for the whole turn.
+
+The same applies to the permission-decision reply path, which resolves separately because
+it runs on a later rerun, after the user approves the tool.
+
 ## Minimal Streamlit app
 
 ```python

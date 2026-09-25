@@ -42,6 +42,10 @@ snow sql -f tests/live/seed/05_analyst_agent.sql
 # 6. Create the web search agent (required for test_runs_web.py)
 #    Requires web search enabled at the account level first — see below.
 snow sql -f tests/live/seed/06_web_search_agent.sql
+
+# 7. Create the multi-tenancy objects (required for test_runs_multitenancy.py)
+#    Creates a NEW table and attaches a row access policy to that table only.
+snow sql -f tests/live/seed/07_multitenancy.sql
 ```
 
 The Cortex Search service targets `TARGET_LAG = '1 minute'` — wait at least one minute
@@ -63,6 +67,7 @@ is populated.
 | `LIVE_AGENT_MINIMAL` | All tests | Fully-qualified path to the minimal agent, e.g. `cac_live_db.cac_live_schema.minimal_agent` |
 | `LIVE_AGENT_FULL` | `test_runs_full.py` only | Fully-qualified path to the Cortex Search agent. Tests in that file are automatically skipped if this variable is absent. |
 | `LIVE_AGENT_ANALYST` | `test_runs_analyst.py` only | Fully-qualified path to the Cortex Analyst agent. Tests in that file are automatically skipped if absent. |
+| `LIVE_AGENT_MULTITENANCY` | `test_runs_multitenancy.py` only | Fully-qualified path to the multi-tenancy agent, e.g. `cac_live_db.cac_live_schema.cac_mt_agent`. Tests in that file are automatically skipped if absent. |
 | `LIVE_AGENT_WEB` | `test_runs_web.py` only | Fully-qualified path to the web search agent. Tests in that file are automatically skipped if absent. Requires web search enabled at account level. |
 | `LIVE_SLOW` | `TestRunExpiryWindow` only | Set to `1` to run the ~6 minute run-expiry test in `test_runs_async.py`. Skipped otherwise. |
 | `LIVE_TIMEOUT` | Optional, all tests | Client read timeout in seconds (default `120`). Raise to `300` for the Cortex Analyst suite, which can be slow. Also used as the `AppTest` script timeout. |
@@ -99,9 +104,31 @@ minutes. If you start one in the foreground of an agent shell, the next command 
 and kills the run mid-stream, which is easily misread as a hang in the client. Redirect to a
 log file and poll it.
 
+**5. Check `ALLOWED_INTERFACES` on the user before blaming your credentials.** If a user
+has `ALLOWED_INTERFACES` set to anything other than `ALL` (for example
+`[SNOWFLAKE_INTELLIGENCE, STREAMLIT]`, which is common on service users created for
+Snowflake Intelligence), every REST call fails with:
+
+```
+401 395300: Not authorized to access interface ALL.
+```
+
+The message names neither the setting nor the user, and it is identical for PAT and
+key-pair auth, so it reads like a bad token. It is not: the credential is fine and the
+interface restriction is rejecting the request. Check first with:
+
+```sql
+DESCRIBE USER <name>;   -- look at the ALLOWED_INTERFACES row; want [ALL]
+```
+
 Also note: a PAT cannot be used to mint another PAT for the same user
 (`099413 (38002)`). If your connection authenticates with a PAT, create the token from
-Snowsight or from a password/keypair connection.
+Snowsight or from a password/keypair connection. Watch for stored connections whose
+`password` is actually a PAT — they hit this too.
+
+When adding a key pair to an existing user for a one-off run, check whether
+`RSA_PUBLIC_KEY` is already in use and use `RSA_PUBLIC_KEY_2` if so (or the reverse), so
+you do not overwrite a key something else depends on. Unset it when you are done.
 
 ---
 
@@ -172,6 +199,7 @@ SNOWFLAKE_ACCOUNT_URL="https://..." SNOWFLAKE_PAT="v2:..." \
 | `test_runs_full.py` | full (Cortex Search) | ToolUseEvent, ToolResultEvent, TextAnnotationEvent, citation doc_id/title |
 | `test_runs_analyst.py` | analyst (Cortex Analyst) | ToolUseEvent (`system_execute_sql`, `system_agentic_semantic_context`), SQL via `ToolUseEvent.input["sql"]`, `verified_query_used`, non-empty text |
 | `test_runs_web.py` | web (web_search) | ToolUseEvent (web_search), ToolResultEvent status, non-empty text response |
+| `test_runs_multitenancy.py` | multitenancy (Cortex Analyst + row access policy) | `variables` session attributes: no-variables fails closed, two tenants see disjoint rows, full REST form, numeric type, second turn on one thread, resumed background run |
 | `test_runs_async.py` | minimal | Background runs, `stream_run` reconnect, `starting_after` cursor, `sequence_number`, `cancel_run` plus its 409, `Thread.chat(background=True)`, lite-run `models` object, `orchestration` budget, `X-Snowflake-Role` (including a negative case), and the 5-minute expiry window (`LIVE_SLOW=1`) |
 | `test_streamlit_live.py` | minimal, analyst | Drives `apps/live_chat_app.py` with `streamlit.testing.v1.AppTest` against a real agent: initial render, a full turn, absence of internal artefacts in the output, second-turn history replay, and dataframe rendering for an Analyst answer |
 | `test_agents.py` | disposable | Agent CRUD lifecycle — create, get, update, list with `like`, delete, `createMode` (`errorIfExists` and `orReplace`), `ifExists`, plus agent-level and request-level feedback |

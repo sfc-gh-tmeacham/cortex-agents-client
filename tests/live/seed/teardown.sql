@@ -7,6 +7,7 @@
 --     uv run python tests/live/seed/teardown.py
 
 -- Agents (drop before dependent resources)
+DROP AGENT IF EXISTS cac_live_db.cac_live_schema.cac_mt_agent;
 DROP AGENT IF EXISTS cac_live_db.cac_live_schema.cac_live_web_agent;
 DROP AGENT IF EXISTS cac_live_db.cac_live_schema.cac_live_analyst_agent;
 DROP AGENT IF EXISTS cac_live_db.cac_live_schema.cac_live_full_agent;
@@ -21,9 +22,13 @@ DROP AGENT IF EXISTS cac_live_db.cac_live_schema.cac_live_minimal_agent;
 DROP CORTEX SEARCH SERVICE IF EXISTS cac_live_db.cac_live_schema.cac_live_doc_search;
 
 -- Semantic view
+DROP SEMANTIC VIEW IF EXISTS cac_live_db.cac_live_schema.cac_mt_sales_view;
 DROP SEMANTIC VIEW IF EXISTS cac_live_db.cac_live_schema.cac_live_sales_view;
 
 -- Tables
+-- Dropping cac_mt_sales also removes its row access policy attachment.
+DROP TABLE IF EXISTS cac_live_db.cac_live_schema.cac_mt_sales;
+DROP ROW ACCESS POLICY IF EXISTS cac_live_db.cac_live_schema.cac_mt_region_rap;
 DROP TABLE IF EXISTS cac_live_db.cac_live_schema.cac_live_docs;
 DROP TABLE IF EXISTS cac_live_db.cac_live_schema.cac_live_sales;
 

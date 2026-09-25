@@ -147,6 +147,17 @@ def agent_path_web() -> str:
     return _require_env("LIVE_AGENT_WEB")
 
 
+@pytest.fixture(scope="session")
+def agent_path_multitenancy() -> str:
+    """Fully-qualified path to the multi-tenancy test agent.
+
+    Tests using this fixture are skipped if LIVE_AGENT_MULTITENANCY is not set.
+    Requires the objects from seed/07_multitenancy.sql, including the row
+    access policy on cac_mt_sales.
+    """
+    return _require_env("LIVE_AGENT_MULTITENANCY")
+
+
 @pytest.fixture(scope="session", autouse=True)
 def _teardown_live_objects() -> None:
     """Drops all cac_live Snowflake objects after the session ends.

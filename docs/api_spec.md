@@ -244,6 +244,27 @@ is the cursor value for `starting_after`.
 
 `tool_choice.type` values: `"auto"` (default) | `"required"` | `"none"`
 
+`variables` (optional): immutable session attributes for multi-tenancy. Snowflake sets each one on the session before running any SQL the agent generates, so a row access policy can read it with `SYS_CONTEXT('SNOWFLAKE$SESSION_ATTRIBUTES', '<name>')`:
+
+```json
+{
+  "variables": {
+    "region": {
+      "value": "North",
+      "type": "string",
+      "is_immutable_session_attribute": true
+    }
+  }
+}
+```
+
+Verified live (2026-09-25), beyond what the [public doc](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-multi-tenancy) states:
+
+- **Works on agent-object runs**, not only the lite endpoint. The public doc shows the plain `/api/v2/cortex/agent:run` path, but the same block is accepted on `.../agents/{name}:run`. Unlike `models` / `instructions` / `orchestration`, `variables` is not rejected on an agent-object run.
+- **Attributes persist for the whole interaction.** A background run started with `variables` and resumed later via [Stream Agent Run](#stream-agent-run) was still scoped, so resume and cancel need no `variables` of their own (they send no body).
+- **`type` is not limited to `"string"`.** A `"number"` attribute was accepted alongside a string one and scoping still applied. The public doc only shows `"string"`.
+- **A missing attribute fails closed**, given a policy of the usual shape: `SYS_CONTEXT` returns NULL, `col = NULL` is never true, and no rows come back. Worth keeping in mind when writing the policy — it is the policy, not the API, that decides this.
+
 `background` (optional, default `false`): run asynchronously with a 6-hour timeout instead of 15 minutes. The run survives a client disconnect. **Only available when using threads.** With `stream: false`, the call returns immediately with `status: "in_progress"` and a `metadata.run_id`; collect the output later via [Stream Agent Run](#stream-agent-run).
 
 For permission decisions (response to `tool_use` with non-empty `permission.options`):
