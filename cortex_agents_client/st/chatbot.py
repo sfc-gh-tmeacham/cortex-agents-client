@@ -88,8 +88,14 @@ class StreamlitChatbot:
             pinned to the page bottom. ``"embedded"`` uses a scrollable message
             area and an inline ``st.chat_input`` so the chatbot fits inside any
             container.
-        height: Height in pixels of the scrollable message area when
-            ``mode="embedded"``. Ignored in fullpage mode. Default 450.
+        height: Height of the scrollable message area when
+            ``mode="embedded"``: pixels as an ``int``, or any CSS height as a
+            ``str``. A string lets the chat fill the viewport, which
+            ``st.dialog`` cannot do on its own, for example
+            ``height="calc(100vh - 300px)"`` where the subtracted amount covers
+            everything else in the dialog. A string height is applied with CSS
+            that targets Streamlit's internal DOM (verified on 1.64). Ignored
+            in fullpage mode. Default 450.
         show_thinking: If ``True``, renders agent thinking in an expander.
             Defaults to ``True``.
         show_tool_status: If ``True``, shows ``st.status()`` spinners during
@@ -125,7 +131,7 @@ class StreamlitChatbot:
         agent_path: str,
         *,
         mode: Literal["fullpage", "embedded"] = "fullpage",
-        height: int = 450,
+        height: int | str = 450,
         show_thinking: bool = True,
         show_tool_status: bool = True,
         new_conversation_button: bool = True,
@@ -146,7 +152,8 @@ class StreamlitChatbot:
             auth: Auth provider or PAT token string.
             agent_path: Dot-separated agent path.
             mode: ``"fullpage"`` or ``"embedded"``.
-            height: Message area height (pixels) for embedded mode.
+            height: Message area height (pixels, or a CSS height string)
+                for embedded mode.
             show_thinking: Whether to render thinking content.
             show_tool_status: Whether to show tool execution spinners.
             new_conversation_button: Whether to add a new conversation button.
@@ -653,6 +660,31 @@ class StreamlitChatbot:
     # Embedded mode
     # ------------------------------------------------------------------
 
+    def _chat_area(self):
+        """Returns the scrollable message container for embedded mode.
+
+        An ``int`` height is passed straight to ``st.container``. A string
+        height is a CSS length: the container is keyed and a style targeting
+        that key sets the height and flex-basis on its layout wrapper. The
+        scroll area is a flex child of the wrapper and ignores a height of its
+        own, and the wrapper's fixed flex-basis would otherwise override
+        ``height`` in a flex-column parent.
+        """
+        import streamlit as st
+
+        if isinstance(self._height, int):
+            return st.container(height=self._height, autoscroll=True)
+        key = f"{self._css_prefix}-chat-area"
+        css_height = self._height.replace(";", "").replace("}", "")
+        st.html(
+            "<style>"
+            f'[data-testid="stLayoutWrapper"]:has(> .st-key-{key})'
+            f"{{height:{css_height} !important;"
+            f"flex-basis:{css_height} !important;}}"
+            "</style>"
+        )
+        return st.container(height=450, autoscroll=True, key=key)
+
     def _render_embedded(self) -> None:
         """Renders the embedded chatbot inside the current container context.
 
@@ -695,7 +727,7 @@ class StreamlitChatbot:
                 st.rerun()
 
         # Scrollable message history area.
-        chat_area = st.container(height=self._height, autoscroll=True)
+        chat_area = self._chat_area()
         with chat_area:
             self._render_message_history(get_messages)
 

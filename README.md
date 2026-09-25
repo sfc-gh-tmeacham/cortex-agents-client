@@ -898,6 +898,23 @@ StreamlitChatbot(
 ).render()
 ```
 
+`height` also accepts a CSS height string. Inside an `st.dialog`, which has no height option of its own, this lets the chat fill the window. Subtract enough to cover everything else in the dialog (title, buttons, chat input):
+
+```python
+@st.dialog("Ask the agent", width="large")
+def chat_dialog():
+    StreamlitChatbot(
+        account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+        auth=st.secrets["SNOWFLAKE_PAT"],
+        agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+        mode="embedded",
+        height="calc(100vh - 300px)",
+        session_key_prefix="_dlg",
+    ).render()
+```
+
+A string height is applied with CSS that targets Streamlit's internal DOM (verified on 1.64), so it may need adjusting after a Streamlit upgrade.
+
 ### File and audio attachments
 
 Files and audio are displayed in the user's chat bubble and stored for replay across reruns, but are **not forwarded to the agent** — only the text prompt is sent.
@@ -979,7 +996,7 @@ When the agent needs clarification it emits a `TextEvent` with `is_elicitation=T
 | `auth` | Yes | — | Auth provider or PAT string |
 | `agent_path` | Yes | — | `DB.SCHEMA.AGENT` |
 | `mode` | No | `"fullpage"` | `"fullpage"` or `"embedded"` |
-| `height` | No | `450` | Message area height in px — `embedded` mode only |
+| `height` | No | `450` | Message area height: px as an `int`, or a CSS height string such as `"calc(100vh - 300px)"` — `embedded` mode only |
 | `show_thinking` | No | `True` | Show agent reasoning in an expander |
 | `show_tool_status` | No | `True` | Show tool execution spinners |
 | `new_conversation_button` | No | `True` | Show "New conversation" button |

@@ -253,6 +253,51 @@ class TestRenderEmbedded:
             bot._render_embedded()
             return mock_proc
 
+    def test_int_height_passed_to_container(self):
+        """An int height goes straight to st.container with no injected CSS."""
+        bot = self._make_bot()
+        mock_st = _mock_st()
+        self._run_embedded(bot, mock_st)
+        mock_st.container.assert_any_call(height=300, autoscroll=True)
+        assert not any(
+            "chat-area" in str(c) for c in mock_st.html.call_args_list
+        )
+
+    def test_css_height_injects_scoped_style(self):
+        """A string height keys the container and styles its wrapper."""
+        bot = StreamlitChatbot(
+            account_url="https://x.snowflakecomputing.com",
+            auth="tok",
+            agent_path="A.B.C",
+            mode="embedded",
+            height="calc(100vh - 300px)",
+            session_key_prefix="_dlg",
+        )
+        mock_st = _mock_st()
+        self._run_embedded(bot, mock_st)
+        mock_st.container.assert_any_call(
+            height=450, autoscroll=True, key="dlg-chat-area"
+        )
+        css = " ".join(str(c) for c in mock_st.html.call_args_list)
+        assert ":has(> .st-key-dlg-chat-area)" in css
+        assert "height:calc(100vh - 300px) !important" in css
+        assert "flex-basis:calc(100vh - 300px) !important" in css
+
+    def test_css_height_strips_rule_breakers(self):
+        """Semicolons and braces cannot escape the injected rule."""
+        bot = StreamlitChatbot(
+            account_url="https://x.snowflakecomputing.com",
+            auth="tok",
+            agent_path="A.B.C",
+            mode="embedded",
+            height="80vh;} body{display:none",
+        )
+        mock_st = _mock_st()
+        self._run_embedded(bot, mock_st)
+        css = " ".join(str(c) for c in mock_st.html.call_args_list)
+        value = css.split("{height:", 1)[1].split(" !important", 1)[0]
+        assert ";" not in value and "}" not in value
+
     def test_uses_chat_input_not_form(self):
         """Embedded mode now uses st.chat_input, not st.form (Streamlit ≥ 1.59)."""
         bot = self._make_bot()

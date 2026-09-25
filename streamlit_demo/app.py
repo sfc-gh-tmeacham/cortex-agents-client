@@ -280,15 +280,6 @@ def page_dialog() -> None:
     if "chat_dialog_open" not in st.session_state:
         st.session_state.chat_dialog_open = False
 
-    chat_height = st.sidebar.slider(
-        "Dialog chat height (px)",
-        min_value=300,
-        max_value=600,
-        value=480,
-        step=10,
-        help="Height of the scrollable message area inside the dialog overlay.",
-    )
-
     @st.dialog("Ask the agent", width="large", dismissible=False, icon=":material/smart_toy:")
     def _chat_dialog() -> None:
         with st.container(horizontal_alignment="right"):
@@ -300,7 +291,9 @@ def page_dialog() -> None:
             auth="mock_token",
             agent_path="DEMO.DEMO.DEMO_AGENT",
             mode="embedded",
-            height=chat_height,
+            # Fill the viewport; 440px covers the dialog title, the Close
+            # and New conversation buttons and the chat input.
+            height="calc(100vh - 440px)",
             show_thinking=show_thinking,
             show_tool_status=show_tool_status,
             new_conversation_button=True,
