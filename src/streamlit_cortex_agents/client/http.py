@@ -2,7 +2,7 @@
 
 Provides authenticated request methods and a streaming context manager for
 SSE (Server-Sent Events) responses. All HTTP errors are translated into
-typed exceptions from :mod:`cortex_agents_client.exceptions`.
+typed exceptions from :mod:`streamlit_cortex_agents.client.exceptions`.
 """
 
 from __future__ import annotations
@@ -13,8 +13,8 @@ from typing import Any
 
 import httpx
 
-from cortex_agents_client.auth import AuthProvider
-from cortex_agents_client.exceptions import (
+from streamlit_cortex_agents.client.auth import AuthProvider
+from streamlit_cortex_agents.client.exceptions import (
     AgentNotFoundError,
     AuthError,
     ConflictError,

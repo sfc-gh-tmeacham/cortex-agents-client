@@ -1,7 +1,7 @@
 """Session state management for Streamlit applications.
 
-Provides idempotent initialisation of the :class:`~cortex_agents_client.CortexAgentsClient`
-and :class:`~cortex_agents_client.Thread` across Streamlit reruns, plus helpers for
+Provides idempotent initialisation of the :class:`~streamlit_cortex_agents.CortexAgentsClient`
+and :class:`~streamlit_cortex_agents.Thread` across Streamlit reruns, plus helpers for
 reading and writing the conversation message list.
 
 All session state keys are prefixed with ``_ca_`` by default to avoid
@@ -14,8 +14,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from cortex_agents_client.client import CortexAgentsClient, Thread
-    from cortex_agents_client.models.thread import StoredMessage
+    from streamlit_cortex_agents.client.core import CortexAgentsClient, Thread
+    from streamlit_cortex_agents.client.models.thread import StoredMessage
 
 _DEFAULT_CLIENT_KEY = "_ca_client"
 _DEFAULT_THREAD_KEY = "_ca_thread"
@@ -37,8 +37,8 @@ def init_session(
     """Idempotently initialises a client and thread in Streamlit session state.
 
     On the first call per session, creates a new
-    :class:`~cortex_agents_client.CortexAgentsClient` and
-    :class:`~cortex_agents_client.Thread` and stores them in ``st.session_state``.
+    :class:`~streamlit_cortex_agents.CortexAgentsClient` and
+    :class:`~streamlit_cortex_agents.Thread` and stores them in ``st.session_state``.
     On every subsequent call (Streamlit rerun), returns the cached objects.
 
     Call this at the top of your Streamlit app script, before any UI code.
@@ -47,7 +47,7 @@ def init_session(
         account_url: Snowflake account base URL including scheme
             (e.g. ``"https://myorg-myaccount.snowflakecomputing.com"``).
         auth: PAT token string or
-            :class:`~cortex_agents_client.auth.AuthProvider` instance.
+            :class:`~streamlit_cortex_agents.client.auth.AuthProvider` instance.
         origin_application: Label attached to the created thread for
             monitoring purposes. Limited to 16 bytes.
         client_key: ``st.session_state`` key for the client.
@@ -66,7 +66,7 @@ def init_session(
     Example::
 
         import streamlit as st
-        from cortex_agents_client.st.session import init_session
+        from streamlit_cortex_agents.chat.session import init_session
 
         client, thread = init_session(
             account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
@@ -76,7 +76,7 @@ def init_session(
     """
     import streamlit as st
 
-    from cortex_agents_client.client import CortexAgentsClient
+    from streamlit_cortex_agents.client.core import CortexAgentsClient
 
     if client_key not in st.session_state:
         st.session_state[client_key] = CortexAgentsClient(
@@ -147,7 +147,7 @@ def get_messages(key: str = _DEFAULT_MESSAGES_KEY) -> list[StoredMessage]:
         key: ``st.session_state`` key for the message list.
 
     Returns:
-        List of :class:`~cortex_agents_client.models.thread.StoredMessage` objects,
+        List of :class:`~streamlit_cortex_agents.client.models.thread.StoredMessage` objects,
         in chronological order. Returns an empty list if the key is not yet
         set.
 
@@ -165,7 +165,7 @@ def append_message(
     """Appends a message to the conversation history in session state.
 
     Args:
-        msg: The :class:`~cortex_agents_client.models.thread.StoredMessage` to
+        msg: The :class:`~streamlit_cortex_agents.client.models.thread.StoredMessage` to
             append.
         key: ``st.session_state`` key for the message list.
 
@@ -196,7 +196,7 @@ def sis_init_session(
 
     - Reads the account URL from the ``SNOWFLAKE_HOST`` environment variable
       injected by Snowflake into the container.
-    - Creates a :class:`~cortex_agents_client.auth.SiSContainerAuth` that reads the
+    - Creates a :class:`~streamlit_cortex_agents.client.auth.SiSContainerAuth` that reads the
       OAuth token file at ``/snowflake/session/token`` on every request,
       ensuring tokens are never stale.
 
@@ -226,12 +226,12 @@ def sis_init_session(
     Example::
 
         import streamlit as st
-        from cortex_agents_client.st.session import sis_init_session
+        from streamlit_cortex_agents.chat.session import sis_init_session
 
         # In your SiS container app:
         client, thread = sis_init_session(origin_application="my_sis_app")
     """
-    from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+    from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
     account_url = account_url_from_env()
     auth = SiSContainerAuth(token_path=token_path)

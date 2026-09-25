@@ -16,7 +16,7 @@ import sys
 # Allow running from repo root
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))))
 
-from cortex_agents_client import CortexAgentsClient
+from streamlit_cortex_agents import CortexAgentsClient
 
 ORIGIN_APP = "cac_live"
 

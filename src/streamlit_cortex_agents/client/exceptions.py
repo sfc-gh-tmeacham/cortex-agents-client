@@ -104,8 +104,8 @@ class RunNotActiveError(ConflictError):
     The events of an agent run are available only while the run is active and
     for up to 5 minutes after it completes. After that window, and for a run
     that has already completed or been cancelled, both
-    :meth:`~cortex_agents_client.resources.runs.RunsResource.stream_run` and
-    :meth:`~cortex_agents_client.resources.runs.RunsResource.cancel_run`
+    :meth:`~streamlit_cortex_agents.client.resources.runs.RunsResource.stream_run` and
+    :meth:`~streamlit_cortex_agents.client.resources.runs.RunsResource.cancel_run`
     raise this error. Retrieve the full response from the thread instead.
 
     .. note::
@@ -120,8 +120,8 @@ class RunError(CortexAgentError):
     """Raised when an agent run terminates with a fatal error event.
 
     Triggered by a fatal ``error`` event in the SSE stream, not by an HTTP
-    error status code. Raised by :meth:`~cortex_agents_client.RunsResource.run`
-    and :meth:`~cortex_agents_client.RunsResource.stream_and_collect`.
+    error status code. Raised by :meth:`~streamlit_cortex_agents.RunsResource.run`
+    and :meth:`~streamlit_cortex_agents.RunsResource.stream_and_collect`.
 
     Attributes:
         code: Snowflake error code from the error SSE event.

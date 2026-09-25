@@ -7,7 +7,7 @@ import httpx
 import pytest
 from pytest_httpx import HTTPXMock
 
-from cortex_agents_client.exceptions import ThreadNotFoundError
+from streamlit_cortex_agents.client.exceptions import ThreadNotFoundError
 from tests.fixtures.api_responses import THREAD_CREATE_RESPONSE, THREAD_DESCRIBE_RESPONSE
 
 # Single-page list_messages response (< page_size → treated as last page)

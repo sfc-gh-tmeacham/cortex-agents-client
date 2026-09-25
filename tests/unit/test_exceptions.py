@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from cortex_agents_client.exceptions import (
+from streamlit_cortex_agents.client.exceptions import (
     AgentNotFoundError,
     AuthError,
     ConflictError,
@@ -83,7 +83,7 @@ class TestDeprecatedAliases:
 
     def test_permission_error_alias_emits_deprecation_warning(self):
         """Instantiating the old PermissionError alias warns about deprecation."""
-        from cortex_agents_client.exceptions import PermissionError as _PE  # noqa: A001
+        from streamlit_cortex_agents.client.exceptions import PermissionError as _PE  # noqa: A001
 
         with pytest.warns(DeprecationWarning, match="CortexPermissionError"):
             exc = _PE("test")
@@ -91,7 +91,7 @@ class TestDeprecatedAliases:
 
     def test_timeout_error_alias_emits_deprecation_warning(self):
         """Instantiating the old TimeoutError alias warns about deprecation."""
-        from cortex_agents_client.exceptions import TimeoutError as _TE  # noqa: A001
+        from streamlit_cortex_agents.client.exceptions import TimeoutError as _TE  # noqa: A001
 
         with pytest.warns(DeprecationWarning, match="CortexTimeoutError"):
             exc = _TE("test")
@@ -100,10 +100,10 @@ class TestDeprecatedAliases:
 
 def test_deprecated_aliases_not_star_exported():
     """Star import must not shadow builtin PermissionError/TimeoutError."""
-    import cortex_agents_client
+    import streamlit_cortex_agents
 
-    assert "PermissionError" not in cortex_agents_client.__all__
-    assert "TimeoutError" not in cortex_agents_client.__all__
+    assert "PermissionError" not in streamlit_cortex_agents.__all__
+    assert "TimeoutError" not in streamlit_cortex_agents.__all__
     # Still importable by name for existing callers.
-    assert cortex_agents_client.PermissionError is not PermissionError
-    assert cortex_agents_client.TimeoutError is not TimeoutError
+    assert streamlit_cortex_agents.PermissionError is not PermissionError
+    assert streamlit_cortex_agents.TimeoutError is not TimeoutError

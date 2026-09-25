@@ -2,14 +2,14 @@
 
 Supports four methods:
 - PAT (Programmatic Access Token): simplest, recommended for external apps.
-- JWT (key-pair): requires ``pip install "cortex-agents-client[jwt]"``.
+- JWT (key-pair): requires ``pip install "streamlit-cortex-agents[jwt]"``.
 - OAuth: standard Bearer token with a static token string.
 - SiSContainerAuth: for Streamlit-in-Snowflake container runtime, reads the
   Snowflake-injected token file on every request so tokens are always fresh.
 
 Example::
 
-    from cortex_agents_client.auth import PATAuth, JWTAuth, SiSContainerAuth
+    from streamlit_cortex_agents.client.auth import PATAuth, JWTAuth, SiSContainerAuth
 
     auth = PATAuth("v2:my_token")
     auth = JWTAuth(account="myorg-myaccount", user="MYUSER",
@@ -92,7 +92,7 @@ class JWTAuth(AuthProvider):
     Generates a fresh JWT on every :meth:`headers` call. The token is valid
     for up to one hour, which is the maximum allowed by Snowflake.
 
-    Requires ``pip install "cortex-agents-client[jwt]"`` (installs ``cryptography``
+    Requires ``pip install "streamlit-cortex-agents[jwt]"`` (installs ``cryptography``
     and ``PyJWT``).
 
     Args:
@@ -153,7 +153,7 @@ class JWTAuth(AuthProvider):
         except ImportError as exc:
             raise ImportError(
                 "JWT authentication requires 'cryptography'. "
-                "Install with: pip install 'cortex-agents-client[jwt]'"
+                "Install with: pip install 'streamlit-cortex-agents[jwt]'"
             ) from exc
 
         key_data = self._private_key_path.read_bytes()
@@ -192,7 +192,7 @@ class JWTAuth(AuthProvider):
         except ImportError as exc:
             raise ImportError(
                 "JWT authentication requires 'PyJWT'. "
-                "Install with: pip install 'cortex-agents-client[jwt]'"
+                "Install with: pip install 'streamlit-cortex-agents[jwt]'"
             ) from exc
 
         now = int(time.time())
@@ -291,8 +291,8 @@ class SiSContainerAuth(AuthProvider):
     Example::
 
         import os
-        from cortex_agents_client import CortexAgentsClient
-        from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+        from streamlit_cortex_agents import CortexAgentsClient
+        from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
         client = CortexAgentsClient(
             account_url=account_url_from_env(),
@@ -334,12 +334,12 @@ class SiSContainerAuth(AuthProvider):
         try:
             token = self._token_path.read_text().strip()
         except (FileNotFoundError, PermissionError, OSError) as exc:
-            from cortex_agents_client.exceptions import AuthError
+            from streamlit_cortex_agents.client.exceptions import AuthError
             raise AuthError(
                 f"Failed to read session token from {self._token_path}: {exc}"
             ) from exc
         if not token:
-            from cortex_agents_client.exceptions import AuthError
+            from streamlit_cortex_agents.client.exceptions import AuthError
             raise AuthError(f"Session token file is empty: {self._token_path}")
         return {
             "Authorization": f"Bearer {token}",
@@ -353,7 +353,7 @@ def account_url_from_env(host_env: str = _SNOWFLAKE_HOST_ENV) -> str:
     In SiS container runtime, Snowflake injects the ``SNOWFLAKE_HOST``
     environment variable (e.g. ``myorg-myaccount.snowflakecomputing.com``).
     This helper wraps it with ``https://`` to produce the full base URL
-    expected by :class:`~cortex_agents_client.CortexAgentsClient`.
+    expected by :class:`~streamlit_cortex_agents.CortexAgentsClient`.
 
     Args:
         host_env: Name of the environment variable containing the Snowflake
@@ -368,7 +368,7 @@ def account_url_from_env(host_env: str = _SNOWFLAKE_HOST_ENV) -> str:
 
     Example::
 
-        from cortex_agents_client.auth import account_url_from_env
+        from streamlit_cortex_agents.client.auth import account_url_from_env
 
         url = account_url_from_env()
         # → "https://myorg-myaccount.snowflakecomputing.com"

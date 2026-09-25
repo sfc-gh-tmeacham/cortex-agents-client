@@ -10,12 +10,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from cortex_agents_client._variables import normalize_variables
-from cortex_agents_client.auth import PATAuth
-from cortex_agents_client.client import CortexAgentsClient, Thread
-from cortex_agents_client.http import HttpClient
-from cortex_agents_client.models.events import MetadataEvent, ToolUseEvent
-from cortex_agents_client.resources.runs import RunsResource
+from streamlit_cortex_agents.client._variables import normalize_variables
+from streamlit_cortex_agents.client.auth import PATAuth
+from streamlit_cortex_agents.client.core import CortexAgentsClient, Thread
+from streamlit_cortex_agents.client.http import HttpClient
+from streamlit_cortex_agents.client.models.events import MetadataEvent, ToolUseEvent
+from streamlit_cortex_agents.client.resources.runs import RunsResource
 
 MESSAGES = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
 NORTH = {

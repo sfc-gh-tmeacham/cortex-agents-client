@@ -1,6 +1,6 @@
 # Cortex Agents REST API Specification
 
-Reference for all endpoints used by the `cortex_agents_client` Python library.
+Reference for all endpoints used by the `streamlit_cortex_agents` Python library.
 
 Base URL: `https://{account}.snowflakecomputing.com`
 

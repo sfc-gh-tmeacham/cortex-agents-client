@@ -10,7 +10,7 @@ CREATE DATABASE IF NOT EXISTS cac_live_db;
 CREATE SCHEMA  IF NOT EXISTS cac_live_db.cac_live_schema;
 
 CREATE AGENT IF NOT EXISTS cac_live_db.cac_live_schema.minimal_agent
-  COMMENT = 'Minimal LLM-only agent used by cortex-agents-client live integration tests.'
+  COMMENT = 'Minimal LLM-only agent used by streamlit-cortex-agents live integration tests.'
   FROM SPECIFICATION
   $$
   instructions:

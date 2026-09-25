@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 import pandas as pd
 import pytest
 
-from cortex_agents_client.st.render import _markdown_column_config
+from streamlit_cortex_agents.chat.render import _markdown_column_config
 
 
 @pytest.fixture(autouse=True)

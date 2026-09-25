@@ -17,8 +17,8 @@ import logging
 from collections.abc import Callable, Mapping
 from typing import Any, Literal
 
-from cortex_agents_client.models.thread import StoredMessage
-from cortex_agents_client.models.events import ErrorEvent
+from streamlit_cortex_agents.client.models.thread import StoredMessage
+from streamlit_cortex_agents.client.models.events import ErrorEvent
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ class StreamlitChatbot:
     Args:
         account_url: Snowflake account base URL.
         auth: PAT token string or
-            :class:`~cortex_agents_client.auth.AuthProvider` instance.
+            :class:`~streamlit_cortex_agents.client.auth.AuthProvider` instance.
         agent_path: Dot-separated agent path (e.g. ``"DB.SCHEMA.MY_AGENT"``).
         mode: Rendering mode. ``"fullpage"`` (default) uses ``st.chat_input``
             pinned to the page bottom. ``"embedded"`` uses a scrollable message
@@ -118,17 +118,17 @@ class StreamlitChatbot:
             ``accept_file`` is enabled (e.g. ``["pdf", "csv"]``).
             ``None`` accepts all file types.
         tool_executor: Optional callable for ``client_side_execute=True`` tools.
-            Receives a :class:`~cortex_agents_client.models.events.ToolUseEvent`
+            Receives a :class:`~streamlit_cortex_agents.client.models.events.ToolUseEvent`
             and returns a list of result content dicts (e.g.
             ``[{"type": "json", "json": {...}}]``). Passed to
-            :meth:`~cortex_agents_client.client.Thread.chat` on every run.
+            :meth:`~streamlit_cortex_agents.client.core.Thread.chat` on every run.
         variables: Optional multi-tenancy session attributes sent with every
             run, for row access policies to read. Either a mapping (e.g.
             ``{"region": "NORTH"}``) or a zero-argument callable returning a
             mapping or ``None``. A callable is invoked once per prompt, so the
             tenant can be derived from the current viewer (for example
             ``st.context.user``). Values default to immutable; see
-            :meth:`~cortex_agents_client.resources.RunsResource.stream`.
+            :meth:`~streamlit_cortex_agents.client.resources.RunsResource.stream`.
     """
 
     def __init__(
@@ -238,7 +238,7 @@ class StreamlitChatbot:
         Returns:
             Tuple of ``(thread, get_messages, append_message, reset_thread)``.
         """
-        from cortex_agents_client.st.session import (
+        from streamlit_cortex_agents.chat.session import (
             append_message,
             get_messages,
             init_session,
@@ -283,7 +283,7 @@ class StreamlitChatbot:
         """
         import streamlit as st
 
-        from cortex_agents_client.st.render import render_stored_message, escape_dollars
+        from streamlit_cortex_agents.chat.render import render_stored_message, escape_dollars
 
         for msg_idx, msg in enumerate(get_messages_fn(self._messages_key)):
             with st.chat_message(msg.role):
@@ -308,7 +308,7 @@ class StreamlitChatbot:
 
     def _render_last_suggestions(self, get_messages_fn) -> None:
         """Renders suggestion buttons for the last assistant message if it has any."""
-        from cortex_agents_client.st.render import _render_suggested_queries
+        from streamlit_cortex_agents.chat.render import _render_suggested_queries
         import streamlit as st
 
         # Don't render if a suggestion click is about to be processed.
@@ -352,9 +352,9 @@ class StreamlitChatbot:
         """
         from streamlit.runtime.scriptrunner import RerunException, StopException
 
-        from cortex_agents_client.exceptions import CortexConnectionError, CortexTimeoutError, ServerError
-        from cortex_agents_client.models.events import MetadataEvent
-        from cortex_agents_client.st.render import render_streaming_response
+        from streamlit_cortex_agents.client.exceptions import CortexConnectionError, CortexTimeoutError, ServerError
+        from streamlit_cortex_agents.client.models.events import MetadataEvent
+        from streamlit_cortex_agents.chat.render import render_streaming_response
 
         # Latest run_id seen on the stream. Each client-side tool follow-up is
         # a new run, so this tracks the one currently executing.
@@ -402,7 +402,7 @@ class StreamlitChatbot:
         """
         import streamlit as st
 
-        from cortex_agents_client.exceptions import RunNotActiveError
+        from streamlit_cortex_agents.client.exceptions import RunNotActiveError
 
         if not run_id:
             logger.info("Stream stopped before a run_id arrived; nothing to cancel")
@@ -428,7 +428,7 @@ class StreamlitChatbot:
         the text is extracted from ``.text``, files from ``.files``, and
         audio from ``.audio``; files and audio are displayed in the user
         bubble and stored in
-        :attr:`~cortex_agents_client.models.thread.StoredMessage.attachments`
+        :attr:`~streamlit_cortex_agents.client.models.thread.StoredMessage.attachments`
         for history replay.
 
         .. note::
@@ -442,19 +442,19 @@ class StreamlitChatbot:
             than through the chat API.
 
         Appends both the user message and the assembled assistant
-        :class:`~cortex_agents_client.models.thread.StoredMessage` to session
+        :class:`~streamlit_cortex_agents.client.models.thread.StoredMessage` to session
         state.
 
         Args:
             raw: Either a ``str`` prompt or the ``UploadedFileRec`` object
                 from an ``accept_file``/``accept_audio``-enabled
                 ``st.chat_input``.
-            thread: Active :class:`~cortex_agents_client.client.Thread`.
+            thread: Active :class:`~streamlit_cortex_agents.client.core.Thread`.
             append_message_fn: The ``append_message`` helper from session module.
         """
         import streamlit as st
 
-        from cortex_agents_client.st.render import escape_dollars
+        from streamlit_cortex_agents.chat.render import escape_dollars
 
         # Unwrap plain string vs attach-enabled chat_input result
         if isinstance(raw, str):
@@ -518,7 +518,7 @@ class StreamlitChatbot:
                 )
             except Exception as exc:
                 loading_placeholder.empty()
-                from cortex_agents_client.exceptions import CortexTimeoutError, AuthError
+                from streamlit_cortex_agents.client.exceptions import CortexTimeoutError, AuthError
                 if isinstance(exc, CortexTimeoutError):
                     msg = "Request timed out. Try again or simplify your question."
                 elif isinstance(exc, AuthError):
@@ -565,7 +565,7 @@ class StreamlitChatbot:
         assistant message to history.
 
         Args:
-            thread: Active :class:`~cortex_agents_client.client.Thread`.
+            thread: Active :class:`~streamlit_cortex_agents.client.core.Thread`.
             append_message_fn: The ``append_message`` helper from session module.
         """
         import streamlit as st
@@ -616,7 +616,7 @@ class StreamlitChatbot:
                         key_prefix=f"{self._css_prefix}-{len(st.session_state.get(self._messages_key, []))}",
                     )
                 except Exception as exc:
-                    from cortex_agents_client.exceptions import CortexTimeoutError, AuthError
+                    from streamlit_cortex_agents.client.exceptions import CortexTimeoutError, AuthError
                     if isinstance(exc, CortexTimeoutError):
                         msg = "Request timed out. Try again or simplify your question."
                     elif isinstance(exc, AuthError):

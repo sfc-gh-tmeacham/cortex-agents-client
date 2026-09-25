@@ -7,7 +7,7 @@
 -- Adjust names to match your test account.
 
 CREATE AGENT IF NOT EXISTS cac_live_db.cac_live_schema.web_agent
-  COMMENT = 'Web search agent used by cortex-agents-client live integration tests.'
+  COMMENT = 'Web search agent used by streamlit-cortex-agents live integration tests.'
   FROM SPECIFICATION
   $$
   instructions:

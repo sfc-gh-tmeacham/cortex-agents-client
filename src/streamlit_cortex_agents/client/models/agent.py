@@ -317,7 +317,7 @@ class Agent:
     def path(self) -> str:
         """Fully-qualified agent path in ``DB.SCHEMA.NAME`` format.
 
-        Convenience for use with :meth:`~cortex_agents_client.client.Thread.chat`
+        Convenience for use with :meth:`~streamlit_cortex_agents.client.core.Thread.chat`
         and related methods that accept ``agent_path``::
 
             agent = client.agents.get("MY_AGENT", database="DB", schema="SC")

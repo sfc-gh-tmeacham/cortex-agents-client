@@ -30,9 +30,9 @@ import time
 
 import pytest
 
-from cortex_agents_client import CortexAgentsClient
-from cortex_agents_client.exceptions import CortexAgentError, RunNotActiveError
-from cortex_agents_client.models.events import (
+from streamlit_cortex_agents import CortexAgentsClient
+from streamlit_cortex_agents.client.exceptions import CortexAgentError, RunNotActiveError
+from streamlit_cortex_agents.client.models.events import (
     SSEEvent,
     TextDeltaEvent,
     TextEvent,

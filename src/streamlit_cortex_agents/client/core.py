@@ -15,19 +15,19 @@ import logging
 from collections.abc import Callable, Iterator, Mapping
 from typing import Any
 
-from cortex_agents_client.auth import AuthProvider, PATAuth
-from cortex_agents_client.http import HttpClient
-from cortex_agents_client.models.events import (
+from streamlit_cortex_agents.client.auth import AuthProvider, PATAuth
+from streamlit_cortex_agents.client.http import HttpClient
+from streamlit_cortex_agents.client.models.events import (
     MetadataEvent,
     RunMetadata,
     SSEEvent,
     ToolResultEvent,
     ToolUseEvent,
 )
-from cortex_agents_client.models.thread import ThreadMessage
-from cortex_agents_client.resources.agents import AgentsResource
-from cortex_agents_client.resources.runs import RunResult, RunsResource
-from cortex_agents_client.resources.threads import ThreadsResource
+from streamlit_cortex_agents.client.models.thread import ThreadMessage
+from streamlit_cortex_agents.client.resources.agents import AgentsResource
+from streamlit_cortex_agents.client.resources.runs import RunResult, RunsResource
+from streamlit_cortex_agents.client.resources.threads import ThreadsResource
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +38,11 @@ def _coerce_auth(auth: AuthProvider | str) -> AuthProvider:
     """Wraps a plain string token as a PATAuth provider.
 
     Args:
-        auth: Either an :class:`~cortex_agents_client.auth.AuthProvider` instance
+        auth: Either an :class:`~streamlit_cortex_agents.client.auth.AuthProvider` instance
             or a string PAT token.
 
     Returns:
-        An :class:`~cortex_agents_client.auth.AuthProvider` instance.
+        An :class:`~streamlit_cortex_agents.client.auth.AuthProvider` instance.
     """
     if isinstance(auth, str):
         return PATAuth(auth)
@@ -166,7 +166,7 @@ class Thread:
             permission_decisions: Optional list of permission decision
                 content items to include alongside the user message.
                 Use this when the previous turn emitted a
-                :class:`~cortex_agents_client.models.events.ToolUseEvent` with
+                :class:`~streamlit_cortex_agents.client.models.events.ToolUseEvent` with
                 ``permission_options`` populated.
             extra_content: Additional content items to append to the user
                 message content array.
@@ -174,30 +174,30 @@ class Thread:
                 the default 15-minute one. The run survives a client
                 disconnect; resume it with
                 :meth:`CortexAgentsClient.stream_run` using the ``run_id``
-                from any :class:`~cortex_agents_client.models.events.MetadataEvent`.
+                from any :class:`~streamlit_cortex_agents.client.models.events.MetadataEvent`.
             tool_executor: Optional callable invoked when the agent emits a
-                :class:`~cortex_agents_client.models.events.ToolUseEvent` with
+                :class:`~streamlit_cortex_agents.client.models.events.ToolUseEvent` with
                 ``client_side_execute=True``. Receives the event and must
                 return a list of result content
                 dicts (e.g. ``[{"type": "json", "json": {...}}]``).
                 The library executes the tool, yields a synthetic
-                :class:`~cortex_agents_client.models.events.ToolResultEvent` so
+                :class:`~streamlit_cortex_agents.client.models.events.ToolResultEvent` so
                 renderers can close any status spinners, then automatically
                 sends a follow-up request with the result.
             variables: Optional session attributes for multi-tenancy (see
-                :meth:`~cortex_agents_client.resources.RunsResource.stream`).
+                :meth:`~streamlit_cortex_agents.client.resources.RunsResource.stream`).
                 Sent on every request of the turn, including client-side
                 tool-loop follow-ups.
 
         Yields:
-            All :class:`~cortex_agents_client.models.events.SSEEvent` subclass
+            All :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` subclass
             instances received from the agent, in order.
 
         Raises:
-            cortex_agents_client.exceptions.RunError: If the agent emits a fatal
+            streamlit_cortex_agents.client.exceptions.RunError: If the agent emits a fatal
                 error event.
-            cortex_agents_client.exceptions.AuthError: On authentication failure.
-            cortex_agents_client.exceptions.CortexAgentError: On other errors.
+            streamlit_cortex_agents.client.exceptions.AuthError: On authentication failure.
+            streamlit_cortex_agents.client.exceptions.CortexAgentError: On other errors.
             RuntimeError: If client-side tool iterations exceed
                 :attr:`_MAX_TOOL_ITERATIONS`.
 
@@ -331,11 +331,11 @@ class Thread:
         """Returns all conversation messages in chronological order.
 
         Delegates to
-        :meth:`~cortex_agents_client.resources.ThreadsResource.list_messages`.
+        :meth:`~streamlit_cortex_agents.client.resources.ThreadsResource.list_messages`.
 
         Returns:
             Chronologically ordered list of
-            :class:`~cortex_agents_client.models.thread.ThreadMessage` objects.
+            :class:`~streamlit_cortex_agents.client.models.thread.ThreadMessage` objects.
         """
         return self._client.threads.list_messages(self._thread_id)
 
@@ -343,12 +343,12 @@ class Thread:
         """Returns the latest compaction summary and all subsequent messages.
 
         Delegates to
-        :meth:`~cortex_agents_client.resources.ThreadsResource.latest_context`.
+        :meth:`~streamlit_cortex_agents.client.resources.ThreadsResource.latest_context`.
         Useful for seeding multi-turn context without replaying the entire
         history.
 
         Returns:
-            List of :class:`~cortex_agents_client.models.thread.ThreadMessage`
+            List of :class:`~streamlit_cortex_agents.client.models.thread.ThreadMessage`
             objects in chronological order: the newest compaction summary
             (if any) followed by all subsequent conversation messages.
         """
@@ -370,7 +370,7 @@ class Thread:
         After calling this method, the thread object is no longer usable.
 
         Raises:
-            cortex_agents_client.exceptions.ThreadNotFoundError: If the thread
+            streamlit_cortex_agents.client.exceptions.ThreadNotFoundError: If the thread
                 does not exist.
         """
         self._client.threads.delete(self._thread_id)
@@ -386,7 +386,7 @@ class CortexAgentsClient:
     :meth:`run`.
 
     Passing a plain string as ``auth`` wraps it automatically as
-    :class:`~cortex_agents_client.auth.PATAuth`.
+    :class:`~streamlit_cortex_agents.client.auth.PATAuth`.
 
     Args:
         account_url: Full base URL of the Snowflake account, including
@@ -407,7 +407,7 @@ class CortexAgentsClient:
 
     Example::
 
-        from cortex_agents_client import CortexAgentsClient
+        from streamlit_cortex_agents import CortexAgentsClient
 
         client = CortexAgentsClient(
             account_url="https://myorg-myaccount.snowflakecomputing.com",
@@ -487,8 +487,8 @@ class CortexAgentsClient:
             conversation.
 
         Raises:
-            cortex_agents_client.exceptions.AuthError: On authentication failure.
-            cortex_agents_client.exceptions.CortexAgentError: On other API errors.
+            streamlit_cortex_agents.client.exceptions.AuthError: On authentication failure.
+            streamlit_cortex_agents.client.exceptions.CortexAgentError: On other API errors.
         """
         app = origin_application or self._origin_application
         metadata = self.threads.create(origin_application=app)
@@ -534,17 +534,17 @@ class CortexAgentsClient:
                 If provided, ``parent_message_id`` is managed automatically.
             tool_choice: Optional tool selection constraint.
             variables: Optional session attributes for multi-tenancy (see
-                :meth:`~cortex_agents_client.resources.RunsResource.stream`).
+                :meth:`~streamlit_cortex_agents.client.resources.RunsResource.stream`).
                 Forwarded on both the thread and the one-shot path.
             **kwargs: Additional keyword arguments passed to
-                :meth:`~cortex_agents_client.resources.RunsResource.stream`.
+                :meth:`~streamlit_cortex_agents.client.resources.RunsResource.stream`.
 
         Yields:
-            :class:`~cortex_agents_client.models.events.SSEEvent` subclass instances.
+            :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` subclass instances.
 
         Raises:
-            cortex_agents_client.exceptions.RunError: On fatal agent error.
-            cortex_agents_client.exceptions.AuthError: On authentication failure.
+            streamlit_cortex_agents.client.exceptions.RunError: On fatal agent error.
+            streamlit_cortex_agents.client.exceptions.AuthError: On authentication failure.
         """
         if thread is not None:
             yield from thread.chat(
@@ -582,15 +582,15 @@ class CortexAgentsClient:
                 :meth:`Thread.chat` for tracked multi-turn conversations.
             tool_choice: Optional tool selection constraint.
             variables: Optional session attributes for multi-tenancy (see
-                :meth:`~cortex_agents_client.resources.RunsResource.stream`).
+                :meth:`~streamlit_cortex_agents.client.resources.RunsResource.stream`).
             **kwargs: Additional keyword arguments passed to
-                :meth:`~cortex_agents_client.resources.RunsResource.run`.
+                :meth:`~streamlit_cortex_agents.client.resources.RunsResource.run`.
 
         Returns:
-            Assembled :class:`~cortex_agents_client.resources.RunResult`.
+            Assembled :class:`~streamlit_cortex_agents.client.resources.RunResult`.
 
         Raises:
-            cortex_agents_client.exceptions.RunError: On fatal agent error.
+            streamlit_cortex_agents.client.exceptions.RunError: On fatal agent error.
         """
         messages = [{"role": "user", "content": [{"type": "text", "text": message}]}]
         thread_id = thread.thread_id if thread else None
@@ -614,7 +614,7 @@ class CortexAgentsClient:
         """Reconnects to an existing agent run and streams its output.
 
         Delegates to
-        :meth:`~cortex_agents_client.resources.runs.RunsResource.stream_run`.
+        :meth:`~streamlit_cortex_agents.client.resources.runs.RunsResource.stream_run`.
         Use this to resume a background run or recover from a dropped
         connection.
 
@@ -623,10 +623,10 @@ class CortexAgentsClient:
             starting_after: Sequence number to resume from, exclusive.
 
         Yields:
-            :class:`~cortex_agents_client.models.events.SSEEvent` subclass instances.
+            :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` subclass instances.
 
         Raises:
-            cortex_agents_client.exceptions.RunNotActiveError: If the run
+            streamlit_cortex_agents.client.exceptions.RunNotActiveError: If the run
                 finished more than 5 minutes ago.
         """
         yield from self.runs.stream_run(run_id, starting_after=starting_after)
@@ -635,17 +635,17 @@ class CortexAgentsClient:
         """Cancels an actively running agent run.
 
         Delegates to
-        :meth:`~cortex_agents_client.resources.runs.RunsResource.cancel_run`.
+        :meth:`~streamlit_cortex_agents.client.resources.runs.RunsResource.cancel_run`.
 
         Args:
             run_id: Run identifier, in ``{thread_id}-{user_message_id}`` form.
 
         Returns:
-            :class:`~cortex_agents_client.models.events.RunMetadata` for the
+            :class:`~streamlit_cortex_agents.client.models.events.RunMetadata` for the
             cancelled run.
 
         Raises:
-            cortex_agents_client.exceptions.RunNotActiveError: If the run has
+            streamlit_cortex_agents.client.exceptions.RunNotActiveError: If the run has
                 already completed or been cancelled.
         """
         return self.runs.cancel_run(run_id)

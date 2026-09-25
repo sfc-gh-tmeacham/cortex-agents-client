@@ -5,9 +5,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cortex_agents_client.resources.runs import RunsResource
-from cortex_agents_client.http import HttpClient
-from cortex_agents_client.auth import PATAuth
+from streamlit_cortex_agents.client.resources.runs import RunsResource
+from streamlit_cortex_agents.client.http import HttpClient
+from streamlit_cortex_agents.client.auth import PATAuth
 
 
 def make_runs_resource(default_db=None, default_schema=None):
@@ -76,7 +76,7 @@ class TestResultSetToDataframe:
     @pytest.fixture
     def table_event_factory(self):
         """Returns a factory for creating TableEvent instances."""
-        from cortex_agents_client.models.events import TableEvent
+        from streamlit_cortex_agents.client.models.events import TableEvent
 
         def _make(row_types, data):
             payload = {
@@ -101,7 +101,7 @@ class TestResultSetToDataframe:
 
     def test_column_names_match_row_types(self, table_event_factory):
         """DataFrame columns match rowType names."""
-        from cortex_agents_client.st.render import result_set_to_dataframe
+        from streamlit_cortex_agents.chat.render import result_set_to_dataframe
 
         event = table_event_factory(
             [
@@ -115,7 +115,7 @@ class TestResultSetToDataframe:
 
     def test_integer_type_casting(self, table_event_factory):
         """INTEGER rowType → Int64 dtype."""
-        from cortex_agents_client.st.render import result_set_to_dataframe
+        from streamlit_cortex_agents.chat.render import result_set_to_dataframe
 
         event = table_event_factory(
             [{"name": "COUNT", "type": "INTEGER", "length": 0, "precision": 10, "scale": 0, "nullable": False}],
@@ -126,7 +126,7 @@ class TestResultSetToDataframe:
 
     def test_float_type_casting(self, table_event_factory):
         """FLOAT rowType → float64 dtype."""
-        from cortex_agents_client.st.render import result_set_to_dataframe
+        from streamlit_cortex_agents.chat.render import result_set_to_dataframe
 
         event = table_event_factory(
             [{"name": "AMOUNT", "type": "FLOAT", "length": 0, "precision": 15, "scale": 2, "nullable": True}],
@@ -137,7 +137,7 @@ class TestResultSetToDataframe:
 
     def test_varchar_type_stays_as_string(self, table_event_factory):
         """VARCHAR rowType → object dtype (string)."""
-        from cortex_agents_client.st.render import result_set_to_dataframe
+        from streamlit_cortex_agents.chat.render import result_set_to_dataframe
 
         event = table_event_factory(
             [{"name": "NAME", "type": "VARCHAR", "length": 255, "precision": 0, "scale": 0, "nullable": True}],
@@ -148,7 +148,7 @@ class TestResultSetToDataframe:
 
     def test_empty_result_set_returns_empty_dataframe(self, table_event_factory):
         """Empty result set returns DataFrame with correct columns but no rows."""
-        from cortex_agents_client.st.render import result_set_to_dataframe
+        from streamlit_cortex_agents.chat.render import result_set_to_dataframe
 
         event = table_event_factory(
             [{"name": "ID", "type": "INTEGER", "length": 0, "precision": 10, "scale": 0, "nullable": False}],
@@ -160,8 +160,8 @@ class TestResultSetToDataframe:
 
     def test_empty_row_types_returns_empty_dataframe(self, table_event_factory):
         """No rowType metadata → empty DataFrame."""
-        from cortex_agents_client.models.events import TableEvent
-        from cortex_agents_client.st.render import result_set_to_dataframe
+        from streamlit_cortex_agents.client.models.events import TableEvent
+        from streamlit_cortex_agents.chat.render import result_set_to_dataframe
 
         payload = {
             "content_index": 0,
@@ -184,7 +184,7 @@ class TestToolExecutor:
 
     def _make_thread(self):
         """Creates a Thread with a mocked HTTP client."""
-        from cortex_agents_client.client import CortexAgentsClient, Thread
+        from streamlit_cortex_agents.client.core import CortexAgentsClient, Thread
 
         client = MagicMock(spec=CortexAgentsClient)
         client.runs = MagicMock()
@@ -193,7 +193,7 @@ class TestToolExecutor:
 
     def test_tool_executor_called_for_client_side_tool(self):
         """tool_executor is called when ToolUseEvent has client_side_execute=True."""
-        from cortex_agents_client.models.events import (
+        from streamlit_cortex_agents.client.models.events import (
             MetadataEvent,
             TextEvent,
             ToolUseEvent,
@@ -241,7 +241,7 @@ class TestToolExecutor:
 
     def test_tool_loop_follow_up_sends_only_tool_result(self):
         """The follow-up request carries only the tool_result, not the original text or attachments."""
-        from cortex_agents_client.models.events import MetadataEvent, ToolUseEvent
+        from streamlit_cortex_agents.client.models.events import MetadataEvent, ToolUseEvent
 
         thread, client = self._make_thread()
         executor = MagicMock(return_value=[{"type": "text", "text": "42"}])
@@ -284,7 +284,7 @@ class TestToolExecutor:
         Verified live: without this the server never pairs the result with its
         tool_use and the agent re-requests the tool until the iteration cap.
         """
-        from cortex_agents_client.models.events import MetadataEvent, ToolUseEvent
+        from streamlit_cortex_agents.client.models.events import MetadataEvent, ToolUseEvent
 
         thread, client = self._make_thread()
         tool_event = ToolUseEvent._from_payload({
@@ -311,7 +311,7 @@ class TestToolExecutor:
 
     def test_tool_executor_exception_yields_error_result(self):
         """If tool_executor raises, a 'error' status ToolResultEvent is yielded."""
-        from cortex_agents_client.models.events import (
+        from streamlit_cortex_agents.client.models.events import (
             MetadataEvent,
             ToolResultEvent,
             ToolUseEvent,
@@ -353,7 +353,7 @@ class TestToolExecutor:
 
     def test_no_tool_executor_client_side_event_yields_normally(self):
         """client_side_execute=True without tool_executor → event yielded unchanged."""
-        from cortex_agents_client.models.events import MetadataEvent, ToolUseEvent
+        from streamlit_cortex_agents.client.models.events import MetadataEvent, ToolUseEvent
 
         thread, client = self._make_thread()
 
@@ -383,7 +383,7 @@ class TestRecursionGuard:
     """Tests for the _MAX_TOOL_ITERATIONS safety limit in Thread.chat()."""
 
     def _make_thread(self):
-        from cortex_agents_client.client import CortexAgentsClient, Thread
+        from streamlit_cortex_agents.client.core import CortexAgentsClient, Thread
 
         client = MagicMock(spec=CortexAgentsClient)
         client.runs = MagicMock()
@@ -392,8 +392,8 @@ class TestRecursionGuard:
 
     def test_raises_runtime_error_after_max_iterations(self):
         """Thread.chat() raises RuntimeError after _MAX_TOOL_ITERATIONS."""
-        from cortex_agents_client.client import Thread
-        from cortex_agents_client.models.events import ToolUseEvent
+        from streamlit_cortex_agents.client.core import Thread
+        from streamlit_cortex_agents.client.models.events import ToolUseEvent
 
         thread, client = self._make_thread()
 
@@ -423,7 +423,7 @@ class TestContextManager:
     """Tests for CortexAgentsClient context manager support."""
 
     def test_context_manager_calls_close(self):
-        from cortex_agents_client.client import CortexAgentsClient
+        from streamlit_cortex_agents.client.core import CortexAgentsClient
 
         with patch.object(CortexAgentsClient, "close") as mock_close:
             client = CortexAgentsClient("https://test.snowflakecomputing.com", "v2:tok")
@@ -432,7 +432,7 @@ class TestContextManager:
             mock_close.assert_called_once()
 
     def test_context_manager_calls_close_on_exception(self):
-        from cortex_agents_client.client import CortexAgentsClient
+        from streamlit_cortex_agents.client.core import CortexAgentsClient
 
         with patch.object(CortexAgentsClient, "close") as mock_close:
             client = CortexAgentsClient("https://test.snowflakecomputing.com", "v2:tok")
@@ -446,9 +446,9 @@ class TestURLEncoding:
     """Tests that special characters in identifiers are URL-encoded."""
 
     def test_resolve_path_encodes_spaces(self):
-        from cortex_agents_client.resources.runs import RunsResource
-        from cortex_agents_client.http import HttpClient
-        from cortex_agents_client.auth import PATAuth
+        from streamlit_cortex_agents.client.resources.runs import RunsResource
+        from streamlit_cortex_agents.client.http import HttpClient
+        from streamlit_cortex_agents.client.auth import PATAuth
 
         http = HttpClient("https://test.snowflakecomputing.com", PATAuth("v2:tok"))
         runs = RunsResource(http)
@@ -459,9 +459,9 @@ class TestURLEncoding:
         http.close()
 
     def test_resolve_path_encodes_slashes(self):
-        from cortex_agents_client.resources.runs import RunsResource
-        from cortex_agents_client.http import HttpClient
-        from cortex_agents_client.auth import PATAuth
+        from streamlit_cortex_agents.client.resources.runs import RunsResource
+        from streamlit_cortex_agents.client.http import HttpClient
+        from streamlit_cortex_agents.client.auth import PATAuth
 
         http = HttpClient("https://test.snowflakecomputing.com", PATAuth("v2:tok"))
         runs = RunsResource(http)
@@ -470,9 +470,9 @@ class TestURLEncoding:
         http.close()
 
     def test_agents_path_encodes_special_chars(self):
-        from cortex_agents_client.resources.agents import AgentsResource
-        from cortex_agents_client.http import HttpClient
-        from cortex_agents_client.auth import PATAuth
+        from streamlit_cortex_agents.client.resources.agents import AgentsResource
+        from streamlit_cortex_agents.client.http import HttpClient
+        from streamlit_cortex_agents.client.auth import PATAuth
 
         http = HttpClient("https://test.snowflakecomputing.com", PATAuth("v2:tok"))
         agents = AgentsResource(http)

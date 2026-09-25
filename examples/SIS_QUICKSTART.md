@@ -15,13 +15,13 @@ and dialog — and applies to both new apps and existing ones.
    Access Integration. See the [README](../README.md#streamlit-in-snowflake-container-runtime)
    for the `CREATE NETWORK RULE` / `CREATE EXTERNAL ACCESS INTEGRATION` SQL.
 
-2. **Library** — Copy `cortex_agents_client/` into your workspace root (the directory
+2. **Library** — Copy `streamlit_cortex_agents/` into your workspace root (the directory
    Snowflake puts on `sys.path`), or declare it as a dependency in `pyproject.toml`
    (replace the path with wherever you have the library on disk):
 
    ```toml
    dependencies = [
-       "cortex-agents-client[streamlit] @ file:///path/to/cortex-agents-client",
+       "streamlit-cortex-agents[streamlit] @ file:///path/to/cortex-agents-client",
    ]
    ```
 
@@ -42,7 +42,7 @@ Snowflake automatically injects two things into every container runtime app:
 No `.streamlit/secrets.toml` is needed.
 
 ```python
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 account_url = account_url_from_env()   # https://<your-account>.snowflakecomputing.com
 auth        = SiSContainerAuth()       # reads /snowflake/session/token on every request
@@ -58,8 +58,8 @@ users come specifically to talk to the agent.
 ```python
 # sis_fullpage.py
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # not sensitive — hardcode your agent path
 
@@ -96,8 +96,8 @@ Key points:
 ```python
 # sis_embedded.py
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # not sensitive — hardcode your agent path
 
@@ -145,8 +145,8 @@ Key points:
 ```python
 # sis_dialog.py
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # not sensitive — hardcode your agent path
 
@@ -184,13 +184,13 @@ if st.button("Ask the agent", icon=":material/chat:", type="primary"):
 
 If you already have a deployed SiS container runtime app, the only changes are:
 
-1. Copy `cortex_agents_client/` into the workspace root (or add to `pyproject.toml`).
+1. Copy `streamlit_cortex_agents/` into the workspace root (or add to `pyproject.toml`).
 2. Ensure the EAI is attached to the Streamlit object.
 3. Add the import and a single `.render()` call where you want the chat to appear:
 
 ```python
-from cortex_agents_client.st import StreamlitChatbot
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 # Drop into any existing page — fullpage, a column, a tab, or inside @st.dialog
 StreamlitChatbot(

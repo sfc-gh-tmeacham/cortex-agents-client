@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cortex_agents_client.st.chatbot import StreamlitChatbot
+from streamlit_cortex_agents.chat.chatbot import StreamlitChatbot
 
 
 # ---------------------------------------------------------------------------
@@ -170,8 +170,8 @@ class TestRenderFullpage:
         mock_st = _mock_st()
         mock_st.chat_input.return_value = None  # no input this run
 
-        with patch("cortex_agents_client.st.chatbot.StreamlitChatbot._init") as mock_init, \
-             patch("cortex_agents_client.st.chatbot.StreamlitChatbot._render_message_history"), \
+        with patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._init") as mock_init, \
+             patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._render_message_history"), \
              patch.dict("sys.modules", {"streamlit": mock_st}):
             mock_init.return_value = (mock_thread, MagicMock(), MagicMock(), MagicMock())
             bot._render_fullpage()
@@ -184,8 +184,8 @@ class TestRenderFullpage:
         mock_st = _mock_st()
         mock_st.chat_input.return_value = None
 
-        with patch("cortex_agents_client.st.chatbot.StreamlitChatbot._init") as mock_init, \
-             patch("cortex_agents_client.st.chatbot.StreamlitChatbot._render_message_history"), \
+        with patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._init") as mock_init, \
+             patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._render_message_history"), \
              patch.dict("sys.modules", {"streamlit": mock_st}):
             mock_init.return_value = (mock_thread, MagicMock(), MagicMock(), MagicMock())
             bot._render_fullpage()
@@ -198,8 +198,8 @@ class TestRenderFullpage:
         mock_st = _mock_st()
         mock_st.chat_input.return_value = None
 
-        with patch("cortex_agents_client.st.chatbot.StreamlitChatbot._init") as mock_init, \
-             patch("cortex_agents_client.st.chatbot.StreamlitChatbot._render_message_history"), \
+        with patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._init") as mock_init, \
+             patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._render_message_history"), \
              patch.dict("sys.modules", {"streamlit": mock_st}):
             mock_init.return_value = (MagicMock(), MagicMock(), MagicMock(), MagicMock())
             bot._render_fullpage()
@@ -245,9 +245,9 @@ class TestRenderEmbedded:
 
         mock_st.chat_input.return_value = prompt
 
-        with patch("cortex_agents_client.st.chatbot.StreamlitChatbot._init") as mock_init, \
-             patch("cortex_agents_client.st.chatbot.StreamlitChatbot._render_message_history"), \
-             patch("cortex_agents_client.st.chatbot.StreamlitChatbot._process_prompt") as mock_proc, \
+        with patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._init") as mock_init, \
+             patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._render_message_history"), \
+             patch("streamlit_cortex_agents.chat.chatbot.StreamlitChatbot._process_prompt") as mock_proc, \
              patch.dict("sys.modules", {"streamlit": mock_st}):
             mock_init.return_value = (MagicMock(), MagicMock(), MagicMock(), MagicMock())
             bot._render_embedded()
@@ -370,8 +370,8 @@ class TestStreamWithRetry:
 
     def test_factory_called_twice_on_transient_error(self):
         """On first failure, factory is called a second time (fresh stream)."""
-        from cortex_agents_client.exceptions import CortexTimeoutError
-        from cortex_agents_client.models.thread import StoredMessage
+        from streamlit_cortex_agents.client.exceptions import CortexTimeoutError
+        from streamlit_cortex_agents.client.models.thread import StoredMessage
 
         bot = self._make_bot()
         call_count = 0
@@ -382,7 +382,7 @@ class TestStreamWithRetry:
             return iter([])
 
         with patch(
-            "cortex_agents_client.st.render.render_streaming_response",
+            "streamlit_cortex_agents.chat.render.render_streaming_response",
             side_effect=[
                 CortexTimeoutError("read timed out"),
                 StoredMessage(role="assistant"),
@@ -395,7 +395,7 @@ class TestStreamWithRetry:
 
     def test_raises_after_second_failure(self):
         """If both attempts fail, the exception propagates."""
-        from cortex_agents_client.exceptions import ServerError
+        from streamlit_cortex_agents.client.exceptions import ServerError
 
         bot = self._make_bot()
 
@@ -403,7 +403,7 @@ class TestStreamWithRetry:
             return iter([])
 
         with patch(
-            "cortex_agents_client.st.render.render_streaming_response",
+            "streamlit_cortex_agents.chat.render.render_streaming_response",
             side_effect=ServerError("fail"),
         ):
             with pytest.raises(ServerError):
@@ -421,7 +421,7 @@ class TestStopCancelsRun:
         )
 
     def _events(self, *run_ids):
-        from cortex_agents_client.models.events import MetadataEvent
+        from streamlit_cortex_agents.client.models.events import MetadataEvent
 
         return [
             MetadataEvent._from_payload(
@@ -446,7 +446,7 @@ class TestStopCancelsRun:
         client = MagicMock()
         state = {bot._client_key: client}
         with patch("streamlit.session_state", state), patch(
-            "cortex_agents_client.st.render.render_streaming_response",
+            "streamlit_cortex_agents.chat.render.render_streaming_response",
             side_effect=self._stop_after_consuming(exc),
         ):
             with pytest.raises(exc_cls):
@@ -458,13 +458,13 @@ class TestStopCancelsRun:
     def test_already_finished_run_is_not_an_error(self):
         from streamlit.runtime.scriptrunner import StopException
 
-        from cortex_agents_client.exceptions import RunNotActiveError
+        from streamlit_cortex_agents.client.exceptions import RunNotActiveError
 
         bot = self._bot()
         client = MagicMock()
         client.cancel_run.side_effect = RunNotActiveError("done", status_code=409)
         with patch("streamlit.session_state", {bot._client_key: client}), patch(
-            "cortex_agents_client.st.render.render_streaming_response",
+            "streamlit_cortex_agents.chat.render.render_streaming_response",
             side_effect=self._stop_after_consuming(StopException()),
         ):
             with pytest.raises(StopException):
@@ -480,7 +480,7 @@ class TestStopCancelsRun:
         client = MagicMock()
         client.cancel_run.side_effect = RuntimeError("network down")
         with patch("streamlit.session_state", {bot._client_key: client}), patch(
-            "cortex_agents_client.st.render.render_streaming_response",
+            "streamlit_cortex_agents.chat.render.render_streaming_response",
             side_effect=self._stop_after_consuming(StopException()),
         ):
             with pytest.raises(StopException):
@@ -494,7 +494,7 @@ class TestStopCancelsRun:
         bot = self._bot()
         client = MagicMock()
         with patch("streamlit.session_state", {bot._client_key: client}), patch(
-            "cortex_agents_client.st.render.render_streaming_response",
+            "streamlit_cortex_agents.chat.render.render_streaming_response",
             side_effect=self._stop_after_consuming(StopException()),
         ):
             with pytest.raises(StopException):
@@ -505,7 +505,7 @@ class TestStopCancelsRun:
         bot = self._bot()
         client = MagicMock()
         with patch("streamlit.session_state", {bot._client_key: client}), patch(
-            "cortex_agents_client.st.render.render_streaming_response",
+            "streamlit_cortex_agents.chat.render.render_streaming_response",
             side_effect=lambda events, **kw: (list(events), "stored")[1],
         ):
             assert bot._stream_with_retry(
@@ -567,7 +567,7 @@ class TestVariables:
         assert sent == [{"region": "NORTH"}] * 2 + [{"region": "SOUTH"}] * 2
 
     def test_permission_path_forwards(self):
-        from cortex_agents_client.models.events import ToolUseEvent
+        from streamlit_cortex_agents.client.models.events import ToolUseEvent
 
         bot = self._make_bot(variables={"region": "NORTH"})
         thread = MagicMock()

@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from cortex_agents_client.models.events import (
+    from streamlit_cortex_agents.client.models.events import (
         ChartEvent,
         ErrorEvent,
         TableEvent,
@@ -145,7 +145,7 @@ class StoredMessage:
 
     This is the canonical representation used by the Streamlit integration
     for both streaming new messages and replaying history on reruns.
-    Every field is designed so that :func:`cortex_agents_client.st.render.render_stored_message`
+    Every field is designed so that :func:`streamlit_cortex_agents.chat.render.render_stored_message`
     can produce identical output to the original streaming render.
 
     Attributes:

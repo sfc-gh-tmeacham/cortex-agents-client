@@ -1,24 +1,9 @@
-"""Cortex Agents Python client library.
+"""Drop-in Cortex Agent chat for Streamlit.
 
-A Python client for the Snowflake Cortex Agents REST API, with first-class
-support for Streamlit applications.
+Add a streaming Cortex Agent chat interface to a Streamlit app::
 
-Basic usage::
-
-    from cortex_agents_client import CortexAgentsClient
-
-    client = CortexAgentsClient(
-        account_url="https://myorg-myaccount.snowflakecomputing.com",
-        auth="v2:my_pat_token",
-    )
-
-    thread = client.create_thread()
-    for event in thread.chat("DB.SCHEMA.MY_AGENT", "What is total revenue?"):
-        print(event)
-
-Streamlit usage::
-
-    from cortex_agents_client.st import StreamlitChatbot
+    import streamlit as st
+    from streamlit_cortex_agents import StreamlitChatbot
 
     bot = StreamlitChatbot(
         account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
@@ -26,123 +11,26 @@ Streamlit usage::
         agent_path="DB.SCHEMA.MY_AGENT",
     )
     bot.render()
+
+The chat component lives in :mod:`streamlit_cortex_agents.chat`. The REST
+client it is built on lives in :mod:`streamlit_cortex_agents.client` and is
+usable on its own. Every public name from both is re-exported here.
 """
 
 from importlib.metadata import PackageNotFoundError, version
 
 try:
-    __version__ = version("cortex-agents-client")
+    __version__ = version("streamlit-cortex-agents")
 except PackageNotFoundError:  # running from a source tree without install
     __version__ = "0.0.0"
 
-from cortex_agents_client.auth import JWTAuth, OAuthAuth, PATAuth, SiSContainerAuth
-from cortex_agents_client.auth import account_url_from_env, AuthProvider
-from cortex_agents_client.client import CortexAgentsClient, Thread
-from cortex_agents_client.exceptions import (
-    AgentNotFoundError,
-    AuthError,
-    ConflictError,
-    CortexAgentError,
-    CortexConnectionError,
-    CortexPermissionError,
-    CortexTimeoutError,
-    NotFoundError,
+from streamlit_cortex_agents import chat as _chat
+from streamlit_cortex_agents import client as _client
+from streamlit_cortex_agents.chat import *  # noqa: F401,F403
+from streamlit_cortex_agents.client import *  # noqa: F401,F403
+from streamlit_cortex_agents.client.exceptions import (  # noqa: F401
     PermissionError as PermissionError,  # deprecated alias; kept out of __all__
-    RateLimitError,
-    RunError,
-    RunNotActiveError,
-    ServerError,
-    ThreadNotFoundError,
     TimeoutError as TimeoutError,  # deprecated alias; kept out of __all__
 )
-from cortex_agents_client.models.agent import Agent
-from cortex_agents_client.models.thread import StoredMessage, ThreadDetail, ThreadMessage, ThreadMetadata
-from cortex_agents_client.models.events import (
-    AnalystDeltaEvent,
-    ChartEvent,
-    ErrorEvent,
-    InputTokens,
-    MetadataEvent,
-    OutputTokens,
-    ResponseEvent,
-    RunMetadata,
-    SSEEvent,
-    StatusEvent,
-    SuggestedQueriesEvent,
-    TableEvent,
-    TextAnnotationEvent,
-    TextDeltaEvent,
-    TextEvent,
-    ThinkingDeltaEvent,
-    ThinkingEvent,
-    TokensConsumed,
-    ToolResultEvent,
-    ToolResultStatusEvent,
-    ToolUseEvent,
-    UnknownEvent,
-    WarningEvent,
-)
-from cortex_agents_client.resources.runs import RunResult
 
-__all__ = [
-    "__version__",
-    # Core client
-    "CortexAgentsClient",
-    "Thread",
-    # Auth
-    "PATAuth",
-    "JWTAuth",
-    "OAuthAuth",
-    "SiSContainerAuth",
-    "account_url_from_env",
-    "AuthProvider",
-    # Exceptions
-    "CortexAgentError",
-    "AuthError",
-    "CortexConnectionError",
-    "CortexPermissionError",
-    "CortexTimeoutError",
-    "NotFoundError",
-    "RateLimitError",
-    "RunError",
-    "ServerError",
-    "AgentNotFoundError",
-    "ThreadNotFoundError",
-    "ConflictError",
-    "RunNotActiveError",
-    # PermissionError and TimeoutError (deprecated aliases) stay importable
-    # by name but are left out of __all__ so a star import cannot shadow the
-    # builtins of the same name.
-    # Models
-    "Agent",
-    "StoredMessage",
-    "ThreadDetail",
-    "ThreadMessage",
-    "ThreadMetadata",
-    "RunResult",
-    "RunMetadata",
-    # SSE events
-    "SSEEvent",
-    "TextDeltaEvent",
-    "TextEvent",
-    "TextAnnotationEvent",
-    "ThinkingDeltaEvent",
-    "ThinkingEvent",
-    "ToolUseEvent",
-    "ToolResultEvent",
-    "ToolResultStatusEvent",
-    "AnalystDeltaEvent",
-    "TableEvent",
-    "ChartEvent",
-    "StatusEvent",
-    "SuggestedQueriesEvent",
-    "WarningEvent",
-    "ErrorEvent",
-    "MetadataEvent",
-    "ResponseEvent",
-    "UnknownEvent",
-    # ResponseEvent usage models
-    "TokensConsumed",
-    "InputTokens",
-    "OutputTokens",
-]
+__all__ = ["__version__", *_chat.__all__, *_client.__all__]

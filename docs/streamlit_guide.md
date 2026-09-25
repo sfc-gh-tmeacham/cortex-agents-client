@@ -1,6 +1,6 @@
 # Streamlit Integration Guide
 
-Design reference for the `cortex_agents_client.st` subpackage.
+Design reference for the `streamlit_cortex_agents.chat` subpackage.
 
 ---
 
@@ -12,7 +12,7 @@ Streamlit reruns the entire Python script on every user interaction. This means:
 2. Streaming responses cannot be re-streamed — what was streamed on a previous run must be replayed from stored data.
 3. Rich content types (tables, charts, thinking) must be rendered identically from session state on every rerun.
 
-The `cortex_agents_client.st` subpackage solves all three problems.
+The `streamlit_cortex_agents.chat` subpackage solves all three problems.
 
 ---
 
@@ -187,7 +187,7 @@ it runs on a later rerun, after the user approves the tool.
 ```python
 # app.py
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
+from streamlit_cortex_agents.chat import StreamlitChatbot
 
 bot = StreamlitChatbot(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
@@ -206,8 +206,8 @@ For users who want fine-grained control:
 ```python
 # app.py
 import streamlit as st
-from cortex_agents_client.st.session import init_session, get_messages, append_message
-from cortex_agents_client.st.render import render_stored_message, render_streaming_response
+from streamlit_cortex_agents.chat.session import init_session, get_messages, append_message
+from streamlit_cortex_agents.chat.render import render_stored_message, render_streaming_response
 
 client, thread = init_session(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
@@ -227,7 +227,7 @@ if prompt := st.chat_input("Ask about revenue..."):
     # Show user message
     with st.chat_message("user"):
         st.markdown(prompt)
-    from cortex_agents_client.models.thread import StoredMessage
+    from streamlit_cortex_agents.client.models.thread import StoredMessage
     append_message(StoredMessage(role="user", text=prompt))
 
     # Stream assistant response

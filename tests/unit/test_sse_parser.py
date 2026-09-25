@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 
-from cortex_agents_client.sse import parse_sse_stream
+from streamlit_cortex_agents.client.sse import parse_sse_stream
 from tests.fixtures.sse_streams import ALL_EVENT_TYPES, stream_of
 
 

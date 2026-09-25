@@ -8,7 +8,7 @@
 Each event class has a ``_from_payload`` class method that constructs the
 instance from the raw SSE JSON dict.
 
-The factory function :func:`cortex_agents_client.sse.event_from_sse` uses these
+The factory function :func:`streamlit_cortex_agents.client.sse.event_from_sse` uses these
 classes to dispatch events by type string.
 
 Unknown event types are represented by :class:`UnknownEvent` and never
@@ -48,7 +48,7 @@ class SSEEvent:
             (e.g. ``"response.text.delta"``).
         sequence_number: The event's position in the run's output stream, when
             the server supplies one. Pass it as ``starting_after`` to
-            :meth:`~cortex_agents_client.resources.runs.RunsResource.stream_run`
+            :meth:`~streamlit_cortex_agents.client.resources.runs.RunsResource.stream_run`
             to resume after this event. ``None`` if the server omitted it.
     """
 
@@ -77,7 +77,7 @@ class TextDeltaEvent(SSEEvent):
         is_elicitation: If ``True``, this text is the agent asking the user
             for more information (a clarifying question). Render differently
             from regular assistant text — see
-            :func:`cortex_agents_client.st.render.render_streaming_response`.
+            :func:`streamlit_cortex_agents.chat.render.render_streaming_response`.
     """
 
     content_index: int = 0
@@ -700,8 +700,8 @@ class WarningEvent(SSEEvent):
 class ErrorEvent(SSEEvent):
     """A fatal error that terminates the stream.
 
-    When the :class:`cortex_agents_client.resources.RunsResource` encounters this
-    event, it raises :class:`cortex_agents_client.exceptions.RunError`.
+    When the :class:`streamlit_cortex_agents.client.resources.RunsResource` encounters this
+    event, it raises :class:`streamlit_cortex_agents.client.exceptions.RunError`.
 
     Attributes:
         event_type: Always ``"error"``.
@@ -860,14 +860,14 @@ class RunMetadata:
     """Metadata about an agent run, mirroring the API ``ResponseMetadata``.
 
     Returned by
-    :meth:`~cortex_agents_client.resources.runs.RunsResource.cancel_run` and
-    carried on :class:`~cortex_agents_client.resources.runs.RunResult`. The
+    :meth:`~streamlit_cortex_agents.client.resources.runs.RunsResource.cancel_run` and
+    carried on :class:`~streamlit_cortex_agents.client.resources.runs.RunResult`. The
     same fields appear on :class:`ResponseEvent` for streaming runs.
 
     Attributes:
         run_id: Unique identifier for the run, formatted as
             ``{thread_id}-{user_message_id}``. Pass it to
-            :meth:`~cortex_agents_client.resources.runs.RunsResource.stream_run`
+            :meth:`~streamlit_cortex_agents.client.resources.runs.RunsResource.stream_run`
             to reconnect to the output.
         thread_id: ID of the thread the run belongs to.
         user_message_id: Persisted ID of the user message.

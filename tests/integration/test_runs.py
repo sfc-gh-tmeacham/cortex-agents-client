@@ -7,9 +7,9 @@ import httpx
 import pytest
 from pytest_httpx import HTTPXMock
 
-from cortex_agents_client.client import Thread
-from cortex_agents_client.exceptions import AuthError, RunError, RunNotActiveError
-from cortex_agents_client.models.events import (
+from streamlit_cortex_agents.client.core import Thread
+from streamlit_cortex_agents.client.exceptions import AuthError, RunError, RunNotActiveError
+from streamlit_cortex_agents.client.models.events import (
     ErrorEvent,
     MetadataEvent,
     TextDeltaEvent,
@@ -211,7 +211,7 @@ class TestHttpErrors:
 
     def test_http_403_raises_permission_error(self, ca_client, httpx_mock: HTTPXMock):
         """HTTP 403 raises CortexPermissionError."""
-        from cortex_agents_client.exceptions import CortexPermissionError
+        from streamlit_cortex_agents.client.exceptions import CortexPermissionError
         httpx_mock.add_response(
             status_code=403,
             headers={"Content-Type": "application/json"},
@@ -223,7 +223,7 @@ class TestHttpErrors:
 
     def test_http_429_raises_rate_limit_error(self, ca_client, httpx_mock: HTTPXMock):
         """HTTP 429 raises RateLimitError."""
-        from cortex_agents_client.exceptions import RateLimitError
+        from streamlit_cortex_agents.client.exceptions import RateLimitError
         httpx_mock.add_response(
             status_code=429,
             headers={"Content-Type": "application/json"},
@@ -235,7 +235,7 @@ class TestHttpErrors:
 
     def test_http_500_raises_server_error(self, ca_client, httpx_mock: HTTPXMock):
         """HTTP 500 raises ServerError."""
-        from cortex_agents_client.exceptions import ServerError
+        from streamlit_cortex_agents.client.exceptions import ServerError
         httpx_mock.add_response(
             status_code=500,
             headers={"Content-Type": "application/json"},
@@ -322,7 +322,7 @@ class TestNotFoundErrorHierarchy:
 
     def test_agent_not_found_catchable_as_not_found_error(self, ca_client, httpx_mock: HTTPXMock):
         """HTTP 404 on an agent endpoint raises AgentNotFoundError, catchable as NotFoundError."""
-        from cortex_agents_client.exceptions import NotFoundError
+        from streamlit_cortex_agents.client.exceptions import NotFoundError
         httpx_mock.add_response(
             status_code=404,
             json={"message": "Agent not found", "request_id": "r1"},
@@ -332,7 +332,7 @@ class TestNotFoundErrorHierarchy:
 
     def test_thread_not_found_catchable_as_not_found_error(self, ca_client, httpx_mock: HTTPXMock):
         """HTTP 404 on a thread endpoint raises ThreadNotFoundError, catchable as NotFoundError."""
-        from cortex_agents_client.exceptions import NotFoundError
+        from streamlit_cortex_agents.client.exceptions import NotFoundError
         httpx_mock.add_response(
             status_code=404,
             json={"message": "Thread not found", "request_id": "r1"},
@@ -346,7 +346,7 @@ class TestCortexTimeoutError:
 
     def test_request_timeout_raises_cortex_timeout_error(self, ca_client, httpx_mock: HTTPXMock):
         """httpx.TimeoutException propagates as CortexTimeoutError."""
-        from cortex_agents_client.exceptions import CortexTimeoutError
+        from streamlit_cortex_agents.client.exceptions import CortexTimeoutError
         httpx_mock.add_exception(httpx.TimeoutException("connection timed out"))
         messages = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
         with pytest.raises(CortexTimeoutError):

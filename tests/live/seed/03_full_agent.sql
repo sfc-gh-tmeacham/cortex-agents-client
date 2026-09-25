@@ -6,7 +6,7 @@
 -- Adjust names to match your test account.
 
 CREATE AGENT IF NOT EXISTS cac_live_db.cac_live_schema.full_agent
-  COMMENT = 'Search-enabled agent used by cortex-agents-client full live integration tests.'
+  COMMENT = 'Search-enabled agent used by streamlit-cortex-agents full live integration tests.'
   FROM SPECIFICATION
   $$
   instructions:

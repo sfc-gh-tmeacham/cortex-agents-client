@@ -18,7 +18,7 @@ CREATE OR REPLACE TABLE cac_live_db.cac_live_schema.cac_mt_sales (
     region  VARCHAR       NOT NULL COMMENT 'Sales region (tenant key)',
     revenue NUMBER(10, 2) NOT NULL COMMENT 'Revenue in USD'
 )
-COMMENT = 'Multi-tenancy live test table for cortex-agents-client.';
+COMMENT = 'Multi-tenancy live test table for streamlit-cortex-agents.';
 
 INSERT INTO cac_live_db.cac_live_schema.cac_mt_sales (sale_id, region, revenue) VALUES
   (1, 'North', 100.00), (2, 'North', 200.00),
@@ -50,10 +50,10 @@ CREATE OR REPLACE SEMANTIC VIEW cac_live_db.cac_live_schema.cac_mt_sales_view
   METRICS (
     sales.total_revenue AS SUM(revenue) COMMENT = 'Total revenue in USD'
   )
-  COMMENT = 'Multi-tenancy live test view for cortex-agents-client.';
+  COMMENT = 'Multi-tenancy live test view for streamlit-cortex-agents.';
 
 CREATE OR REPLACE AGENT cac_live_db.cac_live_schema.cac_mt_agent
-  COMMENT = 'Multi-tenancy live test agent for cortex-agents-client.'
+  COMMENT = 'Multi-tenancy live test agent for streamlit-cortex-agents.'
   FROM SPECIFICATION
   $$
   instructions:

@@ -9,7 +9,7 @@ Requires .streamlit/secrets.toml with:
 """
 
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
+from streamlit_cortex_agents.chat import StreamlitChatbot
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"
 

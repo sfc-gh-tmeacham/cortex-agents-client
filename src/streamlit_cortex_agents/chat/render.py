@@ -4,7 +4,7 @@ Provides two rendering code paths that produce equivalent content:
 
 1. :func:`render_streaming_response`: Used during live streaming of a new
    assistant turn. Renders each event type as it arrives and returns a
-   :class:`~cortex_agents_client.models.thread.StoredMessage` for session state.
+   :class:`~streamlit_cortex_agents.client.models.thread.StoredMessage` for session state.
    Transient elements (tool-execution spinners) are shown here but not stored.
 
 2. :func:`render_stored_message`: Used on every Streamlit rerun to replay
@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     import pandas as pd
 
-from cortex_agents_client.models.events import (
+from streamlit_cortex_agents.client.models.events import (
     AnalystDeltaEvent,
     ChartEvent,
     ErrorEvent,
@@ -46,7 +46,7 @@ from cortex_agents_client.models.events import (
     ToolUseEvent,
     WarningEvent,
 )
-from cortex_agents_client.models.thread import StoredMessage
+from streamlit_cortex_agents.client.models.thread import StoredMessage
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,7 @@ def result_set_to_dataframe(event: TableEvent) -> pd.DataFrame:
     appropriate dtype.
 
     Args:
-        event: A :class:`~cortex_agents_client.models.events.TableEvent` containing
+        event: A :class:`~streamlit_cortex_agents.client.models.events.TableEvent` containing
             the result set.
 
     Returns:
@@ -162,20 +162,20 @@ def render_streaming_response(
 
     Intended to be called inside a ``with st.chat_message("assistant"):``
     block. Renders each event type progressively, then returns a
-    :class:`~cortex_agents_client.models.thread.StoredMessage` suitable for storing
+    :class:`~streamlit_cortex_agents.client.models.thread.StoredMessage` suitable for storing
     in ``st.session_state`` for history replay.
 
     Args:
-        events: Iterator of :class:`~cortex_agents_client.models.events.SSEEvent`
-            objects from :meth:`~cortex_agents_client.Thread.chat` or
-            :meth:`~cortex_agents_client.resources.RunsResource.stream`.
+        events: Iterator of :class:`~streamlit_cortex_agents.client.models.events.SSEEvent`
+            objects from :meth:`~streamlit_cortex_agents.Thread.chat` or
+            :meth:`~streamlit_cortex_agents.client.resources.RunsResource.stream`.
         container: A Streamlit container (e.g. ``st``, or the return value
             of ``st.chat_message()``). Must support ``empty()``,
             ``markdown()``, ``dataframe()``, ``vega_lite_chart()``,
             ``expander()``, ``warning()``, ``error()``, ``info()``, ``status()``, and ``caption()`` methods.
         show_thinking: If ``True``, renders thinking content in an
             expander. Thinking is always captured in the returned
-            :class:`~cortex_agents_client.models.thread.StoredMessage` regardless
+            :class:`~streamlit_cortex_agents.client.models.thread.StoredMessage` regardless
             of this flag.
         show_tool_status: If ``True``, shows ``st.status()`` spinners for
             tool execution progress.
@@ -188,7 +188,7 @@ def render_streaming_response(
             first event that arrives.
 
     Returns:
-        A :class:`~cortex_agents_client.models.thread.StoredMessage` populated
+        A :class:`~streamlit_cortex_agents.client.models.thread.StoredMessage` populated
         with all content encountered during the stream.
 
     Raises:
@@ -527,7 +527,7 @@ def _render_annotations_expander(
     opens in a new browser tab.
 
     Args:
-        annotations: List of :class:`~cortex_agents_client.models.events.TextAnnotationEvent`
+        annotations: List of :class:`~streamlit_cortex_agents.client.models.events.TextAnnotationEvent`
             objects collected during the response.
         container: Streamlit container to render into.
     """
@@ -617,7 +617,7 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
     Transient elements such as tool-execution spinners are not replayed.
 
     Args:
-        msg: A :class:`~cortex_agents_client.models.thread.StoredMessage` from
+        msg: A :class:`~streamlit_cortex_agents.client.models.thread.StoredMessage` from
             session state.
         container: Streamlit container (e.g. ``st`` or the return value of
             ``st.chat_message()``).

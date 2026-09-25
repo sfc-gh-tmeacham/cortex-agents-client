@@ -6,7 +6,7 @@ import json
 import httpx
 import pytest
 
-from cortex_agents_client.client import CortexAgentsClient
+from streamlit_cortex_agents.client.core import CortexAgentsClient
 
 ACCOUNT_URL = "https://testorg-testaccount.snowflakecomputing.com"
 PAT_TOKEN = "v2:test_token_abc"

@@ -1,10 +1,10 @@
-"""Demo Streamlit app for cortex-agents-client UI testing.
+"""Demo Streamlit app for streamlit-cortex-agents UI testing.
 
 Runs a fully functional chatbot without a real Snowflake connection by
 pre-seeding ``st.session_state`` with :class:`~streamlit_demo.mock_thread.MockClient`
 and :class:`~streamlit_demo.mock_thread.MockThread` objects.
 
-Because :func:`~cortex_agents_client.st.session.init_session` is idempotent
+Because :func:`~streamlit_cortex_agents.chat.session.init_session` is idempotent
 (it checks whether the session state keys already exist before creating
 anything), the chatbot uses the mocks directly without any patching.
 
@@ -52,7 +52,7 @@ from mock_thread import (  # noqa: E402 — sys.path must be set first
     MockThread,
 )
 
-from cortex_agents_client.st import StreamlitChatbot  # noqa: E402
+from streamlit_cortex_agents.chat import StreamlitChatbot  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Page configuration
@@ -168,7 +168,7 @@ def _footer() -> None:
         ":material/code: "
         "[`streamlit_demo/app.py`](streamlit_demo/app.py) · "
         "[`streamlit_demo/mock_thread.py`](streamlit_demo/mock_thread.py) · "
-        "[`cortex_agents_client/st/chatbot.py`](cortex_agents_client/st/chatbot.py)"
+        "[`streamlit_cortex_agents/st/chatbot.py`](streamlit_cortex_agents/st/chatbot.py)"
     )
 
 
@@ -418,8 +418,8 @@ ALTER STREAMLIT my_db.my_schema.my_agent_app
     st.code(
         """
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"
 
@@ -443,7 +443,7 @@ StreamlitChatbot(
     st.code(
         """
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
+from streamlit_cortex_agents.chat import StreamlitChatbot
 
 SNOWFLAKE_ACCOUNT_URL = st.secrets["SNOWFLAKE_ACCOUNT_URL"]
 SNOWFLAKE_PAT         = st.secrets["SNOWFLAKE_PAT"]
@@ -469,7 +469,7 @@ StreamlitChatbot(
     st.code(
         """
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
+from streamlit_cortex_agents.chat import StreamlitChatbot
 
 SNOWFLAKE_ACCOUNT_URL = st.secrets["SNOWFLAKE_ACCOUNT_URL"]
 SNOWFLAKE_PAT         = st.secrets["SNOWFLAKE_PAT"]
@@ -506,7 +506,7 @@ with chat_col:
     st.code(
         """
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
+from streamlit_cortex_agents.chat import StreamlitChatbot
 
 SNOWFLAKE_ACCOUNT_URL = st.secrets["SNOWFLAKE_ACCOUNT_URL"]
 SNOWFLAKE_PAT         = st.secrets["SNOWFLAKE_PAT"]

@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import pytest
 
-from cortex_agents_client.auth import PATAuth
-from cortex_agents_client.http import HttpClient
-from cortex_agents_client.resources.runs import RunsResource
+from streamlit_cortex_agents.client.auth import PATAuth
+from streamlit_cortex_agents.client.http import HttpClient
+from streamlit_cortex_agents.client.resources.runs import RunsResource
 
 MESSAGES = [{"role": "user", "content": [{"type": "text", "text": "Hi"}]}]
 
@@ -128,7 +128,7 @@ class TestStreamAndCollectBlocks:
         return runs.stream_and_collect(MESSAGES)
 
     def test_block_without_summary_keeps_its_deltas(self, runs, monkeypatch):
-        from cortex_agents_client.models.events import TextDeltaEvent, TextEvent
+        from streamlit_cortex_agents.client.models.events import TextDeltaEvent, TextEvent
 
         events = [
             TextDeltaEvent._from_payload({"content_index": 0, "text": "A"}),
@@ -138,7 +138,7 @@ class TestStreamAndCollectBlocks:
         assert self._collect(runs, events, monkeypatch).text == "AB"
 
     def test_summary_replaces_its_own_deltas(self, runs, monkeypatch):
-        from cortex_agents_client.models.events import TextDeltaEvent, TextEvent
+        from streamlit_cortex_agents.client.models.events import TextDeltaEvent, TextEvent
 
         events = [
             TextDeltaEvent._from_payload({"content_index": 0, "text": "He"}),
@@ -149,7 +149,7 @@ class TestStreamAndCollectBlocks:
         assert self._collect(runs, events, monkeypatch).text == "Hello world"
 
     def test_no_thinking_stays_none(self, runs, monkeypatch):
-        from cortex_agents_client.models.events import TextEvent
+        from streamlit_cortex_agents.client.models.events import TextEvent
 
         events = [TextEvent._from_payload({"content_index": 0, "text": "x"})]
         assert self._collect(runs, events, monkeypatch).thinking is None
@@ -161,7 +161,7 @@ class TestListUnexpectedShape:
     def test_threads_list_logs_on_dict(self, caplog):
         from unittest.mock import MagicMock
 
-        from cortex_agents_client.resources.threads import ThreadsResource
+        from streamlit_cortex_agents.client.resources.threads import ThreadsResource
 
         http = MagicMock()
         http.request.return_value = {"error": "unexpected"}
@@ -172,7 +172,7 @@ class TestListUnexpectedShape:
     def test_agents_list_logs_on_dict(self, caplog):
         from unittest.mock import MagicMock
 
-        from cortex_agents_client.resources.agents import AgentsResource
+        from streamlit_cortex_agents.client.resources.agents import AgentsResource
 
         http = MagicMock()
         http.request.return_value = {"error": "unexpected"}

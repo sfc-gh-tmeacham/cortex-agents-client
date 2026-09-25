@@ -13,8 +13,8 @@ import builtins
 import logging
 from typing import Any
 
-from cortex_agents_client.http import HttpClient
-from cortex_agents_client.models.thread import (
+from streamlit_cortex_agents.client.http import HttpClient
+from streamlit_cortex_agents.client.models.thread import (
     ThreadDetail,
     ThreadMessage,
     ThreadMetadata,
@@ -57,12 +57,12 @@ class ThreadsResource:
                 Snowsight monitoring UI. Limited to 16 bytes by the API.
 
         Returns:
-            :class:`~cortex_agents_client.models.thread.ThreadMetadata` with the
+            :class:`~streamlit_cortex_agents.client.models.thread.ThreadMetadata` with the
             new ``thread_id``.
 
         Raises:
-            cortex_agents_client.exceptions.AuthError: On authentication failure.
-            cortex_agents_client.exceptions.CortexAgentError: On other API errors.
+            streamlit_cortex_agents.client.exceptions.AuthError: On authentication failure.
+            streamlit_cortex_agents.client.exceptions.CortexAgentError: On other API errors.
 
         Example::
 
@@ -99,11 +99,11 @@ class ThreadsResource:
                 ``None`` for the first page.
 
         Returns:
-            :class:`~cortex_agents_client.models.thread.ThreadDetail` with metadata
+            :class:`~streamlit_cortex_agents.client.models.thread.ThreadDetail` with metadata
             and a page of messages.
 
         Raises:
-            cortex_agents_client.exceptions.ThreadNotFoundError: If the thread does
+            streamlit_cortex_agents.client.exceptions.ThreadNotFoundError: If the thread does
                 not exist or belongs to a different user.
         """
         params: dict[str, Any] = {"page_size": page_size}
@@ -125,7 +125,7 @@ class ThreadsResource:
             thread_name: New name for the thread.
 
         Raises:
-            cortex_agents_client.exceptions.ThreadNotFoundError: If the thread does
+            streamlit_cortex_agents.client.exceptions.ThreadNotFoundError: If the thread does
                 not exist.
         """
         self._http.request(
@@ -143,7 +143,7 @@ class ThreadsResource:
                 created by a specific application.
 
         Returns:
-            List of :class:`~cortex_agents_client.models.thread.ThreadMetadata`
+            List of :class:`~streamlit_cortex_agents.client.models.thread.ThreadMetadata`
             objects.
         """
         params: dict[str, Any] = {}
@@ -168,7 +168,7 @@ class ThreadsResource:
             thread_id: Unique thread identifier.
 
         Raises:
-            cortex_agents_client.exceptions.ThreadNotFoundError: If the thread does
+            streamlit_cortex_agents.client.exceptions.ThreadNotFoundError: If the thread does
                 not exist.
         """
         self._http.request(
@@ -194,7 +194,7 @@ class ThreadsResource:
 
         Returns:
             Chronologically ordered list of
-            :class:`~cortex_agents_client.models.thread.ThreadMessage` objects.
+            :class:`~streamlit_cortex_agents.client.models.thread.ThreadMessage` objects.
         """
         all_messages: list[ThreadMessage] = []
         last_message_id: int | None = None

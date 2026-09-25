@@ -1,6 +1,6 @@
 """Models package for the Cortex Agents library."""
 
-from cortex_agents_client.models.agent import (
+from streamlit_cortex_agents.client.models.agent import (
     Agent,
     AgentInstructions,
     AgentProfile,
@@ -10,7 +10,7 @@ from cortex_agents_client.models.agent import (
     Tool,
     ToolSpec,
 )
-from cortex_agents_client.models.events import (
+from streamlit_cortex_agents.client.models.events import (
     AnalystDeltaEvent,
     ChartEvent,
     ErrorEvent,
@@ -31,7 +31,7 @@ from cortex_agents_client.models.events import (
     UnknownEvent,
     WarningEvent,
 )
-from cortex_agents_client.models.thread import (
+from streamlit_cortex_agents.client.models.thread import (
     StoredMessage,
     ThreadDetail,
     ThreadMessage,

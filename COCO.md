@@ -1,14 +1,14 @@
-# cortex-agents-client — Project Context
+# streamlit-cortex-agents — Project Context
 
 Python client library for the Snowflake Cortex Agents REST API, plus a
-high-level Streamlit chatbot component (`cortex_agents_client.st`).
+high-level Streamlit chatbot component (`streamlit_cortex_agents.chat`).
 
 ---
 
 ## Package structure
 
 ```
-cortex_agents_client/
+streamlit_cortex_agents/
 ├── auth.py            # PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, AuthProvider, account_url_from_env
 ├── client.py          # CortexAgentsClient, Thread (primary entry points)
 ├── exceptions.py      # CortexAgentError, AuthError, CortexPermissionError, CortexTimeoutError,

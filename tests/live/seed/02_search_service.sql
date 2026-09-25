@@ -19,7 +19,7 @@ CREATE WAREHOUSE IF NOT EXISTS cac_live_wh
   WAREHOUSE_SIZE = 'XSMALL'
   AUTO_SUSPEND   = 60
   AUTO_RESUME    = TRUE
-  COMMENT = 'Warehouse used by cortex-agents-client live integration tests.';
+  COMMENT = 'Warehouse used by streamlit-cortex-agents live integration tests.';
 
 GRANT USAGE ON WAREHOUSE cac_live_wh TO ROLE app_owner_role;
 
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS cac_live_db.cac_live_schema.test_docs (
     title    VARCHAR NOT NULL COMMENT 'Document title used as a citation label',
     body     VARCHAR NOT NULL COMMENT 'Document body text indexed by Cortex Search'
 )
-COMMENT = 'Fixed test corpus for cortex-agents-client live integration tests.';
+COMMENT = 'Fixed test corpus for streamlit-cortex-agents live integration tests.';
 
 -- Truncate and repopulate so the script is idempotent
 TRUNCATE TABLE IF EXISTS cac_live_db.cac_live_schema.test_docs;

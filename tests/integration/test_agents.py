@@ -7,7 +7,7 @@ import httpx
 import pytest
 from pytest_httpx import HTTPXMock
 
-from cortex_agents_client.exceptions import AgentNotFoundError, AuthError, CortexPermissionError
+from streamlit_cortex_agents.client.exceptions import AgentNotFoundError, AuthError, CortexPermissionError
 from tests.fixtures.api_responses import AGENT_DESCRIBE_RESPONSE, AGENT_LIST_RESPONSE
 from tests.integration.conftest import make_json_response
 

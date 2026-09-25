@@ -1,4 +1,4 @@
-"""Minimal Streamlit chatbot application using the cortex_agents_client library.
+"""Minimal Streamlit chatbot application using the streamlit_cortex_agents library.
 
 Run with:
     streamlit run examples/streamlit_app.py
@@ -9,7 +9,7 @@ Requires .streamlit/secrets.toml with:
 """
 
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
+from streamlit_cortex_agents.chat import StreamlitChatbot
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"
 

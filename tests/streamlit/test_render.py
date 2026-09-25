@@ -10,7 +10,7 @@ from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 
-from cortex_agents_client.models.events import (
+from streamlit_cortex_agents.client.models.events import (
     AnalystDeltaEvent,
     ChartEvent,
     ErrorEvent,
@@ -24,8 +24,8 @@ from cortex_agents_client.models.events import (
     ToolUseEvent,
     WarningEvent,
 )
-from cortex_agents_client.models.thread import StoredMessage
-from cortex_agents_client.st.render import render_stored_message, render_streaming_response, escape_dollars
+from streamlit_cortex_agents.client.models.thread import StoredMessage
+from streamlit_cortex_agents.chat.render import render_stored_message, render_streaming_response, escape_dollars
 from tests.fixtures.sse_streams import (
     ANALYST_DELTA_PAYLOAD,
     CHART_PAYLOAD,
@@ -79,7 +79,7 @@ class TestRenderStreamingResponse:
         container = make_container()
         table = TableEvent._from_payload(TABLE_PAYLOAD)
 
-        with patch("cortex_agents_client.st.render.result_set_to_dataframe") as mock_df:
+        with patch("streamlit_cortex_agents.chat.render.result_set_to_dataframe") as mock_df:
             mock_df.return_value = MagicMock()
             stored = render_streaming_response(event_stream(table), container)
 
@@ -380,7 +380,7 @@ class TestRenderStoredMessage:
         table = TableEvent._from_payload(TABLE_PAYLOAD)
         msg = StoredMessage(role="assistant", text="", tables=[table])
 
-        with patch("cortex_agents_client.st.render.result_set_to_dataframe") as mock_df:
+        with patch("streamlit_cortex_agents.chat.render.result_set_to_dataframe") as mock_df:
             mock_df.return_value = MagicMock()
             render_stored_message(msg, container)
 
@@ -499,7 +499,7 @@ class TestRenderStoredMessage:
 
     def test_url_doc_id_rendered_with_unsafe_html(self):
         """Annotation with http doc_id → unsafe_allow_html=True on the expander."""
-        from cortex_agents_client.st.render import _render_annotations_expander
+        from streamlit_cortex_agents.chat.render import _render_annotations_expander
 
         ann = TextAnnotationEvent._from_payload({
             "content_index": 0,
@@ -529,7 +529,7 @@ class TestRenderStoredMessage:
 
     def test_non_url_doc_id_no_html(self):
         """Annotation with non-URL doc_id → plain markdown on expander, no unsafe_allow_html."""
-        from cortex_agents_client.st.render import _render_annotations_expander
+        from streamlit_cortex_agents.chat.render import _render_annotations_expander
 
         ann = TextAnnotationEvent._from_payload({
             "content_index": 0,
@@ -589,7 +589,7 @@ class TestAuditRegressions:
 
     def test_suggestion_widget_keys_follow_suggestion_key(self):
         """Two chatbots with different prefixes get distinct suggestion widget keys."""
-        from cortex_agents_client.st.render import _render_suggested_queries
+        from streamlit_cortex_agents.chat.render import _render_suggested_queries
 
         container = make_container()
         with patch("streamlit.session_state", {}):
@@ -601,7 +601,7 @@ class TestAuditRegressions:
 
     def test_suggestion_pill_selection_sets_pending_and_clears(self):
         """Selecting a pill stores the query and resets the pill so it can be reused."""
-        from cortex_agents_client.st.render import _render_suggested_queries
+        from streamlit_cortex_agents.chat.render import _render_suggested_queries
 
         container = make_container()
         state: dict = {}

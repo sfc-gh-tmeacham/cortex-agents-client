@@ -13,10 +13,10 @@ from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import quote
 
-from cortex_agents_client._variables import normalize_variables
-from cortex_agents_client.exceptions import RunError
-from cortex_agents_client.http import HttpClient
-from cortex_agents_client.models.events import (
+from streamlit_cortex_agents.client._variables import normalize_variables
+from streamlit_cortex_agents.client.exceptions import RunError
+from streamlit_cortex_agents.client.http import HttpClient
+from streamlit_cortex_agents.client.models.events import (
     AnalystDeltaEvent,
     ChartEvent,
     ErrorEvent,
@@ -35,7 +35,7 @@ from cortex_agents_client.models.events import (
     ToolUseEvent,
     WarningEvent,
 )
-from cortex_agents_client.sse import event_from_sse, parse_sse_stream
+from streamlit_cortex_agents.client.sse import event_from_sse, parse_sse_stream
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +51,7 @@ class RunResult:
     Contains all content types emitted during the run, fully accumulated.
     If the agent returns a fatal error, :meth:`RunsResource.run` and
     :meth:`RunsResource.stream_and_collect` both raise
-    :class:`~cortex_agents_client.exceptions.RunError`. Inspect the
+    :class:`~streamlit_cortex_agents.client.exceptions.RunError`. Inspect the
     exception's ``code`` and ``request_id`` attributes for details.
 
     Attributes:
@@ -410,7 +410,7 @@ class RunsResource:
 
         Yields typed SSEEvent objects as they arrive from the server. All 17
         event types are possible; unknown types are yielded as
-        :class:`~cortex_agents_client.models.events.UnknownEvent`.
+        :class:`~streamlit_cortex_agents.client.models.events.UnknownEvent`.
 
         Provide exactly one of ``agent_path``, ``agent`` (with database/schema),
         or no agent argument (for an inline/lite run with ``tools`` supplied).
@@ -455,18 +455,18 @@ class RunsResource:
             ``tools``, ``tool_resources``, ``instructions``, ``orchestration``,
             and ``models`` apply only to lite runs. The API rejects attempts
             to set them on an agent-object run; change the agent object with
-            :meth:`~cortex_agents_client.resources.agents.AgentsResource.update`
+            :meth:`~streamlit_cortex_agents.client.resources.agents.AgentsResource.update`
             instead.
 
         Yields:
-            Typed :class:`~cortex_agents_client.models.events.SSEEvent` subclass
+            Typed :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` subclass
             instances in the order they are received.
 
         Raises:
-            cortex_agents_client.exceptions.AuthError: On HTTP 401.
-            cortex_agents_client.exceptions.CortexPermissionError: On HTTP 403.
-            cortex_agents_client.exceptions.CortexTimeoutError: On request timeout.
-            cortex_agents_client.exceptions.CortexAgentError: On other errors.
+            streamlit_cortex_agents.client.exceptions.AuthError: On HTTP 401.
+            streamlit_cortex_agents.client.exceptions.CortexPermissionError: On HTTP 403.
+            streamlit_cortex_agents.client.exceptions.CortexTimeoutError: On request timeout.
+            streamlit_cortex_agents.client.exceptions.CortexAgentError: On other errors.
 
         Example::
 
@@ -527,7 +527,7 @@ class RunsResource:
 
         Sends a non-streaming request (``stream=False``) and parses the
         single JSON response body into a :class:`RunResult`. Raises
-        :class:`~cortex_agents_client.exceptions.RunError` if the agent
+        :class:`~streamlit_cortex_agents.client.exceptions.RunError` if the agent
         returns a fatal error.
 
         All arguments are the same as :meth:`stream`.
@@ -559,10 +559,10 @@ class RunsResource:
             Fully assembled :class:`RunResult`.
 
         Raises:
-            cortex_agents_client.exceptions.RunError: If the agent emits a fatal
+            streamlit_cortex_agents.client.exceptions.RunError: If the agent emits a fatal
                 error event.
-            cortex_agents_client.exceptions.AuthError: On HTTP 401.
-            cortex_agents_client.exceptions.CortexPermissionError: On HTTP 403.
+            streamlit_cortex_agents.client.exceptions.AuthError: On HTTP 401.
+            streamlit_cortex_agents.client.exceptions.CortexPermissionError: On HTTP 403.
         """
         path = self._resolve_path(agent_path, database, schema, agent)
         api_path = path or "/api/v2/cortex/agent:run"
@@ -607,9 +607,9 @@ class RunsResource:
 
         A run's events are available only while it is active and for up to
         5 minutes after it completes. Past that window, this raises
-        :class:`~cortex_agents_client.exceptions.RunNotActiveError`; retrieve
+        :class:`~streamlit_cortex_agents.client.exceptions.RunNotActiveError`; retrieve
         the response from the thread instead (see
-        :meth:`~cortex_agents_client.resources.threads.ThreadsResource.list_messages`).
+        :meth:`~streamlit_cortex_agents.client.resources.threads.ThreadsResource.list_messages`).
         Note that the 5-minute window is the documented contract and was not
         enforced in live testing, so treat it as a lower bound rather than a
         guarantee that the run has become unavailable.
@@ -617,20 +617,20 @@ class RunsResource:
         Args:
             run_id: The run identifier, in ``{thread_id}-{user_message_id}``
                 form. Available from :attr:`RunResult.run_id`,
-                :attr:`~cortex_agents_client.models.events.ResponseEvent.run_id`,
-                or :attr:`~cortex_agents_client.models.events.MetadataEvent.run_id`.
+                :attr:`~streamlit_cortex_agents.client.models.events.ResponseEvent.run_id`,
+                or :attr:`~streamlit_cortex_agents.client.models.events.MetadataEvent.run_id`.
             starting_after: Sequence number to resume from, exclusive. Omit
                 to replay the entire output from the beginning.
 
         Yields:
-            Typed :class:`~cortex_agents_client.models.events.SSEEvent`
+            Typed :class:`~streamlit_cortex_agents.client.models.events.SSEEvent`
             subclass instances in the order they are received.
 
         Raises:
-            cortex_agents_client.exceptions.RunNotActiveError: On HTTP 409 if
+            streamlit_cortex_agents.client.exceptions.RunNotActiveError: On HTTP 409 if
                 the run finished more than 5 minutes ago.
-            cortex_agents_client.exceptions.AuthError: On HTTP 401.
-            cortex_agents_client.exceptions.CortexPermissionError: On HTTP 403.
+            streamlit_cortex_agents.client.exceptions.AuthError: On HTTP 401.
+            streamlit_cortex_agents.client.exceptions.CortexPermissionError: On HTTP 403.
 
         Example::
 
@@ -659,7 +659,7 @@ class RunsResource:
 
         Any partial output produced before cancellation is saved to the
         thread and billed. When partial output was saved,
-        :attr:`~cortex_agents_client.models.events.RunMetadata.assistant_message_id`
+        :attr:`~streamlit_cortex_agents.client.models.events.RunMetadata.assistant_message_id`
         is populated and can be used as the ``parent_message_id`` for the
         next turn.
 
@@ -668,14 +668,14 @@ class RunsResource:
                 form.
 
         Returns:
-            :class:`~cortex_agents_client.models.events.RunMetadata` for the
+            :class:`~streamlit_cortex_agents.client.models.events.RunMetadata` for the
             cancelled run.
 
         Raises:
-            cortex_agents_client.exceptions.RunNotActiveError: On HTTP 409 if
+            streamlit_cortex_agents.client.exceptions.RunNotActiveError: On HTTP 409 if
                 the run has already completed or been cancelled.
-            cortex_agents_client.exceptions.AuthError: On HTTP 401.
-            cortex_agents_client.exceptions.CortexPermissionError: On HTTP 403.
+            streamlit_cortex_agents.client.exceptions.AuthError: On HTTP 401.
+            streamlit_cortex_agents.client.exceptions.CortexPermissionError: On HTTP 403.
         """
         data = self._http.request(
             "POST",
@@ -704,7 +704,7 @@ class RunsResource:
             Fully assembled :class:`RunResult`.
 
         Raises:
-            cortex_agents_client.exceptions.RunError: If the agent emits a fatal
+            streamlit_cortex_agents.client.exceptions.RunError: If the agent emits a fatal
                 error event.
         """
         result = RunResult()

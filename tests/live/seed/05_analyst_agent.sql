@@ -7,7 +7,7 @@
 -- Adjust names to match your test account.
 
 CREATE AGENT IF NOT EXISTS cac_live_db.cac_live_schema.analyst_agent
-  COMMENT = 'Cortex Analyst agent used by cortex-agents-client live integration tests.'
+  COMMENT = 'Cortex Analyst agent used by streamlit-cortex-agents live integration tests.'
   FROM SPECIFICATION
   $$
   instructions:

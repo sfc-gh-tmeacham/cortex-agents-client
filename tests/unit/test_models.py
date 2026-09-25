@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 
-from cortex_agents_client.models.agent import (
+from streamlit_cortex_agents.client.models.agent import (
     Agent,
     AgentInstructions,
     AgentProfile,
     BudgetConfig,
 )
-from cortex_agents_client.models.thread import StoredMessage, ThreadMessage, ThreadMetadata
+from streamlit_cortex_agents.client.models.thread import StoredMessage, ThreadMessage, ThreadMetadata
 
 
 class TestAgentProfile:
@@ -199,7 +199,7 @@ class TestRepr:
 
     def test_cortex_agents_client_repr(self):
         """CortexAgentsClient repr shows account_url."""
-        from cortex_agents_client import CortexAgentsClient
+        from streamlit_cortex_agents import CortexAgentsClient
         client = CortexAgentsClient(
             "https://myorg-myaccount.snowflakecomputing.com",
             "v2:test_token",
@@ -210,7 +210,7 @@ class TestRepr:
 
     def test_thread_repr(self):
         """Thread repr shows thread_id and parent_message_id."""
-        from cortex_agents_client import CortexAgentsClient
+        from streamlit_cortex_agents import CortexAgentsClient
         client = CortexAgentsClient(
             "https://myorg-myaccount.snowflakecomputing.com",
             "v2:test_token",

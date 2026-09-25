@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 
-from cortex_agents_client.models.events import (
+from streamlit_cortex_agents.client.models.events import (
     AnalystDeltaEvent,
     ChartEvent,
     ErrorEvent,
@@ -22,7 +22,7 @@ from cortex_agents_client.models.events import (
     UnknownEvent,
     WarningEvent,
 )
-from cortex_agents_client.sse import event_from_sse
+from streamlit_cortex_agents.client.sse import event_from_sse
 from tests.fixtures.sse_streams import (
     ANALYST_DELTA_PAYLOAD,
     CHART_PAYLOAD,
@@ -362,7 +362,7 @@ def test_response_event_missing_metadata():
 
 def test_suggested_queries_event():
     """SuggestedQueriesEvent extracts query strings from payload."""
-    from cortex_agents_client.models.events import SuggestedQueriesEvent
+    from streamlit_cortex_agents.client.models.events import SuggestedQueriesEvent
 
     payload = {
         "content_index": 0,
@@ -379,7 +379,7 @@ def test_suggested_queries_event():
 
 def test_suggested_queries_event_empty():
     """SuggestedQueriesEvent with empty list returns empty queries."""
-    from cortex_agents_client.models.events import SuggestedQueriesEvent
+    from streamlit_cortex_agents.client.models.events import SuggestedQueriesEvent
 
     event = event_from_sse("response.suggested_queries", {"suggested_queries": []})
     assert isinstance(event, SuggestedQueriesEvent)

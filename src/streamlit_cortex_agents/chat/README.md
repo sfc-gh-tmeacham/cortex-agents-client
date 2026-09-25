@@ -1,7 +1,7 @@
-# cortex_agents_client.st — Streamlit Integration
+# streamlit_cortex_agents.chat — Streamlit Integration
 
 Drop-in Streamlit components for Snowflake Cortex Agents. Copy the parent
-`cortex_agents_client/` folder into your project.
+`streamlit_cortex_agents/` folder into your project.
 
 ---
 
@@ -12,13 +12,13 @@ Drop-in Streamlit components for Snowflake Cortex Agents. Copy the parent
 
 ### Installation
 
-Copy the `cortex_agents_client/` folder into your Streamlit app directory in Workspaces so it sits alongside your `app.py`:
+Copy the `streamlit_cortex_agents/` folder into your Streamlit app directory in Workspaces so it sits alongside your `app.py`:
 
 ```
 my_streamlit_app/
 ├── streamlit-app.py
 ├── pyproject.toml
-└── cortex_agents_client/
+└── streamlit_cortex_agents/
     ├── __init__.py
     ├── auth.py
     ├── exceptions.py
@@ -60,7 +60,7 @@ dependencies = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["cortex_agents_client*"]
+include = ["streamlit_cortex_agents*"]
 
 [tool.uv]
 constraint-dependencies = ["numba>=0.56.0"]
@@ -173,7 +173,7 @@ Snowflake injects the session token automatically into the container. No
 `account_url_from_env()`:
 
 ```python
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 ```
 
 ### Quickstart
@@ -183,8 +183,8 @@ from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
 ```python
 # streamlit-app.py — Full-page chatbot (chat input pinned to bottom)
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # ← swap this
 
@@ -204,8 +204,8 @@ StreamlitChatbot(
 ```python
 # streamlit-app.py — Dashboard + chat side by side
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # ← swap this
 
@@ -243,8 +243,8 @@ call **at the end of the script** (after all other content).
 ```python
 # streamlit-app.py — Chat opens in a modal dialog that stays open across reruns
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # ← swap this
 
@@ -293,7 +293,7 @@ if st.session_state.chat_dialog_open:
 
 ```python
 import streamlit as st
-from cortex_agents_client.st import (
+from streamlit_cortex_agents.chat import (
     sis_init_session,
     get_messages,
     append_message,
@@ -301,7 +301,7 @@ from cortex_agents_client.st import (
     render_streaming_response,
     escape_dollars,
 )
-from cortex_agents_client.models.thread import StoredMessage
+from streamlit_cortex_agents.client.models.thread import StoredMessage
 
 client, thread = sis_init_session(origin_application="my_sis_app")
 
@@ -362,7 +362,7 @@ The agent path is not sensitive — hardcode it directly in your app code.
 ```python
 # app.py
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
+from streamlit_cortex_agents.chat import StreamlitChatbot
 
 StreamlitChatbot(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
@@ -381,7 +381,7 @@ streamlit run app.py
 
 ```python
 import streamlit as st
-from cortex_agents_client.st import (
+from streamlit_cortex_agents.chat import (
     init_session,
     get_messages,
     append_message,
@@ -389,7 +389,7 @@ from cortex_agents_client.st import (
     render_streaming_response,
     escape_dollars,
 )
-from cortex_agents_client.models.thread import StoredMessage
+from streamlit_cortex_agents.client.models.thread import StoredMessage
 
 client, thread = init_session(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
@@ -420,11 +420,11 @@ if prompt := st.chat_input("Ask about revenue..."):
 
 ### Other auth options
 
-Pass an `AuthProvider` from `cortex_agents_client.auth` instead of a raw PAT
+Pass an `AuthProvider` from `streamlit_cortex_agents.client.auth` instead of a raw PAT
 string when you need key-pair or OAuth:
 
 ```python
-from cortex_agents_client.auth import PATAuth, JWTAuth, OAuthAuth
+from streamlit_cortex_agents.client.auth import PATAuth, JWTAuth, OAuthAuth
 
 # PAT — equivalent to passing the token string directly
 auth = PATAuth("v2:local:...")
@@ -516,7 +516,7 @@ bot2 = StreamlitChatbot(..., agent_path="DB.SCHEMA.AGENT_B", session_key_prefix=
 ### Client-side tool execution
 
 ```python
-from cortex_agents_client.models.events import ToolUseEvent
+from streamlit_cortex_agents.client.models.events import ToolUseEvent
 
 def my_executor(event: ToolUseEvent) -> list[dict]:
     return [{"type": "json", "json": {"result": "value"}}]

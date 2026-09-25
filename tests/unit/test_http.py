@@ -5,8 +5,8 @@ import httpx
 import pytest
 from pytest_httpx import HTTPXMock
 
-from cortex_agents_client.auth import PATAuth
-from cortex_agents_client.exceptions import (
+from streamlit_cortex_agents.client.auth import PATAuth
+from streamlit_cortex_agents.client.exceptions import (
     AgentNotFoundError,
     AuthError,
     ConflictError,
@@ -20,7 +20,7 @@ from cortex_agents_client.exceptions import (
     ServerError,
     ThreadNotFoundError,
 )
-from cortex_agents_client.http import HttpClient
+from streamlit_cortex_agents.client.http import HttpClient
 
 BASE_URL = "https://testorg.snowflakecomputing.com"
 PAT = "v2:test_token"
@@ -295,7 +295,7 @@ class TestStreamTransportErrors:
     """Transport failures inside stream() map to typed exceptions."""
 
     def test_connect_error_during_stream(self, http_client, httpx_mock: HTTPXMock):
-        from cortex_agents_client.exceptions import CortexConnectionError
+        from streamlit_cortex_agents.client.exceptions import CortexConnectionError
 
         httpx_mock.add_exception(httpx.ConnectError("refused"))
         with pytest.raises(CortexConnectionError, match="refused"):
@@ -303,7 +303,7 @@ class TestStreamTransportErrors:
                 list(lines)
 
     def test_other_http_error_during_stream(self, http_client, httpx_mock: HTTPXMock):
-        from cortex_agents_client.exceptions import (
+        from streamlit_cortex_agents.client.exceptions import (
             CortexAgentError,
             CortexConnectionError,
         )

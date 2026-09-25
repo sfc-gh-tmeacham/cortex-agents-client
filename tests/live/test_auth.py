@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from cortex_agents_client import CortexAgentsClient
-from cortex_agents_client.exceptions import AgentNotFoundError, AuthError
+from streamlit_cortex_agents import CortexAgentsClient
+from streamlit_cortex_agents.client.exceptions import AgentNotFoundError, AuthError
 
 
 @pytest.mark.live

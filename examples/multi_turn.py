@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import os
 
-from cortex_agents_client import CortexAgentsClient
-from cortex_agents_client.models.events import (
+from streamlit_cortex_agents import CortexAgentsClient
+from streamlit_cortex_agents.client.models.events import (
     AnalystDeltaEvent,
     ChartEvent,
     ErrorEvent,

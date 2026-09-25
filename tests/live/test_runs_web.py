@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import pytest
 
-from cortex_agents_client.client import Thread
-from cortex_agents_client.models.events import (
+from streamlit_cortex_agents.client.core import Thread
+from streamlit_cortex_agents.client.models.events import (
     ResponseEvent,
     TextDeltaEvent,
     ToolResultEvent,

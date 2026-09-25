@@ -31,8 +31,8 @@ import time
 import httpx
 import pytest
 
-from cortex_agents_client import CortexAgentsClient
-from cortex_agents_client.client import Thread
+from streamlit_cortex_agents import CortexAgentsClient
+from streamlit_cortex_agents.client.core import Thread
 
 # Tag applied to every thread created by live tests so leaked threads are
 # easy to identify and clean up.

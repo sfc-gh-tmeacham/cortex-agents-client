@@ -1,4 +1,4 @@
-"""Tests for cortex_agents_client.st.session helpers."""
+"""Tests for streamlit_cortex_agents.chat.session helpers."""
 
 from __future__ import annotations
 
@@ -28,10 +28,10 @@ class TestInitSession:
         import streamlit as st
 
         with patch(
-            "cortex_agents_client.client.CortexAgentsClient",
+            "streamlit_cortex_agents.client.core.CortexAgentsClient",
             return_value=mock_client,
         ):
-            from cortex_agents_client.st.session import init_session
+            from streamlit_cortex_agents.chat.session import init_session
 
             client, thread = init_session("https://test.snowflakecomputing.com", "tok")
 
@@ -42,10 +42,10 @@ class TestInitSession:
     def test_returns_cached_on_subsequent_calls(self, mock_client):
 
         with patch(
-            "cortex_agents_client.client.CortexAgentsClient",
+            "streamlit_cortex_agents.client.core.CortexAgentsClient",
             return_value=mock_client,
         ) as ctor:
-            from cortex_agents_client.st.session import init_session
+            from streamlit_cortex_agents.chat.session import init_session
 
             init_session("https://test.snowflakecomputing.com", "tok")
             init_session("https://test.snowflakecomputing.com", "tok")
@@ -57,10 +57,10 @@ class TestInitSession:
         import streamlit as st
 
         with patch(
-            "cortex_agents_client.client.CortexAgentsClient",
+            "streamlit_cortex_agents.client.core.CortexAgentsClient",
             return_value=mock_client,
         ):
-            from cortex_agents_client.st.session import init_session
+            from streamlit_cortex_agents.chat.session import init_session
 
             init_session(
                 "https://test.snowflakecomputing.com",
@@ -79,7 +79,7 @@ class TestResetThread:
     def test_clears_messages_and_creates_new_thread(self, mock_client):
         import streamlit as st
 
-        from cortex_agents_client.st.session import reset_thread
+        from streamlit_cortex_agents.chat.session import reset_thread
 
         st.session_state["_ca_client"] = mock_client
         st.session_state["_ca_thread"] = MagicMock(thread_id="old")
@@ -92,7 +92,7 @@ class TestResetThread:
         mock_client.create_thread.assert_called_once()
 
     def test_raises_key_error_if_no_client(self):
-        from cortex_agents_client.st.session import reset_thread
+        from streamlit_cortex_agents.chat.session import reset_thread
 
         with pytest.raises(KeyError):
             reset_thread()
@@ -100,14 +100,14 @@ class TestResetThread:
 
 class TestGetMessages:
     def test_returns_empty_list_when_not_set(self):
-        from cortex_agents_client.st.session import get_messages
+        from streamlit_cortex_agents.chat.session import get_messages
 
         assert get_messages() == []
 
     def test_returns_stored_messages(self):
         import streamlit as st
 
-        from cortex_agents_client.st.session import get_messages
+        from streamlit_cortex_agents.chat.session import get_messages
 
         msgs = [MagicMock(), MagicMock()]
         st.session_state["_ca_messages"] = msgs
@@ -118,7 +118,7 @@ class TestAppendMessage:
     def test_appends_to_existing_list(self):
         import streamlit as st
 
-        from cortex_agents_client.st.session import append_message
+        from streamlit_cortex_agents.chat.session import append_message
 
         st.session_state["_ca_messages"] = []
         msg = MagicMock()
@@ -128,7 +128,7 @@ class TestAppendMessage:
     def test_creates_list_if_missing(self):
         import streamlit as st
 
-        from cortex_agents_client.st.session import append_message
+        from streamlit_cortex_agents.chat.session import append_message
 
         msg = MagicMock()
         append_message(msg)
@@ -141,8 +141,8 @@ class TestSisInitSession:
     def test_uses_env_host_and_token_file(self, tmp_path, monkeypatch):
         from unittest.mock import patch as _patch
 
-        from cortex_agents_client.auth import SiSContainerAuth
-        from cortex_agents_client.st import session
+        from streamlit_cortex_agents.client.auth import SiSContainerAuth
+        from streamlit_cortex_agents.chat import session
 
         token_file = tmp_path / "token"
         token_file.write_text("tok")
@@ -156,7 +156,7 @@ class TestSisInitSession:
         assert auth.headers()["Authorization"] == "Bearer tok"
 
     def test_missing_host_raises(self, tmp_path, monkeypatch):
-        from cortex_agents_client.st import session
+        from streamlit_cortex_agents.chat import session
 
         token_file = tmp_path / "token"
         token_file.write_text("tok")

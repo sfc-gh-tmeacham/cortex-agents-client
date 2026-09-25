@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from cortex_agents_client.auth import OAuthAuth, PATAuth, SiSContainerAuth, account_url_from_env
-from cortex_agents_client.client import _coerce_auth
+from streamlit_cortex_agents.client.auth import OAuthAuth, PATAuth, SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.client.core import _coerce_auth
 
 
 def test_pat_auth_authorization_header(pat_token):
@@ -63,7 +63,7 @@ def test_jwt_auth_raises_without_cryptography():
     except ImportError:
         pass
 
-    from cortex_agents_client.auth import JWTAuth
+    from streamlit_cortex_agents.client.auth import JWTAuth
 
     with pytest.raises(ImportError, match="cryptography"):
         JWTAuth(
@@ -174,7 +174,7 @@ class TestJWTAuth:
     """Tests for JWTAuth (requires cryptography + PyJWT)."""
 
     def _make_auth(self, rsa_key_file, account="myorg-myaccount", user="myuser"):
-        from cortex_agents_client.auth import JWTAuth
+        from streamlit_cortex_agents.client.auth import JWTAuth
         return JWTAuth(account=account, user=user, private_key_path=rsa_key_file)
 
     def _decode(self, token, rsa_key_file):
@@ -238,7 +238,7 @@ class TestSiSContainerAuthErrorPaths:
     """headers() raises AuthError when the token file changes after construction."""
 
     def test_token_file_deleted_after_construction(self, tmp_path):
-        from cortex_agents_client.exceptions import AuthError
+        from streamlit_cortex_agents.client.exceptions import AuthError
 
         token_file = tmp_path / "token"
         token_file.write_text("tok")
@@ -248,7 +248,7 @@ class TestSiSContainerAuthErrorPaths:
             auth.headers()
 
     def test_token_file_emptied_after_construction(self, tmp_path):
-        from cortex_agents_client.exceptions import AuthError
+        from streamlit_cortex_agents.client.exceptions import AuthError
 
         token_file = tmp_path / "token"
         token_file.write_text("tok")
@@ -272,7 +272,7 @@ class TestEmptyTokenRejected:
             OAuthAuth(token)
 
     def test_client_rejects_empty_string_auth(self):
-        from cortex_agents_client import CortexAgentsClient
+        from streamlit_cortex_agents import CortexAgentsClient
 
         with pytest.raises(ValueError, match="PAT token is empty"):
             CortexAgentsClient("https://x.snowflakecomputing.com", "")

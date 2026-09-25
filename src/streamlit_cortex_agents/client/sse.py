@@ -24,7 +24,7 @@ import logging
 from collections.abc import Iterator
 from typing import Any
 
-from cortex_agents_client.models.events import (
+from streamlit_cortex_agents.client.models.events import (
     AnalystDeltaEvent,
     ChartEvent,
     ErrorEvent,

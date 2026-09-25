@@ -17,7 +17,7 @@ import uuid
 
 import pytest
 
-from cortex_agents_client.exceptions import AgentNotFoundError, CortexAgentError
+from streamlit_cortex_agents.client.exceptions import AgentNotFoundError, CortexAgentError
 
 pytestmark = pytest.mark.live
 
@@ -72,7 +72,7 @@ class TestAgentLifecycle:
             crud_agent_name,
             database=db,
             schema=schema,
-            comment="cortex-agents-client live CRUD test",
+            comment="streamlit-cortex-agents live CRUD test",
             instructions=_SPEC_INSTRUCTIONS,
         )
         assert created.name.upper() == crud_agent_name.upper()
@@ -226,7 +226,7 @@ class TestFeedback:
             database=db,
             schema=schema,
             positive=True,
-            feedback_message="cortex-agents-client live test (agent level)",
+            feedback_message="streamlit-cortex-agents live test (agent level)",
         )
 
     def test_request_level_feedback_accepted(
@@ -261,6 +261,6 @@ class TestFeedback:
             positive=True,
             request_id=request_id,
             thread_id=live_thread.thread_id,
-            feedback_message="cortex-agents-client live test (request level)",
+            feedback_message="streamlit-cortex-agents live test (request level)",
             categories=["accuracy"],
         )

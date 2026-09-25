@@ -1,11 +1,11 @@
-"""Mock thread and client for the cortex-agents-client UI demo.
+"""Mock thread and client for the streamlit-cortex-agents UI demo.
 
 Provides :class:`MockThread` and :class:`MockClient` — drop-in replacements
-that are pre-seeded into ``st.session_state`` so :class:`~cortex_agents_client.st.chatbot.StreamlitChatbot`
+that are pre-seeded into ``st.session_state`` so :class:`~streamlit_cortex_agents.chat.chatbot.StreamlitChatbot`
 works without a real Snowflake connection.
 
 Each *scenario* is a generator function that yields
-:class:`~cortex_agents_client.models.events.SSEEvent` objects with short
+:class:`~streamlit_cortex_agents.client.models.events.SSEEvent` objects with short
 ``time.sleep`` delays to simulate realistic streaming.
 
 Usage::
@@ -30,7 +30,7 @@ import time
 from collections.abc import Iterator
 from typing import Any
 
-from cortex_agents_client.models.events import (
+from streamlit_cortex_agents.client.models.events import (
     AnalystDeltaEvent,
     ChartEvent,
     ErrorEvent,
@@ -84,9 +84,9 @@ def _stream_text(
         is_elicitation: If ``True``, marks all events as elicitation.
 
     Yields:
-        Alternating :class:`~cortex_agents_client.models.events.TextDeltaEvent`
+        Alternating :class:`~streamlit_cortex_agents.client.models.events.TextDeltaEvent`
         instances followed by a single
-        :class:`~cortex_agents_client.models.events.TextEvent`.
+        :class:`~streamlit_cortex_agents.client.models.events.TextEvent`.
     """
     for chunk in _chunks(text):
         yield TextDeltaEvent(
@@ -110,9 +110,9 @@ def _stream_thinking(text: str, *, delay: float = _DELTA_DELAY) -> Iterator[SSEE
         delay: Sleep duration in seconds between chunks.
 
     Yields:
-        :class:`~cortex_agents_client.models.events.ThinkingDeltaEvent`
+        :class:`~streamlit_cortex_agents.client.models.events.ThinkingDeltaEvent`
         instances followed by a single
-        :class:`~cortex_agents_client.models.events.ThinkingEvent`.
+        :class:`~streamlit_cortex_agents.client.models.events.ThinkingEvent`.
     """
     for chunk in _chunks(text, size=10):
         yield ThinkingDeltaEvent(event_type="response.thinking.delta", text=chunk)
@@ -127,7 +127,7 @@ def _metadata(message_id: int = 1) -> MetadataEvent:
         message_id: Synthetic message ID for the assistant turn.
 
     Returns:
-        A :class:`~cortex_agents_client.models.events.MetadataEvent`.
+        A :class:`~streamlit_cortex_agents.client.models.events.MetadataEvent`.
     """
     return MetadataEvent(
         event_type="metadata",
@@ -452,7 +452,7 @@ def _scenario_simple_text(prompt: str) -> Iterator[SSEEvent]:
         prompt: The user's input text.
 
     Yields:
-        :class:`~cortex_agents_client.models.events.SSEEvent` objects.
+        :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` objects.
     """
     response = (
         f'You asked: **"{prompt}"**\n\n'
@@ -481,7 +481,7 @@ def _scenario_thinking(prompt: str) -> Iterator[SSEEvent]:
         prompt: The user's input text.
 
     Yields:
-        :class:`~cortex_agents_client.models.events.SSEEvent` objects.
+        :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` objects.
     """
     thinking = (
         f'The user asked: "{prompt}"\n\n'
@@ -512,7 +512,7 @@ def _scenario_cortex_search(prompt: str) -> Iterator[SSEEvent]:
         prompt: The user's input text.
 
     Yields:
-        :class:`~cortex_agents_client.models.events.SSEEvent` objects.
+        :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` objects.
     """
     yield ToolUseEvent(
         event_type="response.tool_use",
@@ -622,7 +622,7 @@ def _scenario_cortex_analyst(prompt: str, *, verified: bool = False) -> Iterator
             tool use input to indicate a pre-verified query was matched.
 
     Yields:
-        :class:`~cortex_agents_client.models.events.SSEEvent` objects.
+        :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` objects.
     """
     yield ToolUseEvent(
         event_type="response.tool_use",
@@ -697,7 +697,7 @@ def _scenario_table(prompt: str) -> Iterator[SSEEvent]:
         prompt: The user's input text.
 
     Yields:
-        :class:`~cortex_agents_client.models.events.SSEEvent` objects.
+        :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` objects.
     """
     intro = "Here is the Q1 2026 regional revenue summary:"
     yield from _stream_text(intro, delay=0.02)
@@ -721,7 +721,7 @@ def _scenario_chart(prompt: str) -> Iterator[SSEEvent]:
         prompt: The user's input text.
 
     Yields:
-        :class:`~cortex_agents_client.models.events.SSEEvent` objects.
+        :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` objects.
     """
     yield from _stream_text("**Line chart** — monthly revenue trend:", delay=0.02)
     time.sleep(0.1)
@@ -766,7 +766,7 @@ def _scenario_clarification(prompt: str) -> Iterator[SSEEvent]:
         prompt: The user's input text.
 
     Yields:
-        :class:`~cortex_agents_client.models.events.SSEEvent` objects.
+        :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` objects.
     """
     question = (
         "To give you the most relevant answer, I need a little more context.\n\n"
@@ -786,7 +786,7 @@ def _scenario_warning(prompt: str) -> Iterator[SSEEvent]:
         prompt: The user's input text.
 
     Yields:
-        :class:`~cortex_agents_client.models.events.SSEEvent` objects.
+        :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` objects.
     """
     yield WarningEvent(
         event_type="response.warning",
@@ -815,7 +815,7 @@ def _scenario_error(prompt: str) -> Iterator[SSEEvent]:
         prompt: The user's input text.
 
     Yields:
-        :class:`~cortex_agents_client.models.events.SSEEvent` objects (one event).
+        :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` objects (one event).
     """
     time.sleep(0.3)
     yield ErrorEvent(
@@ -834,13 +834,13 @@ def _scenario_kitchen_sink(prompt: str) -> Iterator[SSEEvent]:
 
     This is the most comprehensive scenario for UI testing. It exercises
     every rendering path in
-    :func:`~cortex_agents_client.st.render.render_streaming_response`.
+    :func:`~streamlit_cortex_agents.chat.render.render_streaming_response`.
 
     Args:
         prompt: The user's input text.
 
     Yields:
-        :class:`~cortex_agents_client.models.events.SSEEvent` objects.
+        :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` objects.
     """
     # 1. Thinking
     thinking = (
@@ -1007,7 +1007,7 @@ class MockThread:
             prompt: The user's message, passed to the scenario generator.
 
         Yields:
-            :class:`~cortex_agents_client.models.events.SSEEvent` objects.
+            :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` objects.
         """
         gen_fn = SCENARIOS.get(self.scenario, _scenario_simple_text)
         yield from gen_fn(prompt)
@@ -1031,7 +1031,7 @@ class MockThread:
 class MockClient:
     """A CortexAgentsClient stub whose :meth:`create_thread` returns a MockThread.
 
-    Used alongside :class:`MockThread` to satisfy :func:`~cortex_agents_client.st.session.reset_thread`
+    Used alongside :class:`MockThread` to satisfy :func:`~streamlit_cortex_agents.chat.session.reset_thread`
     which calls ``client.create_thread(origin_application=...)``.
 
     Args:
@@ -1063,7 +1063,7 @@ class _MockAgentsResource:
     """Stub for client.agents that returns an Agent with sample_questions."""
 
     def get(self, *args: Any, **kwargs: Any) -> Any:
-        from cortex_agents_client.models.agent import Agent, AgentInstructions
+        from streamlit_cortex_agents.client.models.agent import Agent, AgentInstructions
         return Agent(
             name="DEMO_AGENT",
             instructions=AgentInstructions(

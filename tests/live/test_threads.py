@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import pytest
 
-from cortex_agents_client import CortexAgentsClient
-from cortex_agents_client.client import Thread
-from cortex_agents_client.exceptions import ThreadNotFoundError
-from cortex_agents_client.models.thread import ThreadMetadata
+from streamlit_cortex_agents import CortexAgentsClient
+from streamlit_cortex_agents.client.core import Thread
+from streamlit_cortex_agents.client.exceptions import ThreadNotFoundError
+from streamlit_cortex_agents.client.models.thread import ThreadMetadata
 
 from tests.live.conftest import LIVE_ORIGIN_APP
 
@@ -97,7 +97,7 @@ class TestThreadFork:
         """
         # Need at least one message so we have a message_id to fork from
         events = list(live_thread.chat(agent_path_minimal, "hello"))
-        from cortex_agents_client.models.events import MetadataEvent
+        from streamlit_cortex_agents.client.models.events import MetadataEvent
         meta_event = next((e for e in events if isinstance(e, MetadataEvent) and e.role == "assistant"), None)
         if meta_event is None:
             pytest.skip("No MetadataEvent received — cannot determine message_id to fork from")

@@ -1,6 +1,6 @@
 # Test Plan
 
-Living document describing the test suite for `cortex_agents_client`.
+Living document describing the test suite for `streamlit_cortex_agents`.
 Test names and file paths are kept in sync with the code on disk; if you find a
 discrepancy, the code is authoritative.
 
@@ -231,7 +231,7 @@ Tests `RunsResource._resolve_path()`:
 
 #### `TestResultSetToDataframe`
 
-Tests `result_set_to_dataframe(table_event)` from `cortex_agents_client.st.render`:
+Tests `result_set_to_dataframe(table_event)` from `streamlit_cortex_agents.chat.render`:
 
 | Test | What it verifies |
 |---|---|
@@ -260,7 +260,7 @@ Covers the optional `variables` argument (multi-tenancy session attributes).
 
 #### `TestNormalize`
 
-Tests `normalize_variables()` from `cortex_agents_client._variables`:
+Tests `normalize_variables()` from `streamlit_cortex_agents.client._variables`:
 
 | Test | What it verifies |
 |---|---|

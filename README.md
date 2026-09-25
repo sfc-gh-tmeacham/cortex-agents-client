@@ -1,4 +1,4 @@
-# cortex-agents-client
+# streamlit-cortex-agents
 ---
 
 [![Snowflake](https://img.shields.io/badge/Snowflake-Cortex%20Agents-29B5E8?logo=snowflake&logoColor=white)](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents)
@@ -17,8 +17,8 @@ Drop-in Cortex Agent chatbot for Streamlit. Add a fully functional, streaming AI
 ```python
 # streamlit-app.py — Full-page chatbot (chat input pinned to bottom)
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 AGENT_PATH = "MY_DB.MY_SCHEMA.MY_AGENT"  # ← swap this
 
@@ -36,7 +36,7 @@ StreamlitChatbot(
 **External Streamlit (local / hosted):**
 
 ```python
-from cortex_agents_client.st import StreamlitChatbot
+from streamlit_cortex_agents.chat import StreamlitChatbot
 import streamlit as st
 
 StreamlitChatbot(
@@ -111,7 +111,7 @@ Also includes the complete Python client library for the Cortex Agents REST API 
 
 This library is not currently published to PyPI or a public Git repository. Install it directly from a local clone of the project directory.
 
-> **Streamlit-in-Snowflake (container runtime)**: copy the `cortex_agents_client/` folder directly into your workspace and update your `pyproject.toml` as shown below. See [Streamlit-in-Snowflake](#streamlit-in-snowflake-container-runtime).
+> **Streamlit-in-Snowflake (container runtime)**: copy the `streamlit_cortex_agents/` folder directly into your workspace and update your `pyproject.toml` as shown below. See [Streamlit-in-Snowflake](#streamlit-in-snowflake-container-runtime).
 >
 > ```toml
 > [project]
@@ -127,7 +127,7 @@ This library is not currently published to PyPI or a public Git repository. Inst
 > ]
 >
 > [tool.setuptools.packages.find]
-> include = ["cortex_agents_client*"]
+> include = ["streamlit_cortex_agents*"]
 >
 > [tool.uv]
 > constraint-dependencies = ["numba>=0.56.0"]
@@ -195,7 +195,7 @@ client = CortexAgentsClient(
 Requires the `[jwt]` extra — see [Installation](#installation).
 
 ```python
-from cortex_agents_client.auth import JWTAuth
+from streamlit_cortex_agents.client.auth import JWTAuth
 
 auth = JWTAuth(
     account="myorg-myaccount",
@@ -209,7 +209,7 @@ client = CortexAgentsClient("https://myorg.snowflakecomputing.com", auth)
 #### OAuth
 
 ```python
-from cortex_agents_client.auth import OAuthAuth
+from streamlit_cortex_agents.client.auth import OAuthAuth
 
 auth = OAuthAuth("my_oauth_token")
 client = CortexAgentsClient("https://myorg.snowflakecomputing.com", auth)
@@ -218,8 +218,8 @@ client = CortexAgentsClient("https://myorg.snowflakecomputing.com", auth)
 ### Quick start
 
 ```python
-from cortex_agents_client import CortexAgentsClient
-from cortex_agents_client.models.events import TextDeltaEvent
+from streamlit_cortex_agents import CortexAgentsClient
+from streamlit_cortex_agents.client.models.events import TextDeltaEvent
 
 client = CortexAgentsClient(
     account_url="https://myorg-myaccount.snowflakecomputing.com",
@@ -255,7 +255,7 @@ for event in thread.chat("MY_AGENT", "How does that compare to 2024?"):
 ### Handling all event types
 
 ```python
-from cortex_agents_client.models.events import (
+from streamlit_cortex_agents.client.models.events import (
     AnalystDeltaEvent,
     ChartEvent,
     ErrorEvent,
@@ -407,7 +407,7 @@ for event in thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", "Long question…", backgro
 ### Cancelling a run
 
 ```python
-from cortex_agents_client import RunNotActiveError
+from streamlit_cortex_agents import RunNotActiveError
 
 try:
     metadata = client.cancel_run(run_id)
@@ -546,7 +546,7 @@ ALTER TABLE db1.schema1.sales ADD ROW ACCESS POLICY rap_region_filter ON (region
 ### Exception handling
 
 ```python
-from cortex_agents_client import (
+from streamlit_cortex_agents import (
     AuthError,
     CortexConnectionError,
     CortexPermissionError,
@@ -586,7 +586,7 @@ already finished or is outside its retention window — read the response from t
 instead:
 
 ```python
-from cortex_agents_client import RunNotActiveError
+from streamlit_cortex_agents import RunNotActiveError
 
 try:
     for event in client.stream_run(run_id):
@@ -601,7 +601,7 @@ except RunNotActiveError:
 
 > **Container runtime is required.** The Cortex Agents API is not supported in warehouse runtime SiS apps.
 
-See also [`cortex_agents_client/st/README.md`](cortex_agents_client/st/README.md) — the self-contained integration guide that travels with the library when you copy the folder into a SiS workspace.
+See also [`streamlit_cortex_agents/st/README.md`](streamlit_cortex_agents/st/README.md) — the self-contained integration guide that travels with the library when you copy the folder into a SiS workspace.
 
 ### Prerequisites — External Access Integrations
 
@@ -688,7 +688,7 @@ Snowflake automatically injects two things into every container runtime app:
 No `.streamlit/secrets.toml` needed. Use `SiSContainerAuth` — it re-reads the token file on every request so auto-refreshed tokens are picked up without restarting the app.
 
 ```python
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 account_url = account_url_from_env()   # https://<your-account>.snowflakecomputing.com
 auth        = SiSContainerAuth()       # reads /snowflake/session/token on every request
@@ -698,8 +698,8 @@ auth        = SiSContainerAuth()       # reads /snowflake/session/token on every
 
 ```python
 # streamlit-app.py
-from cortex_agents_client.st import StreamlitChatbot
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 StreamlitChatbot(
     account_url=account_url_from_env(),
@@ -714,9 +714,9 @@ Use `sis_init_session()` in place of `init_session()` — it calls `SiSContainer
 
 ```python
 import streamlit as st
-from cortex_agents_client.st.session import sis_init_session, get_messages, append_message, reset_thread
-from cortex_agents_client.st.render import render_stored_message, render_streaming_response, escape_dollars
-from cortex_agents_client.models.thread import StoredMessage
+from streamlit_cortex_agents.chat.session import sis_init_session, get_messages, append_message, reset_thread
+from streamlit_cortex_agents.chat.render import render_stored_message, render_streaming_response, escape_dollars
+from streamlit_cortex_agents.client.models.thread import StoredMessage
 
 client, thread = sis_init_session(origin_application="my_sis_app")
 
@@ -752,19 +752,19 @@ Workspaces is a file-based IDE in Snowsight — you work in files and click Depl
 
 1. In Snowsight, go to **Workspaces → + Add new → Streamlit app**. Snowflake creates a project folder with starter files.
 
-2. Copy the `cortex_agents_client/` directory into the workspace root alongside your app file:
+2. Copy the `streamlit_cortex_agents/` directory into the workspace root alongside your app file:
 
    ```
    your_workspace/
    ├── streamlit-app.py
-   ├── cortex_agents_client/    ← copy this folder from the repo
+   ├── streamlit_cortex_agents/    ← copy this folder from the repo
    │   ├── __init__.py
    │   ├── client.py
    │   └── ...
    └── pyproject.toml
    ```
 
-   Because the app root is on `sys.path`, `import cortex_agents_client` works with no installation step.
+   Because the app root is on `sys.path`, `import streamlit_cortex_agents` works with no installation step.
 
 3. Edit `pyproject.toml` to declare third-party dependencies:
 
@@ -781,7 +781,7 @@ Workspaces is a file-based IDE in Snowsight — you work in files and click Depl
    ]
 
    [tool.setuptools.packages.find]
-   include = ["cortex_agents_client*"]
+   include = ["streamlit_cortex_agents*"]
 
    [tool.uv]
    constraint-dependencies = ["numba>=0.56.0"]
@@ -906,7 +906,7 @@ The agent path is not sensitive — hardcode it directly in your app code.
 ```python
 # app.py
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
+from streamlit_cortex_agents.chat import StreamlitChatbot
 
 st.title("Revenue Assistant")
 
@@ -929,9 +929,9 @@ streamlit run app.py
 
 ```python
 import streamlit as st
-from cortex_agents_client.st.session import init_session, get_messages, append_message, reset_thread
-from cortex_agents_client.st.render import render_stored_message, render_streaming_response, escape_dollars
-from cortex_agents_client.models.thread import StoredMessage
+from streamlit_cortex_agents.chat.session import init_session, get_messages, append_message, reset_thread
+from streamlit_cortex_agents.chat.render import render_stored_message, render_streaming_response, escape_dollars
+from streamlit_cortex_agents.client.models.thread import StoredMessage
 
 client, thread = init_session(
     account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
@@ -1015,7 +1015,7 @@ StreamlitChatbot(
 Pass a `tool_executor` callable to handle tools the agent marks with `client_side_execute=True`:
 
 ```python
-from cortex_agents_client.models.events import ToolUseEvent
+from streamlit_cortex_agents.client.models.events import ToolUseEvent
 
 def my_tool_executor(event: ToolUseEvent) -> list[dict]:
     if event.name == "get_current_user":
@@ -1037,8 +1037,8 @@ Tools that require user consent (`ToolUseEvent.permission_options` is non-empty)
 `result_set_to_dataframe` converts a `TableEvent` result set to a pandas DataFrame with correct column types:
 
 ```python
-from cortex_agents_client.st.render import render_streaming_response, result_set_to_dataframe
-from cortex_agents_client.models.events import TableEvent
+from streamlit_cortex_agents.chat.render import render_streaming_response, result_set_to_dataframe
+from streamlit_cortex_agents.client.models.events import TableEvent
 
 for event in thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt):
     if isinstance(event, TableEvent):
@@ -1187,7 +1187,7 @@ uv run pytest tests/streamlit/ -v
 uv run pytest tests/ -m "not live" -v
 
 # Coverage report
-uv run pytest tests/unit/ tests/integration/ --cov=cortex_agents_client --cov-report=term-missing
+uv run pytest tests/unit/ tests/integration/ --cov=streamlit_cortex_agents --cov-report=term-missing
 
 # Live tests (requires real Snowflake credentials)
 SNOWFLAKE_ACCOUNT_URL="https://..." SNOWFLAKE_PAT="v2:..." SNOWFLAKE_AGENT_PATH="DB.SC.AGENT" \
@@ -1206,7 +1206,7 @@ ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run streaml
 ### Architecture
 
 ```
-cortex_agents_client/
+streamlit_cortex_agents/
 ├── client.py         CortexAgentsClient (top-level facade), Thread (stateful)
 ├── auth.py           PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, AuthProvider, account_url_from_env
 ├── http.py           HttpClient (httpx wrapper, error mapping)

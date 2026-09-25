@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS cac_live_db.cac_live_schema.sales (
     quantity    INT           NOT NULL  COMMENT 'Units sold',
     revenue     NUMBER(10, 2) NOT NULL  COMMENT 'Revenue in USD'
 )
-COMMENT = 'Fixed sales test dataset for cortex-agents-client live integration tests.';
+COMMENT = 'Fixed sales test dataset for streamlit-cortex-agents live integration tests.';
 
 TRUNCATE TABLE IF EXISTS cac_live_db.cac_live_schema.sales;
 
@@ -75,7 +75,7 @@ CREATE SEMANTIC VIEW IF NOT EXISTS cac_live_db.cac_live_schema.sales_view
       COMMENT = 'Number of sales transactions'
   )
 
-  COMMENT = 'Sales semantic view for cortex-agents-client live integration tests.'
+  COMMENT = 'Sales semantic view for streamlit-cortex-agents live integration tests.'
 
   AI_VERIFIED_QUERIES (
     revenue_by_product AS (

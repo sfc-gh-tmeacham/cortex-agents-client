@@ -11,8 +11,8 @@ import logging
 from typing import Any
 from urllib.parse import quote
 
-from cortex_agents_client.http import HttpClient
-from cortex_agents_client.models.agent import Agent
+from streamlit_cortex_agents.client.http import HttpClient
+from streamlit_cortex_agents.client.models.agent import Agent
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class AgentsResource:
 
     All methods accept ``database`` and ``schema`` as required positional
     arguments unless defaults were set on the parent
-    :class:`cortex_agents_client.client.CortexAgentsClient`.
+    :class:`streamlit_cortex_agents.client.core.CortexAgentsClient`.
 
     Args:
         http: Authenticated HTTP client.
@@ -139,13 +139,13 @@ class AgentsResource:
                 or ``"ifNotExists"``.
 
         Returns:
-            The created :class:`~cortex_agents_client.models.agent.Agent`.
+            The created :class:`~streamlit_cortex_agents.client.models.agent.Agent`.
 
         Raises:
             ValueError: If database or schema is missing.
-            cortex_agents_client.exceptions.AuthError: On authentication failure.
-            cortex_agents_client.exceptions.CortexPermissionError: On missing privileges.
-            cortex_agents_client.exceptions.CortexAgentError: On other API errors.
+            streamlit_cortex_agents.client.exceptions.AuthError: On authentication failure.
+            streamlit_cortex_agents.client.exceptions.CortexPermissionError: On missing privileges.
+            streamlit_cortex_agents.client.exceptions.CortexAgentError: On other API errors.
 
         Example::
 
@@ -214,12 +214,12 @@ class AgentsResource:
             schema: Schema containing the agent. Uses default if not set.
 
         Returns:
-            A populated :class:`~cortex_agents_client.models.agent.Agent`.
+            A populated :class:`~streamlit_cortex_agents.client.models.agent.Agent`.
 
         Raises:
-            cortex_agents_client.exceptions.AgentNotFoundError: If the agent does
+            streamlit_cortex_agents.client.exceptions.AgentNotFoundError: If the agent does
                 not exist.
-            cortex_agents_client.exceptions.AuthError: On authentication failure.
+            streamlit_cortex_agents.client.exceptions.AuthError: On authentication failure.
         """
         db, sc = self._resolve(database, schema)
         data = self._http.request("GET", self._path(db, sc, name), resource="agent")
@@ -257,9 +257,9 @@ class AgentsResource:
             tool_resources: New tool resources dict.
 
         Raises:
-            cortex_agents_client.exceptions.AgentNotFoundError: If agent does not
+            streamlit_cortex_agents.client.exceptions.AgentNotFoundError: If agent does not
                 exist.
-            cortex_agents_client.exceptions.AuthError: On authentication failure.
+            streamlit_cortex_agents.client.exceptions.AuthError: On authentication failure.
         """
         db, sc = self._resolve(database, schema)
         body: dict[str, Any] = {}
@@ -301,7 +301,7 @@ class AgentsResource:
             limit: Maximum number of agents to return (1–10000).
 
         Returns:
-            List of :class:`~cortex_agents_client.models.agent.Agent` objects.
+            List of :class:`~streamlit_cortex_agents.client.models.agent.Agent` objects.
         """
         db, sc = self._resolve(database, schema)
         params: dict[str, Any] = {}
@@ -339,7 +339,7 @@ class AgentsResource:
                 does not exist.
 
         Raises:
-            cortex_agents_client.exceptions.AgentNotFoundError: If the agent does
+            streamlit_cortex_agents.client.exceptions.AgentNotFoundError: If the agent does
                 not exist and ``if_exists`` is ``False``.
         """
         db, sc = self._resolve(database, schema)
@@ -373,7 +373,7 @@ class AgentsResource:
         - **Request-level feedback** (pass ``request_id``): tied to a specific
           run. Use the request ID from the ``X-Snowflake-Request-ID`` response
           header or from a
-          :class:`~cortex_agents_client.models.events.MetadataEvent`.
+          :class:`~streamlit_cortex_agents.client.models.events.MetadataEvent`.
         - **Agent-level feedback** (omit ``request_id``): logged against the
           agent as a whole, not a specific response.
 
@@ -390,7 +390,7 @@ class AgentsResource:
             categories: Optional list of feedback category labels.
 
         Raises:
-            cortex_agents_client.exceptions.AgentNotFoundError: If the agent
+            streamlit_cortex_agents.client.exceptions.AgentNotFoundError: If the agent
                 does not exist.
         """
         db, sc = self._resolve(database, schema)

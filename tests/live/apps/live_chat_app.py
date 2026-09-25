@@ -1,6 +1,6 @@
 """Streamlit app used by the live AppTest coverage in test_streamlit_live.py.
 
-Builds a real :class:`~cortex_agents_client.st.StreamlitChatbot` against a live
+Builds a real :class:`~streamlit_cortex_agents.chat.StreamlitChatbot` against a live
 agent, so the whole render pipeline executes against real API payloads. The
 mock-based tests in tests/streamlit/ never run this path.
 
@@ -23,7 +23,7 @@ import os
 
 import streamlit as st
 
-from cortex_agents_client.st import StreamlitChatbot
+from streamlit_cortex_agents.chat import StreamlitChatbot
 
 AGENT_PATH = os.environ.get("LIVE_APPTEST_AGENT") or os.environ["LIVE_AGENT_MINIMAL"]
 

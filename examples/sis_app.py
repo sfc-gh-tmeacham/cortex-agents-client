@@ -19,14 +19,14 @@ To create the SiS app, run in Snowflake:
       QUERY_WAREHOUSE              = 'MY_WH'
       EXTERNAL_ACCESS_INTEGRATIONS = (cortex_agents_api_eai, pypi_eai);
 
-Upload this file and your cortex_agents_client/ directory to the stage path above.
+Upload this file and your streamlit_cortex_agents/ directory to the stage path above.
 """
 
 import os
 
 import streamlit as st
-from cortex_agents_client.st import StreamlitChatbot
-from cortex_agents_client.auth import SiSContainerAuth, account_url_from_env
+from streamlit_cortex_agents.chat import StreamlitChatbot
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
 
 # Agent path — set as a constant or read from an environment variable.
 # Set it in snowflake.yml under `environment:` when deploying via Workspaces,

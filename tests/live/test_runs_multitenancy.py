@@ -17,8 +17,8 @@ import time
 
 import pytest
 
-from cortex_agents_client.client import CortexAgentsClient, Thread
-from cortex_agents_client.models.events import SSEEvent, TableEvent
+from streamlit_cortex_agents.client.core import CortexAgentsClient, Thread
+from streamlit_cortex_agents.client.models.events import SSEEvent, TableEvent
 
 _QUERY = "What is the total revenue by region?"
 _REGIONS = {"North", "South", "East", "West"}
