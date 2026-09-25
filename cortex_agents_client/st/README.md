@@ -268,7 +268,9 @@ def _chat_dialog():
         auth=SiSContainerAuth(),
         agent_path=AGENT_PATH,
         mode="embedded",
-        height=450,
+        # Fill the window; 440px covers the title, the Close and
+        # New conversation buttons, suggestions and the chat input.
+        height="calc(100vh - 440px)",
         show_thinking=True,
         show_tool_status=True,
         new_conversation_button=True,
@@ -462,8 +464,11 @@ bot.render()
 ### Embedded mode
 
 Fits inside any Streamlit container — a column, `st.dialog`, `st.sidebar`,
-`st.expander`, etc. Uses a fixed-height scrollable message area and an inline
-`st.chat_input`.
+`st.expander`, etc. Uses a scrollable message area and an inline
+`st.chat_input`. `height` is pixels as an `int`, or a CSS height string such
+as `"calc(100vh - 300px)"`. A string lets the chat fill an `st.dialog`, which
+has no height option of its own; it relies on Streamlit's internal DOM
+(verified on 1.64).
 
 ```python
 # Two-column layout
@@ -483,7 +488,7 @@ with chat_col:
 def open_chat():
     StreamlitChatbot(
         account_url=..., auth=..., agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
-        mode="embedded", height=400,
+        mode="embedded", height="calc(100vh - 300px)",
     ).render()
 
 if st.button("Open chat", icon=":material/chat:"):

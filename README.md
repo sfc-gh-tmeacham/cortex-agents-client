@@ -46,15 +46,61 @@ StreamlitChatbot(
 ).render()
 ```
 
-Features out of the box: streaming text with typewriter effect, tables and charts, tool execution status with SQL display, citation sources, suggested follow-up questions, thinking/reasoning expanders, and full conversation history across reruns.
+Features out of the box: streaming text with typewriter effect, tables and charts, tool execution status with SQL display, citation sources, suggested follow-up questions, thinking/reasoning expanders, and full conversation history across reruns. The chat input's Stop button cancels the agent run on the server, not just the display.
 
-**Layout modes:** `"fullpage"` (default — chat input pinned to bottom), `"embedded"` (fixed-height scrollable container for dashboards), or render inside an `st.dialog` for a modal chat overlay.
+**Layout modes:** `"fullpage"` (default — chat input pinned to bottom), `"embedded"` (scrollable container for dashboards, sized in pixels or with a CSS height that can fill the window), or render inside an `st.dialog` for a modal chat overlay.
 
 ![Embedded mode example](img/embed_example.png)
 
 Also includes the complete Python client library for the Cortex Agents REST API — use it standalone for scripts, notebooks, or custom integrations without Streamlit.
 
 > **Want a no-code experience?** Consider [Snowflake CoWork](https://docs.snowflake.com/en/user-guide/snowflake-cortex/snowflake-cowork) for delivering agents to users without building a custom app.
+
+## Contents
+
+- [Installation](#installation)
+  - [uv (recommended)](#uv-recommended)
+  - [pip](#pip)
+- [Core Python API](#core-python-api)
+  - [Authentication](#authentication)
+  - [Quick start](#quick-start)
+  - [Multi-turn conversations](#multi-turn-conversations)
+  - [Handling all event types](#handling-all-event-types)
+  - [Non-streaming run](#non-streaming-run)
+  - [Background (asynchronous) runs](#background-asynchronous-runs)
+  - [Cancelling a run](#cancelling-a-run)
+  - [Runs without an agent object (lite runs)](#runs-without-an-agent-object-lite-runs)
+  - [Agent management (CRUD)](#agent-management-crud)
+  - [Thread management](#thread-management)
+  - [Forking conversations](#forking-conversations)
+  - [Exception handling](#exception-handling)
+- [Streamlit-in-Snowflake (container runtime)](#streamlit-in-snowflake-container-runtime)
+  - [Prerequisites — External Access Integrations](#prerequisites--external-access-integrations)
+  - [Authentication](#sis-authentication)
+  - [Drop-in chatbot](#drop-in-chatbot)
+  - [Manual integration](#manual-integration)
+  - [Deploying the app](#deploying-the-app)
+  - [RBAC and role considerations](#rbac-and-role-considerations)
+- [External Streamlit](#external-streamlit)
+  - [Dependencies](#dependencies)
+  - [Secrets configuration](#secrets-configuration)
+  - [Drop-in chatbot](#drop-in-chatbot-1)
+  - [Manual integration](#manual-integration-1)
+  - [Embedded mode](#embedded-mode)
+  - [File and audio attachments](#file-and-audio-attachments)
+  - [Client-side tool execution](#client-side-tool-execution)
+  - [Working with table results](#working-with-table-results)
+  - [Elicitation](#elicitation)
+- [Reference](#reference)
+  - [`CortexAgentsClient` parameters](#cortexagentsclient-parameters)
+  - [`StreamlitChatbot` parameters](#streamlitchatbot-parameters)
+  - [CSS targeting via widget keys](#css-targeting-via-widget-keys)
+  - [Secrets and environment variables](#secrets-and-environment-variables)
+  - [Running tests](#running-tests)
+  - [Demo app](#demo-app)
+  - [Architecture](#architecture)
+  - [Notes](#notes)
+- [Disclaimer](#disclaimer)
 
 ## Installation
 
@@ -886,7 +932,7 @@ if prompt := st.chat_input("Ask a question..."):
 
 ### Embedded mode
 
-Renders the chat inside a fixed-height scrollable container — useful for dashboards where the chat sits alongside other components. Requires Streamlit ≥ 1.59.
+Renders the chat inside a scrollable container — useful for dashboards where the chat sits alongside other components.
 
 ```python
 StreamlitChatbot(
