@@ -159,10 +159,12 @@ items. Only the upload + wiring step is missing.
 
 ### Cancel in-progress streaming request
 
-**Status: not implemented.** The core-client half is done and verified live; the Streamlit
-UX is not, and a plan to build it was written and then deliberately abandoned. The
-obstacles below are the reason, and they are recorded so the next attempt does not
-rediscover them.
+**Status: implemented in 0.3.0** without the concurrency designs below. `StreamlitChatbot`
+uses `st.chat_input(submit_mode="stop")`; pressing stop raises `StopException` at the next
+streamed event, and `_stream_with_retry` catches it, calls `cancel_run(run_id)`, and
+re-raises. See "Stopping a response" in `docs/streamlit_guide.md`. The rest of this section
+is the design history from before that approach was found. Still open: a live check that
+cancelling a non-background streaming run works, and stop for pill-selected runs.
 
 #### Current state
 

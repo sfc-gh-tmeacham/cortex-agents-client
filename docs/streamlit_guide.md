@@ -131,22 +131,29 @@ Both `render_streaming_response` and `render_stored_message` accept an optional 
 
 `StreamlitChatbot` passes `key_prefix` automatically using the pattern `{css_prefix}-{msg_index}` where `css_prefix` is derived from `session_key_prefix` (leading underscore stripped). Manual integration users can pass `key_prefix` explicitly for custom CSS targeting.
 
-### Known limitation: stop does not cancel the agent run
+### Stopping a response
 
 `StreamlitChatbot` passes `submit_mode="stop"` to `st.chat_input`, so while a response
-streams the send button becomes a stop button. Pressing it stops the Streamlit script
-only. The agent run keeps executing in Snowflake until it finishes and is billed in full,
-and its answer is not shown. The user's message stays in the history without a reply, and
-the thread stays on its last completed message. Suggestions selected as pills do not go
-through the chat input, so those runs show no stop button.
+streams the send button becomes a stop button. Pressing it makes Streamlit raise
+`StopException` at the script's next yield point, which is the next streamed event. The
+chatbot catches it, calls `client.cancel_run(run_id)` with the `run_id` from the run's
+first `metadata` event, and then re-raises so Streamlit stops the script. A rerun
+triggered mid-stream (`RerunException`) cancels the run the same way.
 
-Cancelling the run server-side needs `cancel_run(run_id)` to be called when the user
-presses stop. The core client supports cancellation — `background=True`, `stream_run()`
-and `cancel_run()` are all available and verified live — but none of it is wired into
-`render_streaming_response` or `StreamlitChatbot`, because Streamlit only processes widget
-clicks on a rerun and the script is blocked inside the streaming loop for exactly the
-period in which the user would press stop. See the "Cancel in-progress streaming
-request" section of `docs/roadmap.md` for the attempted designs and why each was set aside.
+- The server stops the run and saves any partial output to the thread.
+- If the run already finished, `cancel_run` raises `RunNotActiveError`; the chatbot logs
+  it at info level. Any other cancel failure is logged as a warning and never hides the
+  stop.
+- If stop is pressed before the first `metadata` event arrives, there is no `run_id` yet
+  and nothing is cancelled.
+- The partial answer is not shown in the chat history; the user's message stays without
+  a reply.
+- Suggestions selected as pills do not go through the chat input, so those runs show no
+  stop button.
+
+Cancel-on-stop is covered by mocked unit tests; cancelling a non-background streaming run
+has not yet been verified against a live account. `render_streaming_response` on its own
+does not cancel — only `StreamlitChatbot` does.
 
 ---
 
