@@ -546,7 +546,11 @@ def _scenario_multi_step_reasoning(prompt: str) -> Iterator[SSEEvent]:
         tool_use_id="tool_ms_002",
         type="system_execute_sql",
         name="system_execute_sql",
-        input={"semantic_model": "SalesAnalyst", "sql": _ANALYST_SQL},
+        input={
+            "semantic_model": "SalesAnalyst",
+            "sql": _ANALYST_SQL,
+            "verified_query_used": True,
+        },
     )
     time.sleep(0.4)
     yield ToolResultEvent(

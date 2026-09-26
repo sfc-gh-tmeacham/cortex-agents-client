@@ -151,6 +151,18 @@ def escape_dollars(text: str) -> str:
 
 _THINKING_STEP_LABEL = ":material/psychology: Thinking"
 
+# Verified-query tool steps render as an ``st.expander(type="step")`` so the
+# shield replaces the state marker instead of sitting next to it; st.status
+# has no icon argument. Icons accept no color markup, so CSS colors the shield.
+_VERIFIED_STEP_ICON = ":material/verified_user:"
+_VERIFIED_STEP_KEY = "verified-step"
+_VERIFIED_STEP_CSS = (
+    "<style>"
+    f'[class*="-{_VERIFIED_STEP_KEY}-"] [data-testid="stExpanderStepIcon"]'
+    "{color:#21c354;}"
+    "</style>"
+)
+
 
 class _StepTimeline:
     """Groups reasoning and tool steps into one collapsible ``st.status``.
@@ -175,6 +187,7 @@ class _StepTimeline:
         self._finished = False
         self._has_thinking = False
         self._failed = False
+        self._styled = False
 
     def _label(self) -> str:
         return "Reasoning" if self._has_thinking else "Working"
@@ -191,6 +204,22 @@ class _StepTimeline:
         Returns:
             The step's ``st.status`` container.
         """
+        return self.add_slot(thinking=thinking).status(
+            label, expanded=False, state=state, type="step"
+        )
+
+    def add_slot(self, *, thinking: bool = False) -> Any:
+        """Adds a single-element placeholder for a step and returns it.
+
+        A slot lets a running step be replaced later, e.g. by a verified step.
+
+        Args:
+            thinking: ``True`` for a reasoning step. Switches the outer label
+                from "Working" to "Reasoning".
+
+        Returns:
+            An ``st.empty()`` placeholder inside the outer status.
+        """
         if thinking and not self._has_thinking:
             self._has_thinking = True
             if self._outer is not None:
@@ -206,7 +235,29 @@ class _StepTimeline:
             # A step arrived after the answer started: reopen until it finishes.
             self._finished = False
             self._outer.update(state="running", expanded=True)
-        return self._outer.status(label, expanded=False, state=state, type="step")
+        return self._outer.empty()
+
+    def verified_step(self, slot: Any, label: str, tool_use_id: str) -> Any:
+        """Renders a completed verified-query step into *slot* and returns it.
+
+        Args:
+            slot: Placeholder from :meth:`add_slot`.
+            label: Step label, without an icon.
+            tool_use_id: Tool call ID, used for a unique widget key.
+
+        Returns:
+            The step's ``st.expander`` container.
+        """
+        if not self._styled:
+            self._styled = True
+            self._container.html(_VERIFIED_STEP_CSS)
+        return slot.expander(
+            label,
+            expanded=False,
+            icon=_VERIFIED_STEP_ICON,
+            type="step",
+            key=f"{self._key_prefix or 'sca'}-{_VERIFIED_STEP_KEY}-{tool_use_id}",
+        )
 
     def mark_failed(self) -> None:
         """Records that a step failed, so the outer status ends in the error state."""
@@ -227,25 +278,46 @@ class _StepTimeline:
         )
 
 
+_TOOL_TYPE_ICONS: dict[str, str] = {
+    "cortex_search": ":material/search:",
+    "cortex_analyst_text_to_sql": ":material/database:",
+    "system_execute_sql": ":material/database:",
+    "web_search": ":material/travel_explore:",
+}
+_DEFAULT_TOOL_ICON = ":material/build:"
+
+
+def _tool_icon(tool_type: str) -> str:
+    """Returns the label icon for a tool type.
+
+    The icon names the kind of tool and stays the same in every state; the
+    step marker shows running, complete, or error.
+    """
+    return _TOOL_TYPE_ICONS.get(tool_type, _DEFAULT_TOOL_ICON)
+
+
 def _tool_step_outcome(
-    result: ToolResultEvent | None, verified: bool
+    use: ToolUseEvent, result: ToolResultEvent | None, verified: bool
 ) -> tuple[str, str]:
     """Returns the final ``(label, state)`` for a tool step.
 
     Args:
+        use: The tool's use event.
         result: The tool's result event, or ``None`` if it never arrived.
         verified: Whether the tool used a verified query.
 
     Returns:
-        The step label and its ``st.status`` state.
+        The step label and its ``st.status`` state. A verified success has no
+        label icon, because its shield marker replaces the state marker.
     """
+    icon = _tool_icon(use.type)
     if result is None:
-        return "Tool interrupted", "error"
+        return f"{icon} {use.name} interrupted", "error"
     if result.status == "success":
         if verified:
-            return f":material/verified: {result.name} (verified query)", "complete"
-        return f":material/check_circle: {result.name} complete", "complete"
-    return f":material/error: {result.name} failed", "error"
+            return f"{result.name} (verified query)", "complete"
+        return f"{icon} {result.name}", "complete"
+    return f"{icon} {result.name} failed", "error"
 
 
 def render_streaming_response(
@@ -342,6 +414,7 @@ def render_streaming_response(
 
     # Tool status tracking: tool_use_id → st.status context
     tool_status_contexts: dict[str, Any] = {}
+    tool_slots: dict[str, Any] = {}
     pending_tool_uses: dict[str, ToolUseEvent] = {}
 
     for event in events:
@@ -419,16 +492,24 @@ def render_streaming_response(
             stored.timeline.append(("tool", event.tool_use_id))
             # Paired with result event later
             if show_tool_status:
-                status_ctx = timeline.add_step(f":material/build: Using {event.name}...")
+                slot = timeline.add_slot()
+                status_ctx = slot.status(
+                    f"{_tool_icon(event.type)} Using {event.name}...",
+                    expanded=False,
+                    state="running",
+                    type="step",
+                )
                 # Show SQL inside the expander if available
                 if event.tool_use_id in stored.analyst_sql:
                     status_ctx.code(stored.analyst_sql[event.tool_use_id], language="sql")
                 tool_status_contexts[event.tool_use_id] = status_ctx
+                tool_slots[event.tool_use_id] = slot
 
         elif isinstance(event, ToolResultStatusEvent):
             if show_tool_status and event.tool_use_id in tool_status_contexts:
                 tool_status_contexts[event.tool_use_id].update(
-                    label=event.message or f"Running {event.tool_type}...",
+                    label=f"{_tool_icon(event.tool_type)} "
+                    + (event.message or f"Running {event.tool_type}..."),
                 )
 
         elif isinstance(event, ToolResultEvent):
@@ -447,14 +528,25 @@ def render_streaming_response(
                 result_text = "\n\n".join(text_parts)
                 stored.tool_result_text[event.tool_use_id] = result_text
                 container.markdown(escape_dollars(result_text))
-            if show_tool_status and event.tool_use_id in tool_status_contexts:
+            if (
+                show_tool_status
+                and use_event is not None
+                and event.tool_use_id in tool_status_contexts
+            ):
                 ctx = tool_status_contexts.pop(event.tool_use_id)
-                label, state = _tool_step_outcome(
-                    event, event.tool_use_id in stored.verified_tool_uses
-                )
+                slot = tool_slots.pop(event.tool_use_id)
+                verified = event.tool_use_id in stored.verified_tool_uses
+                label, state = _tool_step_outcome(use_event, event, verified)
                 if state == "error":
                     timeline.mark_failed()
-                ctx.update(label=label, state=state, expanded=state == "error")
+                if verified and state == "complete":
+                    # Swap the running status for a single shield marker.
+                    step = timeline.verified_step(slot, label, event.tool_use_id)
+                    sql = stored.analyst_sql.get(event.tool_use_id)
+                    if sql:
+                        step.code(sql, language="sql")
+                else:
+                    ctx.update(label=label, state=state, expanded=state == "error")
 
         elif isinstance(event, AnalystDeltaEvent):
             # Legacy path: pre-Apr 2026 deployments still emit analyst.delta
@@ -556,10 +648,11 @@ def render_streaming_response(
     for use_event in pending_tool_uses.values():
         if use_event is not stored.pending_permission:
             stored.tool_executions.append((use_event, None))
-    for ctx in tool_status_contexts.values():
+    for tool_use_id, ctx in tool_status_contexts.items():
         timeline.mark_failed()
+        label, _state = _tool_step_outcome(pending_tool_uses[tool_use_id], None, False)
         try:
-            ctx.update(label="Tool interrupted", state="error", expanded=False)
+            ctx.update(label=label, state="error", expanded=False)
         except Exception:
             logger.debug("Failed to close tool status context", exc_info=True)
 
@@ -745,11 +838,15 @@ def _render_stored_timeline(
             step = timeline.add_step(_THINKING_STEP_LABEL, thinking=True, state="complete")
             step.markdown(escape_dollars(segments[ref]))
         elif kind == "tool" and show_tool_status and ref in executions:
-            _use, result = executions[ref]
-            label, state = _tool_step_outcome(result, ref in msg.verified_tool_uses)
+            use, result = executions[ref]
+            verified = ref in msg.verified_tool_uses
+            label, state = _tool_step_outcome(use, result, verified)
             if state == "error":
                 timeline.mark_failed()
-            step = timeline.add_step(label, state=state)
+            if verified and state == "complete":
+                step = timeline.verified_step(timeline.add_slot(), label, str(ref))
+            else:
+                step = timeline.add_step(label, state=state)
             sql = msg.analyst_sql.get(ref)
             if sql:
                 step.code(sql, language="sql")

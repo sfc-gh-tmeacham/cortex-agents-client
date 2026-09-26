@@ -53,7 +53,7 @@ def make_container():
     container.status.return_value = status_ctx
     # Steps are nested statuses inside the outer timeline status.
     step_ctx = MagicMock()
-    status_ctx.status.return_value = step_ctx
+    status_ctx.empty.return_value.status.return_value = step_ctx
     return container
 
 
@@ -125,7 +125,7 @@ class TestRenderStreamingResponse:
         )
         container.status.assert_called_once()
         assert container.status.call_args.args[0] == "Reasoning"
-        container.status.return_value.status.assert_called_once()
+        container.status.return_value.empty.return_value.status.assert_called_once()
         container.expander.assert_not_called()
 
     def test_streaming_default_show_thinking_false_suppresses_expander(self):
@@ -337,14 +337,70 @@ class TestRenderStreamingResponse:
 
         render_streaming_response(event_stream(use, delta, result), container)
 
-        step_ctx = container.status.return_value.status.return_value
-        final_call = step_ctx.update.call_args_list[-1]
-        label = final_call.kwargs.get("label") or final_call.args[0]
-        assert ":material/verified:" in label
-        assert ":material/check_circle:" not in label
+        slot = container.status.return_value.empty.return_value
+        # The running status is replaced by one expander step with the shield
+        # icon, so the label carries no second icon.
+        slot.expander.assert_called_once()
+        call = slot.expander.call_args
+        assert call.kwargs["icon"] == ":material/verified_user:"
+        assert call.kwargs["type"] == "step"
+        assert call.args[0] == "MY_ANALYST (verified query)"
+        assert ":material/" not in call.args[0]
+        # CSS colors the shield green.
+        container.html.assert_called_once()
+        assert "#21c354" in container.html.call_args.args[0]
+        slot.expander.return_value.code.assert_called_once_with("SELECT 1", language="sql")
 
-    def test_non_verified_query_status_label_uses_check_circle_icon(self):
-        """When verified_query_used=False, completed status shows :material/check_circle: icon."""
+    def test_verified_query_replay_uses_single_shield_step(self):
+        """Replay renders a verified tool as the same single-shield expander step."""
+        live = make_container()
+        use = ToolUseEvent(
+            event_type="response.tool_use", tool_use_id="tid", type="system_execute_sql",
+            name="MY_ANALYST", input={"sql": "SELECT 1", "verified_query_used": True},
+        )
+        result = ToolResultEvent(
+            event_type="response.tool_result", tool_use_id="tid", type="system_execute_sql",
+            name="MY_ANALYST", status="success", content=[],
+        )
+        stored = render_streaming_response(event_stream(use, result), live)
+
+        replay = make_container()
+        render_stored_message(stored, replay)
+        slot = replay.status.return_value.empty.return_value
+        slot.expander.assert_called_once()
+        assert slot.expander.call_args.kwargs["icon"] == ":material/verified_user:"
+        slot.status.assert_not_called()
+
+    def test_tool_type_icon_mapping_and_failure_label(self):
+        """Each tool type keeps one label icon; failures say so in text, not with an icon."""
+        from streamlit_cortex_agents.chat.render import _tool_step_outcome
+
+        cases = {
+            "cortex_search": ":material/search:",
+            "cortex_analyst_text_to_sql": ":material/database:",
+            "system_execute_sql": ":material/database:",
+            "web_search": ":material/travel_explore:",
+            "generic": ":material/build:",
+        }
+        for tool_type, icon in cases.items():
+            use = ToolUseEvent(
+                event_type="response.tool_use", tool_use_id="t", type=tool_type,
+                name="T", input={},
+            )
+            ok = ToolResultEvent(
+                event_type="response.tool_result", tool_use_id="t", type=tool_type,
+                name="T", status="success", content=[],
+            )
+            bad = ToolResultEvent(
+                event_type="response.tool_result", tool_use_id="t", type=tool_type,
+                name="T", status="error", content=[],
+            )
+            assert _tool_step_outcome(use, ok, False) == (f"{icon} T", "complete")
+            assert _tool_step_outcome(use, bad, False) == (f"{icon} T failed", "error")
+            assert _tool_step_outcome(use, None, False) == (f"{icon} T interrupted", "error")
+
+    def test_non_verified_query_status_label_uses_tool_type_icon(self):
+        """A completed non-verified SQL tool keeps its database type icon, not a check."""
         container = make_container()
         use = ToolUseEvent(
             event_type="response.tool_use",
@@ -364,10 +420,11 @@ class TestRenderStreamingResponse:
 
         render_streaming_response(event_stream(use, result), container)
 
-        step_ctx = container.status.return_value.status.return_value
+        step_ctx = container.status.return_value.empty.return_value.status.return_value
         final_call = step_ctx.update.call_args_list[-1]
         label = final_call.kwargs.get("label") or final_call.args[0]
-        assert ":material/check_circle:" in label
+        assert label == ":material/database: MY_ANALYST"
+        assert ":material/check_circle:" not in label
         assert ":material/verified:" not in label
 
 
@@ -411,7 +468,7 @@ class TestRenderStoredMessage:
         render_stored_message(msg, container, show_thinking=True)
         container.status.assert_called_once()
         assert container.status.call_args.kwargs["expanded"] is False
-        step = container.status.return_value.status.return_value
+        step = container.status.return_value.empty.return_value.status.return_value
         step.markdown.assert_called_once_with("Let me think.")
         container.expander.assert_not_called()
 
@@ -645,7 +702,7 @@ def _think_delta(text: str) -> ThinkingDeltaEvent:
 
 def _step_labels(container) -> list[str]:
     """Returns the labels of steps nested in the outer timeline status."""
-    return [c.args[0] for c in container.status.return_value.status.call_args_list]
+    return [c.args[0] for c in container.status.return_value.empty.return_value.status.call_args_list]
 
 
 class TestReasoningTimeline:
@@ -693,7 +750,7 @@ class TestReasoningTimeline:
         assert "Thinking" in labels[0]
         assert "Using Analyst1" in labels[1]
         assert "Thinking" in labels[2]
-        for c in container.status.return_value.status.call_args_list:
+        for c in container.status.return_value.empty.return_value.status.call_args_list:
             assert c.kwargs["type"] == "step"
 
     def test_outer_starts_expanded_and_collapses_when_answer_starts(self):
@@ -765,8 +822,8 @@ class TestReasoningTimeline:
 
         replay = make_container()
         render_stored_message(stored, replay)
-        step_call = replay.status.return_value.status.call_args
-        assert step_call.args[0] == "Tool interrupted"
+        step_call = replay.status.return_value.empty.return_value.status.call_args
+        assert step_call.args[0] == ":material/database: Analyst1 interrupted"
         assert step_call.kwargs["state"] == "error"
 
     def test_replay_matches_live_step_order(self):
@@ -783,9 +840,9 @@ class TestReasoningTimeline:
         assert replay.status.call_args.kwargs["expanded"] is False
         labels = _step_labels(replay)
         assert "Thinking" in labels[0]
-        assert labels[1] == ":material/check_circle: Analyst1 complete"
+        assert labels[1] == ":material/database: Analyst1"
         assert "Thinking" in labels[2]
-        steps = replay.status.return_value.status.return_value
+        steps = replay.status.return_value.empty.return_value.status.return_value
         steps.markdown.assert_any_call("First thought.")
         steps.markdown.assert_any_call("Second thought.")
 
@@ -813,7 +870,7 @@ class TestReasoningTimeline:
         labels = _step_labels(replay)
         assert len(labels) == 2
         assert "Thinking" in labels[0]
-        assert "Analyst1 complete" in labels[1]
-        replay.status.return_value.status.return_value.code.assert_called_once_with(
+        assert labels[1] == ":material/database: Analyst1"
+        replay.status.return_value.empty.return_value.status.return_value.code.assert_called_once_with(
             "SELECT 1", language="sql"
         )
