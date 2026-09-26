@@ -46,15 +46,28 @@ CortexAgentChat(
 ).render()
 ```
 
-Features out of the box: streaming text with typewriter effect, tables and charts, tool execution status with SQL display, citation sources, suggested follow-up questions, a collapsible reasoning timeline of thinking and tool steps, and full conversation history across reruns. The chat input's Stop button cancels the agent run on the server, not just the display.
-
-**Layout modes:** `"fullpage"` (default — chat input pinned to bottom), `"embedded"` (scrollable container for dashboards, sized in pixels or with a CSS height that can fill the window), or render inside an `st.dialog` for a modal chat overlay.
-
 ![Chat UI example](img/ui-example.png)
 
 Also includes the complete Python client for the Cortex Agents REST API (`streamlit_cortex_agents.client`), usable on its own in scripts, notebooks, or custom integrations.
 
 > **Want a no-code experience?** Consider [Snowflake CoWork](https://docs.snowflake.com/en/user-guide/snowflake-cortex/snowflake-cowork) for delivering agents to users without building a custom app.
+
+## Features out of the box
+
+- Streaming text with typewriter effect
+- Tables and charts
+- Tool execution status with SQL display
+- Citation sources
+- Suggested follow-up questions
+- A collapsible reasoning timeline of thinking and tool steps
+- Full conversation history across reruns
+- A Stop button in the chat input that cancels the agent run on the server, not just the display
+
+## Layout modes
+
+- `"fullpage"` (default): chat input pinned to the bottom
+- `"embedded"`: scrollable container for dashboards, sized in pixels or with a CSS height that can fill the window
+- Inside an `st.dialog`: a modal chat overlay
 
 ## Try the demo
 
