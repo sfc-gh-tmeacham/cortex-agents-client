@@ -162,6 +162,9 @@ See [Python client](docs/python_api.md) for multi-turn conversations, all event 
 - **Streamlit-in-Snowflake apps run with the owner's rights.** `SiSContainerAuth` uses the app owner's token, and restricted caller's rights do not extend to the Cortex Agents REST API. Every viewer gets the Streamlit app owner's agent access. See [RBAC and role considerations](docs/sis.md#rbac-and-role-considerations).
   - Own the Streamlit app with a dedicated role that follows the principle of least privilege. Grant that role only the privileges the agent, its tools, and the app need. Do not own the app with `ACCOUNTADMIN`, `SYSADMIN`, or another broad role, because every viewer receives that role's agent access.
   - To isolate data per viewer, pass the viewer's identity in `variables` (session attributes) and filter on it in a row access policy. The policy enforces the boundary, not the API. See [Multi-tenancy](docs/python_api.md#multi-tenancy-session-attributes).
+- **External apps run with the rights of the credential in `auth`.** If all viewers share one PAT or key pair, every viewer gets that user's agent access. See [Choosing an identity](docs/streamlit_guide.md#choosing-an-identity).
+  - For a shared app, use a dedicated `TYPE = SERVICE` user with a least-privilege role. Do not use the credential of a human user.
+  - For per-viewer access, sign each viewer in with OAuth and pass the viewer's token to `OAuthAuth`.
 - **Streamlit-in-Snowflake requires the container runtime.** Warehouse runtime apps cannot call the Cortex Agents API.
 - **Not on PyPI.** Install from a clone of the GitHub repository. See [Installation](#installation).
 - **Unofficial and unsupported.** See [Disclaimer](#disclaimer).

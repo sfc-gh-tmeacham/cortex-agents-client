@@ -153,6 +153,66 @@ auth = JWTAuth(
 auth = OAuthAuth(oauth_token)
 ```
 
+### Choosing an identity
+
+The credential in `auth` sets whose access the agent uses. If the app uses one PAT or one key pair for all viewers, the app acts with that one user's rights. Every viewer gets that user's agent access and shares its thread namespace. This is the same model as the owner's rights in [Streamlit-in-Snowflake](sis.md#rbac-and-role-considerations).
+
+The Quickstart uses a PAT for your own user. Use that setup for local development only. Do not deploy a shared app with the credential of a human user.
+
+**When to use which identity:**
+- **Shared service user.** Use this when all viewers can see the same data, for example an internal app for one team.
+- **Per-viewer OAuth.** Use this when viewers must see different data, or when audit logs must show each viewer.
+
+#### Use a dedicated service user
+
+Create a user with `TYPE = SERVICE`. A service user cannot sign in with a password or through the web interface. Give the user a dedicated role that follows the principle of least privilege:
+
+```sql
+USE ROLE USERADMIN;
+CREATE ROLE IF NOT EXISTS cortex_chat_app_role;
+CREATE USER IF NOT EXISTS cortex_chat_app_svc
+  TYPE = SERVICE
+  DEFAULT_ROLE = cortex_chat_app_role;
+GRANT ROLE cortex_chat_app_role TO USER cortex_chat_app_svc;
+```
+
+Grant that role only the privileges that the agent and its tools need:
+- `USAGE` on the agent, and on its database and schema.
+- The `SNOWFLAKE.CORTEX_AGENT_USER` (or `SNOWFLAKE.CORTEX_USER`) database role.
+- Tool-level privileges: `SELECT` on tables for Cortex Analyst, `USAGE` on search services for Cortex Search, and a warehouse for SQL tools.
+
+Do not grant `ACCOUNTADMIN`, `SYSADMIN`, or another broad role to the service user. Every viewer receives that user's agent access.
+
+#### Choose a credential for the service user
+
+- **Key-pair JWT (`JWTAuth`).** Recommended for long-running services. The key pair does not expire, and you can rotate it with no downtime because a user can have two public keys (`RSA_PUBLIC_KEY` and `RSA_PUBLIC_KEY_2`). See [Key-pair authentication](https://docs.snowflake.com/en/user-guide/key-pair-auth).
+- **PAT (`PATAuth`).** Simpler to set up, but a PAT expires, 15 days by default and 365 days at most. For a service user, a PAT has two requirements:
+  - The user must be subject to a network policy. By default, Snowflake does not let a service user generate or use a PAT without one. Allow only the addresses of your app host.
+  - You must set `ROLE_RESTRICTION` when you generate the PAT. The session uses only that role.
+
+```sql
+ALTER USER cortex_chat_app_svc
+  ADD PROGRAMMATIC ACCESS TOKEN cortex_chat_app_token
+  ROLE_RESTRICTION = 'cortex_chat_app_role'
+  DAYS_TO_EXPIRY = 90;
+```
+
+See [Programmatic access tokens](https://docs.snowflake.com/en/user-guide/programmatic-access-tokens).
+
+#### Store and rotate the credential
+
+- Keep the PAT or private key in a secrets manager, or in `.streamlit/secrets.toml` that is not in version control. Do not put the credential in code.
+- Plan rotation before the credential expires. Rotate a PAT with `ALTER USER ... ROTATE PROGRAMMATIC ACCESS TOKEN`. Rotate a key pair by setting the new key in the second public-key slot, updating the app, and then removing the old key.
+- If a credential leaks, revoke it at once. Snowflake automatically disables PATs that are pushed to public GitHub repositories.
+
+#### Per-viewer identity with OAuth
+
+A shared service user cannot tell viewers apart. `CURRENT_USER()` is always the service user. For per-viewer access, sign each viewer in with OAuth (Snowflake OAuth or External OAuth). Then pass that viewer's access token to `OAuthAuth`. The agent then runs with the viewer's own role, and row access policies apply to each viewer.
+
+The library does not get or refresh OAuth tokens. Your app must do the OAuth flow, keep the token in `st.session_state`, and refresh it before it expires.
+
+If you must use a shared service user and still isolate data, pass the viewer's identity in `variables` and filter on it in a row access policy. See [Multi-tenancy](#multi-tenancy). The app sets the identity, so this is only as trusted as your app's sign-in.
+
 ---
 
 ## CortexAgentChat options
