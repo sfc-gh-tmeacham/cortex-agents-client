@@ -95,17 +95,30 @@ else:
         color="#29b5e8",
     )
 
-    # @st.dialog must be at module scope so Streamlit can persist the dialog
-    # across reruns. Calling the decorated function opens the modal.
-    @st.dialog("Cortex Agent", width="large")
+    # A session state flag keeps the dialog open across the chatbot's own
+    # reruns; without it the dialog closes after the first message.
+    if "chat_dialog_open" not in st.session_state:
+        st.session_state.chat_dialog_open = False
+
+    # Pre-seed messages so st.chat_input renders on the first dialog open.
+    st.session_state.setdefault("_ca_dlg_messages", [])
+
+    @st.dialog("Cortex Agent", width="large", dismissible=False)
     def _chat_dialog() -> None:
-        # A CSS height makes the chat fill the viewport; 300px covers the
-        # dialog title, the New conversation button and the chat input.
-        _make_bot("dlg", height="calc(100vh - 300px)").render()
+        if st.button("Close", icon=":material/close:", type="tertiary"):
+            st.session_state.chat_dialog_open = False
+            st.rerun()
+        # A CSS height makes the chat fill the viewport; 340px covers the
+        # dialog title, the Close and New conversation buttons and the chat input.
+        _make_bot("dlg", height="calc(100vh - 340px)").render()
 
     if st.button(
         "Ask the agent",
         icon=":material/chat:",
         type="primary",
     ):
+        st.session_state.chat_dialog_open = True
+
+    # Open the dialog last, after all other page content.
+    if st.session_state.chat_dialog_open:
         _chat_dialog()

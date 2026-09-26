@@ -111,7 +111,7 @@ def chat_turn(thread, message: str) -> None:
 def main() -> None:
     """Runs a multi-turn conversation demonstration."""
     client = CortexAgentsClient(ACCOUNT_URL, PAT_TOKEN)
-    thread = client.create_thread(origin_application="multi_turn_example")
+    thread = client.create_thread(origin_application="multi_turn")
 
     print(f"Thread ID: {thread.thread_id}")
 

@@ -546,11 +546,7 @@ class CortexAgentChat:
         if stored.error:
             logger.error("Agent returned error %s: %s", stored.error.code, stored.error.message)
         else:
-            logger.info(
-                "Response complete: status=%s message_id=%s",
-                getattr(stored, 'status', None) or 'success',
-                stored.message_id,
-            )
+            logger.info("Response complete: message_id=%s", stored.message_id)
         append_message_fn(stored, key=self._messages_key)
         # Rerun so _render_last_suggestions picks up the new message's
         # suggested_queries (it already ran earlier in the render cycle).

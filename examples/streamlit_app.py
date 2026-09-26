@@ -22,6 +22,6 @@ bot = CortexAgentChat(
     agent_path=AGENT_PATH,
     show_thinking=st.sidebar.toggle("Show reasoning", value=True),
     show_tool_status=True,
-    origin_application="streamlit_example",
+    origin_application="streamlit_app",
 )
 bot.render()

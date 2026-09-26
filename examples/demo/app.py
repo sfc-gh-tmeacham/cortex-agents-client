@@ -361,10 +361,11 @@ def page_code() -> None:
     st.subheader(":material/cloud: Streamlit-in-Snowflake (container runtime)")
     st.caption("No ``secrets.toml`` needed — Snowflake injects credentials automatically.")
     st.info(
-        "**Prerequisite: External Access Integration (EAI)**  \n"
-        "Container runtime apps must have an EAI that allows outbound HTTPS to the "
-        "Snowflake REST API. An ``ACCOUNTADMIN`` must create the EAI and grant it to "
-        "the role that owns the Streamlit app.",
+        "**Prerequisite: two External Access Integrations (EAIs)**  \n"
+        "Container runtime apps need one EAI for outbound HTTPS to the Cortex Agents "
+        "REST API and one for PyPI so ``uv`` can install packages. An ``ACCOUNTADMIN`` "
+        "must create them and grant them to the role that owns the Streamlit app. "
+        "See ``docs/sis.md``.",
         icon=":material/lock:",
     )
     st.code(
@@ -383,31 +384,36 @@ FROM (
     WHERE VALUE:type::VARCHAR IN ('SNOWFLAKE_DEPLOYMENT','SNOWFLAKE_DEPLOYMENT_REGIONLESS')
 );
 
--- 1. Network rule: allow outbound HTTPS to the Snowflake REST API.
+-- 1. Network rule: allow outbound HTTPS to the Cortex Agents REST API.
 --    Use the hostname(s) from the query above.
-CREATE OR REPLACE NETWORK RULE snowflake_rest_api_network_rule
-  MODE       = EGRESS
+CREATE OR REPLACE NETWORK RULE common_db.security.cortex_agents_api_rule
   TYPE       = HOST_PORT
+  MODE       = EGRESS
   VALUE_LIST = ('xy12345.us-east-1.snowflakecomputing.com',
                 'myorg-myaccount.snowflakecomputing.com',
                 'xy12345.us-east-1.privatelink.snowflakecomputing.com',
                 'myorg-myaccount.privatelink.snowflakecomputing.com');  -- ← paste your allowlist result
 
--- 2. External Access Integration referencing the rule.
-CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION snowflake_rest_api_eai
-  ALLOWED_NETWORK_RULES = (snowflake_rest_api_network_rule)
+-- 2. EAI for the Cortex Agents REST API.
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION cortex_agents_api_eai
+  ALLOWED_NETWORK_RULES = (common_db.security.cortex_agents_api_rule)
   ENABLED = TRUE;
 
--- 3. Grant usage to the role that owns the Streamlit app.
-GRANT USAGE ON INTEGRATION snowflake_rest_api_eai TO ROLE my_app_role;
+-- 3. EAI for PyPI, using Snowflake's managed network rule.
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION pypi_eai
+  ALLOWED_NETWORK_RULES = (snowflake.external_access.pypi_rule)
+  ENABLED = TRUE;
 
--- 4. Attach the EAI to the app.
---    Option A — Workspaces UI: in the Deploy dialog choose the Network section
---               and add snowflake_rest_api_eai, or go to App settings »
---               External network access after deploying.
+-- 4. Grant usage to the role that owns the Streamlit app.
+GRANT USAGE ON INTEGRATION cortex_agents_api_eai TO ROLE app_owner_role;
+GRANT USAGE ON INTEGRATION pypi_eai TO ROLE app_owner_role;
+
+-- 5. Attach both EAIs to the app.
+--    Option A — Workspaces UI: in the Deploy dialog open the Network tab
+--               and add both integrations.
 --    Option B — SQL (run as the app-owner role):
-ALTER STREAMLIT my_db.my_schema.my_agent_app
-  SET EXTERNAL_ACCESS_INTEGRATIONS = (snowflake_rest_api_eai);
+ALTER STREAMLIT my_db.my_schema.my_app
+  SET EXTERNAL_ACCESS_INTEGRATIONS = (cortex_agents_api_eai, pypi_eai);
 """.strip(),
         language="sql",
     )
@@ -461,7 +467,7 @@ CortexAgentChat(
 
     st.divider()
     st.subheader(":material/view_sidebar: Embedded")
-    st.caption("Chat in a fixed-height container alongside dashboard content. Requires Streamlit \u2265 1.59.")
+    st.caption("Chat in a fixed-height container alongside dashboard content.")
     st.code(
         """
 import streamlit as st
@@ -498,7 +504,12 @@ with chat_col:
 
     st.divider()
     st.subheader(":material/open_in_new: Dialog")
-    st.caption("Chat opens as a modal overlay when the user clicks a button. Uses ``mode=\"embedded\"`` inside ``@st.dialog``.")
+    st.caption(
+        "Chat opens as a modal overlay when the user clicks a button. Uses "
+        "``mode=\"embedded\"`` inside ``@st.dialog``. A session state flag keeps the "
+        "dialog open across the chatbot's reruns, and ``dismissible=False`` stops a "
+        "click outside from closing it."
+    )
     st.code(
         """
 import streamlit as st
@@ -511,23 +522,37 @@ AGENT_PATH            = "MY_DB.MY_SCHEMA.MY_AGENT"
 st.set_page_config(layout="wide")
 st.title("Sales Dashboard")
 
-# ... your dashboard content ...
+# Keep the dialog open across the chatbot's reruns.
+if "chat_dialog_open" not in st.session_state:
+    st.session_state.chat_dialog_open = False
 
-@st.dialog("Cortex Agent", width="large")
-def _chat():
+# Pre-seed messages so st.chat_input renders on the first dialog open.
+st.session_state.setdefault("_dlg_messages", [])
+
+@st.dialog("Ask the agent", width="large", dismissible=False)
+def _chat_dialog():
+    if st.button("Close", icon=":material/close:", type="tertiary"):
+        st.session_state.chat_dialog_open = False
+        st.rerun()
     CortexAgentChat(
         account_url=SNOWFLAKE_ACCOUNT_URL,
         auth=SNOWFLAKE_PAT,
         agent_path=AGENT_PATH,
         mode="embedded",
-        height=450,
-        session_key_prefix="_ca_dlg",
+        height="calc(100vh - 440px)",
+        session_key_prefix="_dlg",
         show_thinking=True,      # set False to hide agent reasoning steps
         show_tool_status=True,   # set False to hide tool-execution spinners
     ).render()
 
+# ... your dashboard content ...
+
 if st.button("Ask the agent", icon=":material/chat:", type="primary"):
-    _chat()
+    st.session_state.chat_dialog_open = True
+
+# Open the dialog last, after all other page content.
+if st.session_state.chat_dialog_open:
+    _chat_dialog()
 """.strip(),
         language="python",
     )

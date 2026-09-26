@@ -23,7 +23,14 @@ import time
 from abc import ABC, abstractmethod
 from pathlib import Path
 
-__all__ = ["AuthProvider", "PATAuth", "JWTAuth", "OAuthAuth", "SiSContainerAuth"]
+__all__ = [
+    "AuthProvider",
+    "PATAuth",
+    "JWTAuth",
+    "OAuthAuth",
+    "SiSContainerAuth",
+    "account_url_from_env",
+]
 
 _JWT_LIFETIME_SECONDS = 3600  # Max JWT validity per Snowflake docs
 
