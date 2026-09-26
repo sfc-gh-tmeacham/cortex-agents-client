@@ -61,7 +61,7 @@ Also includes the complete Python client for the Cortex Agents REST API (`stream
 The mock demo app shows the chat component working without a Snowflake account or credentials. Canned event streams in `examples/demo/mock_thread.py` stand in for the agent.
 
 ```bash
-git clone <this-repo> streamlit-cortex-agents
+git clone https://github.com/sfc-gh-tmeacham/streamlit-cortex-agents.git
 cd streamlit-cortex-agents
 uv sync
 uv run streamlit run examples/demo/app.py
@@ -94,7 +94,7 @@ Streamlit opens the app at `http://localhost:8501`. Then:
 > [!IMPORTANT]
 > Requires **Streamlit 1.64 or later**. Streamlit, pandas, and httpx are installed as core dependencies.
 
-This library is not currently published to PyPI or a public Git repository. Install it directly from a local clone of the project directory.
+This library is not published to PyPI. The source is on [GitHub](https://github.com/sfc-gh-tmeacham/streamlit-cortex-agents). Clone the repository and install from the local directory.
 
 For Streamlit-in-Snowflake, copy `src/streamlit_cortex_agents/` into your workspace instead. See [Deploying the app](docs/sis.md#deploying-the-app).
 
@@ -148,7 +148,7 @@ See [Python client](docs/python_api.md) for multi-turn conversations, all event 
 - **Attachments are not sent to the agent.** With `accept_file` or `accept_audio` enabled, files and audio appear in the chat and are kept for replay, but only the text prompt is sent. See [File and audio attachments](docs/streamlit_guide.md#file-and-audio-attachments).
 - **Streamlit-in-Snowflake apps run with the owner's rights.** `SiSContainerAuth` uses the app owner's token, and restricted caller's rights do not extend to the Cortex Agents REST API. Every viewer gets the owner's agent access. See [RBAC and role considerations](docs/sis.md#rbac-and-role-considerations).
 - **Streamlit-in-Snowflake requires the container runtime.** Warehouse runtime apps cannot call the Cortex Agents API.
-- **No package release.** Install from a local clone. See [Installation](#installation).
+- **Not on PyPI.** Install from a clone of the GitHub repository. See [Installation](#installation).
 - **Unofficial and unsupported.** See [Disclaimer](#disclaimer).
 
 ## Official documentation
