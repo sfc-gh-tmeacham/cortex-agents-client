@@ -35,9 +35,9 @@ httpx>=0.27,<1
 Or install the package directly with `pip` or `uv`:
 
 ```bash
-pip install /path/to/cortex-agents-client
+pip install /path/to/streamlit-cortex-agents
 # or with uv
-uv add /path/to/cortex-agents-client
+uv add /path/to/streamlit-cortex-agents
 ```
 
 ### Secrets configuration

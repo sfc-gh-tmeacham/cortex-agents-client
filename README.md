@@ -61,8 +61,8 @@ Also includes the complete Python client for the Cortex Agents REST API (`stream
 The mock demo app shows the chat component working without a Snowflake account or credentials. Canned event streams in `examples/demo/mock_thread.py` stand in for the agent.
 
 ```bash
-git clone <this-repo> cortex-agents-client
-cd cortex-agents-client
+git clone <this-repo> streamlit-cortex-agents
+cd streamlit-cortex-agents
 uv sync
 uv run streamlit run examples/demo/app.py
 ```
@@ -104,20 +104,20 @@ For Streamlit-in-Snowflake, copy `src/streamlit_cortex_agents/` into your worksp
 
 ```bash
 # Library (includes Streamlit)
-uv add /path/to/cortex-agents-client
+uv add /path/to/streamlit-cortex-agents
 
 # With JWT key-pair authentication
-uv add "/path/to/cortex-agents-client[jwt]"
+uv add "/path/to/streamlit-cortex-agents[jwt]"
 ```
 
 ### pip
 
 ```bash
 # Library (includes Streamlit)
-pip install /path/to/cortex-agents-client
+pip install /path/to/streamlit-cortex-agents
 
 # With JWT key-pair authentication
-pip install "/path/to/cortex-agents-client[jwt]"
+pip install "/path/to/streamlit-cortex-agents[jwt]"
 ```
 
 ## Python client quick start
