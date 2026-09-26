@@ -50,11 +50,31 @@ Features out of the box: streaming text with typewriter effect, tables and chart
 
 **Layout modes:** `"fullpage"` (default — chat input pinned to bottom), `"embedded"` (scrollable container for dashboards, sized in pixels or with a CSS height that can fill the window), or render inside an `st.dialog` for a modal chat overlay.
 
-![Embedded mode example](img/embed_example.png)
+![Chat UI example](img/ui-example.png)
 
 Also includes the complete Python client for the Cortex Agents REST API (`streamlit_cortex_agents.client`), usable on its own in scripts, notebooks, or custom integrations.
 
 > **Want a no-code experience?** Consider [Snowflake CoWork](https://docs.snowflake.com/en/user-guide/snowflake-cortex/snowflake-cowork) for delivering agents to users without building a custom app.
+
+## Try the demo
+
+The mock demo app shows the chat component working without a Snowflake account or credentials. Canned event streams in `examples/demo/mock_thread.py` stand in for the agent.
+
+```bash
+git clone <this-repo> cortex-agents-client
+cd cortex-agents-client
+uv sync
+uv run streamlit run examples/demo/app.py
+```
+
+On macOS with Apple silicon, prefix the last command with `ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0` to avoid a PyArrow crash.
+
+Streamlit opens the app at `http://localhost:8501`. Then:
+
+- Use the top navigation to switch between the **Full page**, **Embedded**, and **Dialog** layouts.
+- Pick a **Scenario** in the sidebar to see different agent responses: thinking, Cortex Search citations, Cortex Analyst SQL with tables, charts, clarification requests, warnings, errors, or a kitchen sink of every event type.
+- Toggle **Show reasoning** and **Show tool status** to see what those options change.
+- Open the **Code** page for copy-paste snippets of each layout.
 
 ## Documentation
 
@@ -122,6 +142,14 @@ for event in thread.chat("MY_AGENT", "What was total revenue in 2025?"):
 See [Python client](docs/python_api.md) for multi-turn conversations, all event types, background runs, and agent management.
 
 ---
+
+## Limitations
+
+- **Attachments are not sent to the agent.** With `accept_file` or `accept_audio` enabled, files and audio appear in the chat and are kept for replay, but only the text prompt is sent. See [File and audio attachments](docs/streamlit_guide.md#file-and-audio-attachments).
+- **Streamlit-in-Snowflake apps run with the owner's rights.** `SiSContainerAuth` uses the app owner's token, and restricted caller's rights do not extend to the Cortex Agents REST API. Every viewer gets the owner's agent access. See [RBAC and role considerations](docs/sis.md#rbac-and-role-considerations).
+- **Streamlit-in-Snowflake requires the container runtime.** Warehouse runtime apps cannot call the Cortex Agents API.
+- **No package release.** Install from a local clone. See [Installation](#installation).
+- **Unofficial and unsupported.** See [Disclaimer](#disclaimer).
 
 ## Official documentation
 
