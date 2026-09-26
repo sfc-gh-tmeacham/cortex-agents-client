@@ -476,6 +476,13 @@ This means:
 - `SNOWFLAKE.CORTEX_AGENT_USER` (or `SNOWFLAKE.CORTEX_USER`) database role granted to the app owner's role.
 - Tool-level privileges: `SELECT` on tables for Cortex Analyst, `USAGE` on search services for Cortex Search.
 
+### Choose a least-privilege owner role
+
+Every viewer receives the app owner's agent access. Thus, own the Streamlit app with a dedicated role that follows the principle of least privilege (in the setup steps, `app_owner_role`):
+- Grant that role only the privileges that the agent, its tools, and the app need. These are the agent access grants above, `USAGE` on the external access integrations, and the privileges to create and run the app.
+- Do not own the app with `ACCOUNTADMIN`, `SYSADMIN`, or another broad role. If you do, every viewer receives that role's agent access.
+- The setup steps use `ACCOUNTADMIN` only to create the external access integrations. After that step, use `app_owner_role` to create and own the app.
+
 ### Restricted Caller's Rights
 
 As of June 1, 2026 (GA), container runtime apps support **Restricted Caller's Rights** (requires Streamlit ≥ 1.53.1). This mode runs Snowflake connections with the viewer's privileges, not the owner's. In this mode, `st.connection("snowflake-callers-rights")` gives a SQL connection scoped to the viewer's role. Queries on it obey per-user row access policies.
