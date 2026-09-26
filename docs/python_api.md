@@ -2,11 +2,11 @@
 
 # Core Python API
 
-The chat component is built on this REST client (`streamlit_cortex_agents.client`), which you can also use directly. The sections below apply to all environments — scripts, notebooks, external Streamlit, and SiS.
+The chat component uses this REST client (`streamlit_cortex_agents.client`). You can also use the client directly. The sections below apply to all environments: scripts, notebooks, external Streamlit, and SiS.
 
 ## Authentication
 
-> **Streamlit-in-Snowflake (container runtime)**: credentials are injected automatically by Snowflake. Use `SiSContainerAuth()` — no token management needed. See [Streamlit-in-Snowflake → Authentication](sis.md#prerequisites--external-access-integrations).
+> **Streamlit-in-Snowflake (container runtime)**: Snowflake injects credentials automatically. Use `SiSContainerAuth()`. You do not need to manage tokens. See [Streamlit-in-Snowflake → Authentication](sis.md#prerequisites--external-access-integrations).
 
 ### PAT (Programmatic Access Token) — recommended
 
@@ -19,7 +19,7 @@ client = CortexAgentsClient(
 
 ### JWT (RSA key-pair)
 
-Requires the `[jwt]` extra — see [Installation](../README.md#installation).
+JWT requires the `[jwt]` extra. See [Installation](../README.md#installation).
 
 ```python
 from streamlit_cortex_agents.client.auth import JWTAuth
@@ -63,7 +63,7 @@ for event in thread.chat("MY_AGENT", "What was total revenue in 2025?"):
 
 ## Multi-turn conversations
 
-The `Thread` class tracks `parent_message_id` automatically so you never have to manage it:
+The `Thread` class tracks `parent_message_id` automatically, so you never have to manage it:
 
 ```python
 thread = client.create_thread(origin_application="my_app")
@@ -170,14 +170,14 @@ for event in thread.chat("MY_AGENT", "Show me the top 5 customers by revenue"):
         print(f"\n[Unknown event type: {event.event_type}]")
 ```
 
-Every event also carries `event.sequence_number` — its position in the run's output, and the
-cursor value for `client.stream_run(run_id, starting_after=...)`. It is `None` if the server
-omits it. The stream's terminal `[DONE]` marker is consumed by the parser and never reaches
+Every event also carries `event.sequence_number`. This value is the event's position in the run's output.
+It is also the cursor value for `client.stream_run(run_id, starting_after=...)`. It is `None` if the server
+omits it. The parser consumes the stream's terminal `[DONE]` marker, so the marker never reaches
 your loop.
 
-The 18 classes above are the complete set. For the wire format behind each one — the raw
-`event:` / `data:` frames and the `event_type` strings that `UnknownEvent.event_type` reports
-for tools this version does not yet model — see [event_types.md](event_types.md).
+The 18 classes above are the complete set. For the wire format behind each class, see [event_types.md](event_types.md).
+That page shows the raw `event:` / `data:` frames. It also lists the `event_type` strings that
+`UnknownEvent.event_type` reports for tools this version does not yet model.
 
 ## Non-streaming run
 
@@ -193,14 +193,13 @@ if result.metadata:
     print(result.run_id, result.metadata.assistant_message_id)
 ```
 
-> **Note:** `result.suggested_queries` is only populated on the streaming path
-> (`stream_and_collect` / `SuggestedQueriesEvent`). The non-streaming parser
-> (`client.run()`) does not fill it — the list is always empty for non-streaming
-> runs.
+> **Note:** Only the streaming path (`stream_and_collect` / `SuggestedQueriesEvent`)
+> fills `result.suggested_queries`. The non-streaming parser (`client.run()`)
+> does not fill it. The list is always empty for non-streaming runs.
 
 ## Background (asynchronous) runs
 
-By default a run times out after 15 minutes. Set `background=True` to raise that to 6 hours; the
+By default a run times out after 15 minutes. Set `background=True` to raise that to 6 hours. The
 run then survives a client disconnect. Background runs require a thread.
 
 ```python
@@ -225,10 +224,10 @@ for event in client.stream_run(run_id, starting_after=42):
 ```
 
 A run's events stay available while it is active and for at least 5 minutes after it completes.
-The 5-minute window is the documented contract; live testing observed availability beyond it, so
-treat it as a lower bound on availability, not a guarantee that the run has expired. After the
-window closes, `stream_run` raises `RunNotActiveError` and the response must be read back from
-the thread.
+The 5-minute window is the documented contract. Live testing observed availability beyond it.
+Treat the window as a lower bound on availability, not a guarantee that the run has expired.
+After the window closes, `stream_run` raises `RunNotActiveError`. You must then read the response
+from the thread.
 
 `Thread.chat` accepts the same flag:
 
@@ -252,7 +251,7 @@ else:
         print(f"Continue from message {metadata.assistant_message_id}")
 ```
 
-Partial output produced before cancellation is saved to the thread and billed.
+If you cancel a run, the partial output that it produced is saved to the thread and billed.
 
 ## Runs without an agent object (lite runs)
 
@@ -269,8 +268,8 @@ result = client.runs.run(
 )
 ```
 
-`models`, `instructions`, `orchestration`, `tools`, and `tool_resources` apply to lite runs only —
-the API rejects attempts to set them on an agent-object run. Change the agent with
+`models`, `instructions`, `orchestration`, `tools`, and `tool_resources` apply to lite runs only.
+The API rejects attempts to set them on an agent-object run. Change the agent with
 `client.agents.update()` instead.
 
 > The older `model="claude-4-sonnet"` argument is deprecated. It still works and maps into
@@ -346,7 +345,7 @@ for event in fork.chat("MY_AGENT", "What about revenue by region instead?"):
 
 ## Multi-tenancy (session attributes)
 
-One agent can serve several tenants while keeping their data apart. Pass `variables` to any run; Snowflake sets each one as a session attribute before the agent runs its generated SQL, and a row access policy filters rows on it. See [Multi-tenancy for Cortex Agents](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-multi-tenancy).
+One agent can serve several tenants while keeping their data apart. Pass `variables` to any run. Snowflake sets each variable as a session attribute before the agent runs its generated SQL. A row access policy then filters rows on the attribute. See [Multi-tenancy for Cortex Agents](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-multi-tenancy).
 
 ```python
 # Shorthand: each value becomes an immutable string/number/boolean attribute
@@ -361,7 +360,7 @@ client.run(
 )
 ```
 
-`variables` is accepted by `thread.chat`, `client.stream`, `client.run`, `client.runs.stream`, `client.runs.run` and `client.runs.stream_and_collect`. `thread.chat` sends it on every request of the turn, including client-side tool follow-ups. Leave it out and requests are unchanged.
+`variables` is accepted by `thread.chat`, `client.stream`, `client.run`, `client.runs.stream`, `client.runs.run` and `client.runs.stream_and_collect`. `thread.chat` sends it on every request of the turn, including client-side tool follow-ups. If you omit it, requests are unchanged.
 
 Pair it with a row access policy that reads the attribute:
 
@@ -374,7 +373,7 @@ ALTER TABLE db1.schema1.sales ADD ROW ACCESS POLICY rap_region_filter ON (region
 ```
 
 > [!IMPORTANT]
-> Tenant isolation is a shared responsibility. The library only sends the attributes; your row access policies must enforce the boundary. Keep attributes immutable (the default) so generated SQL cannot change them, and test each policy on its own before relying on it.
+> Tenant isolation is a shared responsibility. The library only sends the attributes. Your row access policies must enforce the boundary. Keep attributes immutable (the default) so generated SQL cannot change them, and test each policy on its own before relying on it.
 
 ## Exception handling
 
@@ -415,7 +414,7 @@ except ServerError as exc:
 ```
 
 `RunNotActiveError` applies only to `stream_run` and `cancel_run`. It means the run has
-already finished or is outside its retention window — read the response from the thread
+already finished or is outside its retention window. In that case, read the response from the thread
 instead:
 
 ```python

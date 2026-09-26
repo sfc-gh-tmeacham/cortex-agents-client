@@ -232,3 +232,16 @@ class StoredMessage:
     chatbot component uses this to show an approval UI on the next rerun, then
     clears it once the user submits a decision.
     """
+    thinking_segments: list[str] = field(default_factory=list)
+    """Reasoning text split into segments by tool calls.
+
+    Each segment is one uninterrupted run of thinking. ``thinking`` holds all
+    segments joined for callers that only need the full text.
+    """
+    timeline: list[tuple[str, int | str]] = field(default_factory=list)
+    """Ordered reasoning and tool steps for replay.
+
+    Each entry is ``('thinking', segment_index)`` or ``('tool', tool_use_id)``.
+    Empty for legacy messages — the replay function falls back to one
+    reasoning step followed by the tool steps.
+    """

@@ -8,7 +8,7 @@ For Streamlit-in-Snowflake (container runtime) deployment, see [Streamlit-in-Sno
 
 ## Using the chat component
 
-The `streamlit_cortex_agents.chat` subpackage provides a high-level drop-in chatbot component (`CortexAgentChat`) as well as modular session-state and rendering helpers for custom Streamlit integrations.
+The `streamlit_cortex_agents.chat` subpackage provides a high-level drop-in chatbot component (`CortexAgentChat`). It also provides session-state and rendering helpers for custom Streamlit integrations.
 
 ---
 
@@ -51,7 +51,7 @@ SNOWFLAKE_PAT         = "v2:..."
 
 `SNOWFLAKE_PAT` is a Programmatic Access Token. Generate one in Snowsight under **Governance & security → Users & roles → your user → Programmatic access tokens**.
 
-The agent path is not sensitive and can be configured directly in your application code.
+The agent path is not sensitive. You can set it directly in your application code.
 
 ### Quickstart
 
@@ -111,7 +111,7 @@ for msg in get_messages():
         if msg.role == "user":
             st.markdown(escape_dollars(msg.text))
         else:
-            render_stored_message(msg, st, show_thinking=False)
+            render_stored_message(msg, st, show_thinking=False, show_tool_status=True)
 
 if prompt := st.chat_input("Ask about revenue..."):
     with st.chat_message("user"):
@@ -127,6 +127,8 @@ if prompt := st.chat_input("Ask about revenue..."):
         )
     append_message(stored)
 ```
+
+Pass the same `show_thinking` and `show_tool_status` values to `render_stored_message` and `render_streaming_response`. The replayed reasoning timeline then matches what the user saw while the answer streamed.
 
 > **Note on `reset_thread`:** In manual integrations, `origin_application` defaults to `None` in `reset_thread()`. Pass `origin_application="my_app"` matching `init_session` to preserve thread tagging across resets.
 
@@ -177,9 +179,9 @@ bot.render()
 
 ### Embedded mode
 
-Fits inside any Streamlit container — a column, dialog, sidebar, or expander. Uses a scrollable message area and an inline `st.chat_input`.
+Embedded mode fits inside any Streamlit container: a column, dialog, sidebar, or expander. It uses a scrollable message area and an inline `st.chat_input`.
 
-The `height` parameter sets the scrollable message area height: pixels as an `int` (default `450`), or a CSS height string such as `"calc(100vh - 300px)"`. A string height allows the chat to fill an `st.dialog`, which has no height option of its own.
+The `height` parameter sets the height of the scrollable message area. Use pixels as an `int` (default `450`), or a CSS height string such as `"calc(100vh - 300px)"`. A string height lets the chat fill an `st.dialog`, which has no height option of its own.
 
 ```python
 # Two-column layout
@@ -196,7 +198,7 @@ with chat_col:
     ).render()
 ```
 
-Inside an `@st.dialog`, drive display with a session state flag and set `dismissible=False` so the dialog persists across reruns triggered internally by the chatbot:
+Inside an `@st.dialog`, control display with a session state flag. Set `dismissible=False` so the dialog persists across reruns that the chatbot triggers internally:
 
 ```python
 # Modal dialog
@@ -229,9 +231,9 @@ if st.session_state.chat_dialog_open:
 
 ### File and audio attachments
 
-Files and audio uploaded via `accept_file` or `accept_audio` are displayed in the user bubble and saved in `StoredMessage.attachments` for replay across reruns, but are **not forwarded to the agent**.
+The chatbot displays files and audio uploaded via `accept_file` or `accept_audio` in the user bubble. It saves them in `StoredMessage.attachments` for replay across reruns. It does **not forward them to the agent**.
 
-The Cortex Agents REST API currently supports only `text` content items in user messages — there is no inline file, image, or audio input schema for the chat run endpoint. Only the typed text portion of the prompt reaches the agent:
+The Cortex Agents REST API currently supports only `text` content items in user messages. The chat run endpoint has no inline file, image, or audio input schema. Only the typed text portion of the prompt reaches the agent:
 
 ```python
 bot = CortexAgentChat(
@@ -273,7 +275,7 @@ bot = CortexAgentChat(
 )
 ```
 
-Tools that require user consent (`ToolUseEvent.permission_options` is non-empty) automatically display an interactive permission approval UI before executing.
+For tools that require user consent (`ToolUseEvent.permission_options` is non-empty), the chatbot automatically displays a permission approval UI before the tool runs.
 
 ### Working with table results
 
@@ -309,25 +311,26 @@ See [Python API: Multi-tenancy (session attributes)](python_api.md#multi-tenancy
 
 ### Elicitation
 
-When the agent requires clarification before proceeding, it emits a `TextEvent` with `is_elicitation=True`. Both `render_streaming_response` and `render_stored_message` render this turn in an info callout (`st.info(..., icon=":material/contact_support:", title="Clarification needed")`) instead of plain markdown. In custom renderers, check `msg.is_elicitation` on `StoredMessage`.
+When the agent needs clarification before it continues, it emits a `TextEvent` with `is_elicitation=True`. Both `render_streaming_response` and `render_stored_message` render this turn in an info callout (`st.info(..., icon=":material/contact_support:", title="Clarification needed")`) instead of plain markdown. In custom renderers, check `msg.is_elicitation` on `StoredMessage`.
 
 ### Suggested follow-up queries
 
 When the agent returns `response.suggested_queries` events, the chatbot renders them as `st.pills` below the last assistant message. Clicking a pill submits it as the next prompt.
 
 - Suggestions appear only for the **most recent** assistant message (stale suggestions are hidden).
-- When a thread has no messages, the chatbot fetches the agent specification and displays up to five starter questions (`agent_spec.instructions.sample_questions[:5]`). The spec is cached in `st.session_state["_ca_agent_spec"]`; if fetching the spec fails, the error is swallowed and starter questions simply do not appear.
+- When a thread has no messages, the chatbot fetches the agent specification and displays up to five starter questions (`agent_spec.instructions.sample_questions[:5]`). The chatbot caches the spec in `st.session_state["_ca_agent_spec"]`. If the spec fetch fails, the error is swallowed and no starter questions appear.
 - Clicking a pill stores the text in `st.session_state["_ca_pending_suggestion"]` and clears the widget value before triggering a rerun.
 
 ### CSS targeting via widget keys
 
-All rendered widgets receive stable `key` values producing `.st-key-*` CSS classes in the DOM:
+All rendered widgets receive stable `key` values. These keys produce `.st-key-*` CSS classes in the DOM:
 
-Key pattern: `{css_prefix}-{msg_index}-{widget_type}` where `css_prefix` is derived from `session_key_prefix` (leading underscore stripped).
+Key pattern: `{css_prefix}-{msg_index}-{widget_type}` where `css_prefix` comes from `session_key_prefix` with the leading underscore removed.
 
 | Widget | Key format | CSS class |
 |---|---|---|
-| Thinking expander | `{css_prefix}-{i}-thinking` | `.st-key-ca-{i}-thinking` |
+| Reasoning timeline (thinking and tool steps) | `{css_prefix}-{i}-thinking` | `.st-key-ca-{i}-thinking` |
+| Verified-query step | `{css_prefix}-{i}-verified-step-{tool_use_id}` | `.st-key-ca-{i}-verified-step-toolu_01` |
 | Table dataframe | `{css_prefix}-{i}-table-{n}` | `.st-key-ca-{i}-table-0` |
 | Chart container | `{css_prefix}-{i}-chart-{n}` | `.st-key-ca-{i}-chart-0` |
 | Sources expander | `{css_prefix}-{i}-sources` | `.st-key-ca-{i}-sources` |
@@ -342,7 +345,7 @@ Manual integration users can pass `key_prefix` directly to `render_streaming_res
 
 | Function | Description |
 |---|---|
-| `init_session(account_url, auth, ...)` | Creates client and thread on first call; returns cached objects on subsequent reruns |
+| `init_session(account_url, auth, ...)` | Creates client and thread on first call. Returns cached objects on later reruns |
 | `sis_init_session(*, origin_application=None, ...)` | Keyword-only helper for SiS container runtime that reads credentials from the container environment |
 | `get_messages(key="_ca_messages")` | Returns the current `list[StoredMessage]` |
 | `append_message(msg, key="_ca_messages")` | Appends a `StoredMessage` to session state history |
@@ -354,16 +357,16 @@ Manual integration users can pass `key_prefix` directly to `render_streaming_res
 
 | Scenario | Approach |
 |---|---|
-| Single conversation per session | `init_session()` / `sis_init_session()` once — thread persists for the browser session |
-| Start over | `reset_thread(origin_application=...)` — clears history and creates a fresh thread |
-| Resume a previous conversation | Store `thread.thread_id`; call `client.get_thread(thread_id, parent_message_id=last_id)` |
+| Single conversation per session | `init_session()` / `sis_init_session()` once. The thread persists for the browser session |
+| Start over | `reset_thread(origin_application=...)`. It clears history and creates a new thread |
+| Resume a previous conversation | Store `thread.thread_id`. Call `client.get_thread(thread_id, parent_message_id=last_id)` |
 | Branch a conversation | `thread.fork(at_message_id=N)` |
 
 ---
 
 ## `escape_dollars(text)`
 
-Wrap user-supplied text before passing it to `st.markdown()` to prevent Streamlit from interpreting `$N` patterns as LaTeX math:
+Wrap user-supplied text before you pass it to `st.markdown()`. This stops Streamlit from reading `$N` patterns as LaTeX math:
 
 ```python
 st.markdown(escape_dollars(user_text))
@@ -375,7 +378,7 @@ Both `render_streaming_response` and `render_stored_message` invoke `escape_doll
 
 ## macOS note (ARM64)
 
-If Streamlit crashes with a segmentation fault when rendering DataFrames on Apple Silicon, pass these environment variables inline in the shell command before starting Streamlit:
+If Streamlit crashes with a segmentation fault when it renders DataFrames on Apple Silicon, pass these environment variables inline in the shell command that starts Streamlit:
 
 ```bash
 ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 streamlit run app.py
@@ -385,7 +388,7 @@ ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run app.py
 
 > **Note:** Setting these environment variables in Python code is too late because PyArrow is imported during startup. Pass them in the terminal invocation.
 
-This is a known PyArrow mimalloc allocator issue on macOS ARM64 and does not affect Linux deployments. See upstream issues: [microsoft/mimalloc#343](https://github.com/microsoft/mimalloc/issues/343) and [apache/arrow#41696](https://github.com/apache/arrow/issues/41696).
+This is a known PyArrow mimalloc allocator issue on macOS ARM64. It does not affect Linux deployments. See upstream issues: [microsoft/mimalloc#343](https://github.com/microsoft/mimalloc/issues/343) and [apache/arrow#41696](https://github.com/apache/arrow/issues/41696).
 
 ---
 

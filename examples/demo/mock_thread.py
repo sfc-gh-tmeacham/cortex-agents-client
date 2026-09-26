@@ -505,6 +505,72 @@ def _scenario_thinking(prompt: str) -> Iterator[SSEEvent]:
     yield _metadata(2)
 
 
+def _scenario_multi_step_reasoning(prompt: str) -> Iterator[SSEEvent]:
+    """Streams think, search, think, query, think, then the answer.
+
+    Each run of thinking is split by a tool call, so the reasoning timeline
+    shows alternating thinking and tool steps.
+
+    Args:
+        prompt: The user's input text.
+
+    Yields:
+        :class:`~streamlit_cortex_agents.client.models.events.SSEEvent` objects.
+    """
+    yield from _stream_thinking(
+        f'The user asked: "{prompt}"\n\n'
+        "I should check the product knowledge base for context first."
+    )
+    yield ToolUseEvent(
+        event_type="response.tool_use",
+        tool_use_id="tool_ms_001",
+        type="cortex_search",
+        name="PRODUCT_KNOWLEDGE_BASE",
+        input={"query": prompt, "limit": 3},
+    )
+    time.sleep(0.4)
+    yield ToolResultEvent(
+        event_type="response.tool_result",
+        tool_use_id="tool_ms_001",
+        type="cortex_search",
+        name="PRODUCT_KNOWLEDGE_BASE",
+        status="success",
+        content=[],
+    )
+    yield from _stream_thinking(
+        "The documents mention regional sales targets. "
+        "Next I'll query actual Q1 2026 revenue by region."
+    )
+    yield ToolUseEvent(
+        event_type="response.tool_use",
+        tool_use_id="tool_ms_002",
+        type="system_execute_sql",
+        name="system_execute_sql",
+        input={
+            "semantic_model": "SalesAnalyst",
+            "sql": _ANALYST_SQL,
+            "verified_query_used": True,
+        },
+    )
+    time.sleep(0.4)
+    yield ToolResultEvent(
+        event_type="response.tool_result",
+        tool_use_id="tool_ms_002",
+        type="system_execute_sql",
+        name="system_execute_sql",
+        status="success",
+        content=[],
+    )
+    yield from _stream_thinking(
+        "North America leads on revenue. I'll summarise the ranking."
+    )
+    yield from _stream_text(
+        "**North America** leads Q1 2026 at $452K, followed by **Europe** at "
+        "$381K and **Asia Pacific** at $294K."
+    )
+    yield _metadata(13)
+
+
 def _scenario_cortex_search(prompt: str) -> Iterator[SSEEvent]:
     """Simulates Cortex Search tool use with citations in the response.
 
@@ -949,6 +1015,7 @@ SCENARIO_NAMES: list[str] = [
 SCENARIOS: dict[str, Any] = {
     "Simple text": _scenario_simple_text,
     "Thinking": _scenario_thinking,
+    "Multi-step reasoning": _scenario_multi_step_reasoning,
     "Cortex Search": _scenario_cortex_search,
     "Cortex Analyst": _scenario_cortex_analyst,
     "Cortex Analyst (Verified)": _scenario_cortex_analyst_verified,
@@ -963,7 +1030,8 @@ SCENARIOS: dict[str, Any] = {
 #: One-line description shown as an info banner in the demo UI.
 SCENARIO_HINTS: dict[str, str] = {
     "Simple text": "Streaming text deltas → final TextEvent + suggested follow-up queries as clickable buttons.",
-    "Thinking": "ThinkingDeltaEvent blocks before the answer. Toggle 'Show reasoning' in the sidebar to show/hide the expander.",
+    "Thinking": "ThinkingDeltaEvent blocks before the answer, shown as a step in the Reasoning timeline. Toggle 'Show reasoning' in the sidebar to show/hide it.",
+    "Multi-step reasoning": "Thinking split by two tool calls: think → search → think → SQL → think → answer. The timeline shows alternating steps and collapses when the answer starts.",
     "Cortex Search": "ToolUse + ToolResultStatus + ToolResult + citations + suggested queries. Tests the compact status spinner and success state.",
     "Cortex Analyst": "system_execute_sql tool with SQL in input, ToolResult, TableEvent result, and suggested follow-up queries.",
     "Cortex Analyst (Verified)": "Same as Cortex Analyst but verified_query_used=True → status expander shows the verified icon instead of check_circle.",

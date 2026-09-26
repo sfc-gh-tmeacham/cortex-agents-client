@@ -78,12 +78,12 @@ st.sidebar.divider()
 show_thinking = st.sidebar.toggle(
     "Show reasoning",
     value=True,
-    help="Render ThinkingEvent blocks in a collapsible expander.",
+    help="Render ThinkingEvent blocks as steps in the Reasoning timeline.",
 )
 show_tool_status = st.sidebar.toggle(
     "Show tool status",
     value=True,
-    help="Show compact status spinners during tool execution.",
+    help="Show tool calls as steps in the Reasoning timeline.",
 )
 accept_file = st.sidebar.toggle(
     "Allow file attachments",
