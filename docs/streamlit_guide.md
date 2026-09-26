@@ -231,9 +231,11 @@ if st.session_state.chat_dialog_open:
 
 ### File and audio attachments
 
-The chatbot displays files and audio uploaded via `accept_file` or `accept_audio` in the user bubble. It saves them in `StoredMessage.attachments` for replay across reruns. It does **not forward them to the agent**.
+The chat input can accept files and audio, but attachments are display only. The chatbot shows files and audio uploaded via `accept_file` or `accept_audio` in the user bubble. It saves them in `StoredMessage.attachments` for replay across reruns. It does **not forward them to the agent**.
 
-The Cortex Agents REST API currently supports only `text` content items in user messages. The chat run endpoint has no inline file, image, or audio input schema. Only the typed text portion of the prompt reaches the agent:
+**Why:** the [Cortex Agents Run API](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-run) accepts only text in user messages. Its message schema has no content type for files, images, or audio, so there is no field to send an attachment in. This is an API limit, not a missing feature in this library.
+
+Use attachments to show users what they uploaded. To act on a file, process it in your own app code with a [manual integration](#manual-integration). Only the typed text of the prompt reaches the agent:
 
 ```python
 bot = CortexAgentChat(

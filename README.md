@@ -158,8 +158,10 @@ See [Python client](docs/python_api.md) for multi-turn conversations, all event 
 
 ## Limitations
 
-- **Attachments are not sent to the agent.** With `accept_file` or `accept_audio` enabled, files and audio appear in the chat and are kept for replay, but only the text prompt is sent. See [File and audio attachments](docs/streamlit_guide.md#file-and-audio-attachments).
-- **Streamlit-in-Snowflake apps run with the owner's rights.** `SiSContainerAuth` uses the app owner's token, and restricted caller's rights do not extend to the Cortex Agents REST API. Every viewer gets the owner's agent access. See [RBAC and role considerations](docs/sis.md#rbac-and-role-considerations).
+- **Attachments are display only.** With `accept_file` or `accept_audio` enabled, files and audio are shown and replayed in the chat, not sent to the agent. The Cortex Agents Run API accepts only text. See [File and audio attachments](docs/streamlit_guide.md#file-and-audio-attachments).
+- **Streamlit-in-Snowflake apps run with the owner's rights.** `SiSContainerAuth` uses the app owner's token, and restricted caller's rights do not extend to the Cortex Agents REST API. Every viewer gets the Streamlit app owner's agent access. See [RBAC and role considerations](docs/sis.md#rbac-and-role-considerations).
+  - Own the Streamlit app with a dedicated role that follows the principle of least privilege. Grant that role only the privileges the agent, its tools, and the app need. Do not own the app with `ACCOUNTADMIN`, `SYSADMIN`, or another broad role, because every viewer receives that role's agent access.
+  - To isolate data per viewer, pass the viewer's identity in `variables` (session attributes) and filter on it in a row access policy. The policy enforces the boundary, not the API. See [Multi-tenancy](docs/python_api.md#multi-tenancy-session-attributes).
 - **Streamlit-in-Snowflake requires the container runtime.** Warehouse runtime apps cannot call the Cortex Agents API.
 - **Not on PyPI.** Install from a clone of the GitHub repository. See [Installation](#installation).
 - **Unofficial and unsupported.** See [Disclaimer](#disclaimer).

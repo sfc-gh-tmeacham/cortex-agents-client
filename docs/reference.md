@@ -33,8 +33,8 @@
 | `session_key_prefix` | No | `"_ca"` | `st.session_state` key prefix. Change it when you run multiple bots on one page |
 | `default_database` | No | `None` | Default database |
 | `default_schema` | No | `None` | Default schema |
-| `accept_file` | No | `False` | `True`, `"multiple"`, `"directory"`, or `False`. Attachments are displayed and replayed but **not forwarded to the agent** |
-| `accept_audio` | No | `False` | Enable microphone input. Recordings are displayed and replayed but **not forwarded to the agent** |
+| `accept_file` | No | `False` | `True`, `"multiple"`, `"directory"`, or `False`. Display only: attachments are shown and replayed in the chat, **not sent to the agent**. See [File and audio attachments](streamlit_guide.md#file-and-audio-attachments) |
+| `accept_audio` | No | `False` | Enable microphone input. Display only: recordings are shown and replayed in the chat, **not sent to the agent** |
 | `file_type` | No | `None` | Allowed extensions, e.g. `["pdf","csv"]`. Applies only when `accept_file` is set. `None` = all types |
 | `tool_executor` | No | `None` | Callable for client-side tool execution |
 | `variables` | No | `None` | Session attributes for multi-tenancy: a mapping, or a callable returning one, called once per prompt |
