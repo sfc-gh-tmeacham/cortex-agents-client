@@ -303,6 +303,7 @@ class CortexAgentChat:
                     render_stored_message(
                         msg, st,
                         show_thinking=self._show_thinking,
+                        show_tool_status=self._show_tool_status,
                         key_prefix=f"{self._css_prefix}-{msg_idx}",
                     )
 

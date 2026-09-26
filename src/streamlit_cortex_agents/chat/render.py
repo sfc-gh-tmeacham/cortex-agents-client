@@ -5,11 +5,11 @@ Provides two rendering code paths that produce equivalent content:
 1. :func:`render_streaming_response`: Used during live streaming of a new
    assistant turn. Renders each event type as it arrives and returns a
    :class:`~streamlit_cortex_agents.client.models.thread.StoredMessage` for session state.
-   Transient elements (tool-execution spinners) are shown here but not stored.
+   Reasoning and tool calls render as steps in one collapsible timeline.
 
 2. :func:`render_stored_message`: Used on every Streamlit rerun to replay
    stored messages from ``st.session_state``. Reproduces the final content
-   of path 1; transient spinners are not replayed.
+   of path 1, with the reasoning timeline collapsed.
 
 Also provides :func:`result_set_to_dataframe` for converting Snowflake
 ``jsonv2`` result sets to pandas DataFrames.
@@ -149,6 +149,105 @@ def escape_dollars(text: str) -> str:
     return _CURRENCY_RE.sub(r"\\$", text)
 
 
+_THINKING_STEP_LABEL = ":material/psychology: Thinking"
+
+
+class _StepTimeline:
+    """Groups reasoning and tool steps into one collapsible ``st.status``.
+
+    The outer status is created lazily on the first step, so a response with
+    no visible steps renders nothing. Each step is a nested
+    ``st.status(type="step")``, which Streamlit joins into one timeline.
+
+    Args:
+        container: Streamlit container that holds the timeline.
+        key_prefix: When provided, the timeline is wrapped in
+            ``st.container(key=f"{key_prefix}-thinking")`` so it keeps the
+            stable ``.st-key-{prefix}-thinking`` CSS class.
+        expanded: Whether the outer status starts expanded.
+    """
+
+    def __init__(self, container: Any, *, key_prefix: str | None, expanded: bool) -> None:
+        self._container = container
+        self._key_prefix = key_prefix
+        self._expanded = expanded
+        self._outer: Any = None
+        self._finished = False
+        self._has_thinking = False
+        self._failed = False
+
+    def _label(self) -> str:
+        return "Reasoning" if self._has_thinking else "Working"
+
+    def add_step(self, label: str, *, thinking: bool = False, state: str = "running") -> Any:
+        """Adds a step and returns its status container.
+
+        Args:
+            label: Step label.
+            thinking: ``True`` for a reasoning step. Switches the outer label
+                from "Working" to "Reasoning".
+            state: Initial step state.
+
+        Returns:
+            The step's ``st.status`` container.
+        """
+        if thinking and not self._has_thinking:
+            self._has_thinking = True
+            if self._outer is not None:
+                self._outer.update(label=self._label())
+        if self._outer is None:
+            parent = (
+                self._container.container(key=f"{self._key_prefix}-thinking")
+                if self._key_prefix
+                else self._container
+            )
+            self._outer = parent.status(self._label(), expanded=self._expanded, state="running")
+        elif self._finished:
+            # A step arrived after the answer started: reopen until it finishes.
+            self._finished = False
+            self._outer.update(state="running", expanded=True)
+        return self._outer.status(label, expanded=False, state=state, type="step")
+
+    def mark_failed(self) -> None:
+        """Records that a step failed, so the outer status ends in the error state."""
+        self._failed = True
+        if self._finished:
+            # Already collapsed: reopen so the failure is visible.
+            self._outer.update(state="error", expanded=True)
+
+    def finish(self) -> None:
+        """Completes the outer status and collapses it (stays open on failure)."""
+        if self._outer is None or self._finished:
+            return
+        self._finished = True
+        self._outer.update(
+            label=self._label(),
+            state="error" if self._failed else "complete",
+            expanded=self._failed,
+        )
+
+
+def _tool_step_outcome(
+    result: ToolResultEvent | None, verified: bool
+) -> tuple[str, str]:
+    """Returns the final ``(label, state)`` for a tool step.
+
+    Args:
+        result: The tool's result event, or ``None`` if it never arrived.
+        verified: Whether the tool used a verified query.
+
+    Returns:
+        The step label and its ``st.status`` state.
+    """
+    if result is None:
+        return "Tool interrupted", "error"
+    if result.status == "success":
+        if verified:
+            return f":material/verified: {result.name} (verified query)", "complete"
+        return f":material/check_circle: {result.name} complete", "complete"
+    return f":material/error: {result.name} failed", "error"
+
+
 def render_streaming_response(
     events: Iterator[SSEEvent],
     container: Any,
@@ -173,12 +272,14 @@ def render_streaming_response(
             of ``st.chat_message()``). Must support ``empty()``,
             ``markdown()``, ``dataframe()``, ``vega_lite_chart()``,
             ``expander()``, ``warning()``, ``error()``, ``info()``, ``status()``, and ``caption()`` methods.
-        show_thinking: If ``True``, renders thinking content in an
-            expander. Thinking is always captured in the returned
+        show_thinking: If ``True``, renders each run of thinking as a step
+            in the reasoning timeline. Thinking is always captured in the
+            returned
             :class:`~streamlit_cortex_agents.client.models.thread.StoredMessage` regardless
             of this flag.
-        show_tool_status: If ``True``, shows ``st.status()`` spinners for
-            tool execution progress.
+        show_tool_status: If ``True``, renders each tool call as a step in
+            the reasoning timeline. The timeline is one ``st.status()`` that
+            starts expanded and collapses when the answer starts.
         key_prefix: Optional prefix for widget keys. When provided, widgets
             that accept ``key`` get a stable CSS class (e.g.
             ``.st-key-{prefix}-thinking``). Pass a unique value per message
@@ -212,10 +313,32 @@ def render_streaming_response(
     text_placeholder = None
     accumulated_text = ""
 
-    # Thinking accumulation
+    # Reasoning and tool steps share one collapsible timeline.
+    timeline = _StepTimeline(container, key_prefix=key_prefix, expanded=True)
+
+    # Open thinking segment: index into stored.thinking_segments, its step,
+    # and the placeholder inside that step.
+    thinking_idx: int | None = None
+    thinking_step: Any = None
     thinking_placeholder = None
-    thinking_expander = None
-    accumulated_thinking = ""
+
+    def _close_thinking() -> None:
+        nonlocal thinking_idx, thinking_step, thinking_placeholder
+        if thinking_step is not None:
+            thinking_step.update(state="complete")
+        thinking_idx = None
+        thinking_step = None
+        thinking_placeholder = None
+
+    def _open_thinking() -> int:
+        nonlocal thinking_idx, thinking_step, thinking_placeholder
+        stored.thinking_segments.append("")
+        thinking_idx = len(stored.thinking_segments) - 1
+        stored.timeline.append(("thinking", thinking_idx))
+        if show_thinking:
+            thinking_step = timeline.add_step(_THINKING_STEP_LABEL, thinking=True)
+            thinking_placeholder = thinking_step.empty()
+        return thinking_idx
 
     # Tool status tracking: tool_use_id → st.status context
     tool_status_contexts: dict[str, Any] = {}
@@ -225,6 +348,11 @@ def render_streaming_response(
         if loading_placeholder is not None:
             loading_placeholder.empty()
             loading_placeholder = None
+
+        if isinstance(event, (TextDeltaEvent, TableEvent, ChartEvent)):
+            # The answer has started: reasoning is done, so collapse the timeline.
+            _close_thinking()
+            timeline.finish()
 
         if isinstance(event, TextDeltaEvent):
             accumulated_text += event.text
@@ -253,41 +381,19 @@ def render_streaming_response(
             stored.annotations.append(event)
 
         elif isinstance(event, ThinkingDeltaEvent):
-            accumulated_thinking += event.text
-            if show_thinking:
-                if thinking_expander is None:
-                    thinking_expander = container.expander(
-                        "Reasoning",
-                        icon=":material/psychology:",
-                        expanded=False,
-                        type="compact",
-                        **({"key": f"{key_prefix}-thinking"} if key_prefix else {}),
-                    )
-                    thinking_placeholder = thinking_expander.empty()
-                if thinking_placeholder is not None:
-                    thinking_placeholder.markdown(escape_dollars(accumulated_thinking))
+            idx = thinking_idx if thinking_idx is not None else _open_thinking()
+            stored.thinking_segments[idx] += event.text
+            if thinking_placeholder is not None:
+                thinking_placeholder.markdown(escape_dollars(stored.thinking_segments[idx]))
 
         elif isinstance(event, ThinkingEvent):
-            accumulated_thinking = event.text
-            stored.thinking = event.text
-            if show_thinking:
-                if thinking_placeholder is not None:
-                    # ThinkingDeltaEvents already rendered the full text into
-                    # thinking_placeholder. The final ThinkingEvent text is
-                    # identical — no render update needed, just record the text.
-                    pass
-                else:
-                    # No deltas arrived before the final ThinkingEvent —
-                    # create expander and render the full text directly.
-                    if thinking_expander is None:
-                        thinking_expander = container.expander(
-                            "Reasoning",
-                            icon=":material/psychology:",
-                            expanded=False,
-                            type="compact",
-                            **({"key": f"{key_prefix}-thinking"} if key_prefix else {}),
-                        )
-                    thinking_expander.markdown(escape_dollars(event.text))
+            # Final text for the open segment. When no deltas arrived, this
+            # opens and fills a new segment.
+            idx = thinking_idx if thinking_idx is not None else _open_thinking()
+            stored.thinking_segments[idx] = event.text
+            if thinking_placeholder is not None:
+                thinking_placeholder.markdown(escape_dollars(event.text))
+            _close_thinking()
 
         elif isinstance(event, ToolUseEvent):
             pending_tool_uses[event.tool_use_id] = event
@@ -308,14 +414,12 @@ def render_streaming_response(
                     icon=":material/security:",
                 )
                 break
+            # A tool call ends the current run of thinking.
+            _close_thinking()
+            stored.timeline.append(("tool", event.tool_use_id))
             # Paired with result event later
             if show_tool_status:
-                # type="step" joins consecutive tool calls into one timeline.
-                status_ctx = container.status(
-                    f":material/build: Using {event.name}...",
-                    expanded=False,
-                    type="step",
-                )
+                status_ctx = timeline.add_step(f":material/build: Using {event.name}...")
                 # Show SQL inside the expander if available
                 if event.tool_use_id in stored.analyst_sql:
                     status_ctx.code(stored.analyst_sql[event.tool_use_id], language="sql")
@@ -345,20 +449,12 @@ def render_streaming_response(
                 container.markdown(escape_dollars(result_text))
             if show_tool_status and event.tool_use_id in tool_status_contexts:
                 ctx = tool_status_contexts.pop(event.tool_use_id)
-                if event.status == "success":
-                    if event.tool_use_id in stored.verified_tool_uses:
-                        icon = ":material/verified:"
-                        label = f"{icon} {event.name} (verified query)"
-                    else:
-                        icon = ":material/check_circle:"
-                        label = f"{icon} {event.name} complete"
-                    ctx.update(label=label, state="complete", expanded=False)
-                else:
-                    ctx.update(
-                        label=f":material/error: {event.name} failed",
-                        state="error",
-                        expanded=True,
-                    )
+                label, state = _tool_step_outcome(
+                    event, event.tool_use_id in stored.verified_tool_uses
+                )
+                if state == "error":
+                    timeline.mark_failed()
+                ctx.update(label=label, state=state, expanded=state == "error")
 
         elif isinstance(event, AnalystDeltaEvent):
             # Legacy path: pre-Apr 2026 deployments still emit analyst.delta
@@ -451,16 +547,23 @@ def render_streaming_response(
         stored.text_segments.append(accumulated_text)
         stored.content_blocks.append(("text", len(stored.text_segments) - 1))
 
-    if accumulated_thinking and not stored.thinking:
-        stored.thinking = accumulated_thinking
+    _close_thinking()
+    if any(stored.thinking_segments):
+        stored.thinking = "\n\n".join(s for s in stored.thinking_segments if s)
 
     # Close any still-open tool status contexts (edge case: stream ended
     # before tool_result arrived)
+    for use_event in pending_tool_uses.values():
+        if use_event is not stored.pending_permission:
+            stored.tool_executions.append((use_event, None))
     for ctx in tool_status_contexts.values():
+        timeline.mark_failed()
         try:
             ctx.update(label="Tool interrupted", state="error", expanded=False)
         except Exception:
             logger.debug("Failed to close tool status context", exc_info=True)
+
+    timeline.finish()
 
     if stored.annotations:
         _render_annotations_expander(stored.annotations, container, key_prefix=key_prefix)
@@ -609,22 +712,76 @@ def _render_suggested_queries(
     )
 
 
-def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: bool = False, key_prefix: str | None = None) -> None:
+def _render_stored_timeline(
+    msg: StoredMessage,
+    container: Any,
+    *,
+    show_thinking: bool,
+    show_tool_status: bool,
+    key_prefix: str | None,
+) -> None:
+    """Replays the reasoning and tool steps of a stored message, collapsed.
+
+    Args:
+        msg: The stored message.
+        container: Streamlit container to render into.
+        show_thinking: Whether to include reasoning steps.
+        show_tool_status: Whether to include tool steps.
+        key_prefix: Optional prefix for the timeline's stable CSS class.
+    """
+    segments = msg.thinking_segments or ([msg.thinking] if msg.thinking else [])
+    entries: list[tuple[str, int | str]] = list(msg.timeline)
+    if not entries:
+        # Legacy messages: one reasoning step, then the tool steps.
+        entries = [("thinking", i) for i in range(len(segments))]
+        entries += [("tool", use.tool_use_id) for use, _ in msg.tool_executions]
+
+    executions = {use.tool_use_id: (use, result) for use, result in msg.tool_executions}
+    timeline = _StepTimeline(container, key_prefix=key_prefix, expanded=False)
+    for kind, ref in entries:
+        if kind == "thinking" and show_thinking:
+            if not isinstance(ref, int) or ref >= len(segments) or not segments[ref]:
+                continue
+            step = timeline.add_step(_THINKING_STEP_LABEL, thinking=True, state="complete")
+            step.markdown(escape_dollars(segments[ref]))
+        elif kind == "tool" and show_tool_status and ref in executions:
+            _use, result = executions[ref]
+            label, state = _tool_step_outcome(result, ref in msg.verified_tool_uses)
+            if state == "error":
+                timeline.mark_failed()
+            step = timeline.add_step(label, state=state)
+            sql = msg.analyst_sql.get(ref)
+            if sql:
+                step.code(sql, language="sql")
+    timeline.finish()
+
+
+def render_stored_message(
+    msg: StoredMessage,
+    container: Any,
+    *,
+    show_thinking: bool = False,
+    show_tool_status: bool = True,
+    key_prefix: str | None = None,
+) -> None:
     """Renders a stored message from session state into Streamlit elements.
 
     Produces equivalent content to :func:`render_streaming_response` for the
     same message content. Called on every Streamlit rerun to replay history.
-    Transient elements such as tool-execution spinners are not replayed.
+    The reasoning timeline is replayed collapsed.
 
     Args:
         msg: A :class:`~streamlit_cortex_agents.client.models.thread.StoredMessage` from
             session state.
         container: Streamlit container (e.g. ``st`` or the return value of
             ``st.chat_message()``).
-        show_thinking: If ``True``, render agent reasoning in a collapsible
-            expander. Defaults to ``False`` — pass the same value you passed
-            to :func:`render_streaming_response` so the replay matches what
-            the user saw during streaming.
+        show_thinking: If ``True``, render agent reasoning as steps in the
+            collapsed reasoning timeline. Defaults to ``False`` — pass the
+            same value you passed to :func:`render_streaming_response` so the
+            replay matches what the user saw during streaming.
+        show_tool_status: If ``True``, render tool calls as steps in the
+            reasoning timeline. Pass the same value you passed to
+            :func:`render_streaming_response`.
         key_prefix: Optional prefix for widget keys. When provided, widgets
             that accept ``key`` get a stable CSS class (e.g.
             ``.st-key-{prefix}-thinking``). Pass the same prefix used during
@@ -640,27 +797,17 @@ def render_stored_message(msg: StoredMessage, container: Any, *, show_thinking: 
             with st.chat_message(msg.role):
                 render_stored_message(msg, st, show_thinking=False)
     """
-    if show_thinking and msg.thinking:
-        exp = container.expander(
-            "Reasoning",
-            icon=":material/psychology:",
-            expanded=False,
-            type="compact",
-            **({"key": f"{key_prefix}-thinking"} if key_prefix else {}),
+    if show_thinking or show_tool_status:
+        _render_stored_timeline(
+            msg,
+            container,
+            show_thinking=show_thinking,
+            show_tool_status=show_tool_status,
+            key_prefix=key_prefix,
         )
-        exp.markdown(escape_dollars(msg.thinking))
 
     # Tool result text appears before the main answer (tools execute first).
     for tool_use, _tool_result in msg.tool_executions:
-        sql = msg.analyst_sql.get(tool_use.tool_use_id)
-        if sql:
-            with container.status(
-                f":material/check_circle: {tool_use.name} complete",
-                state="complete",
-                expanded=False,
-                type="step",
-            ) as ctx:
-                ctx.code(sql, language="sql")
         text = msg.tool_result_text.get(tool_use.tool_use_id)
         if text:
             container.markdown(escape_dollars(text))

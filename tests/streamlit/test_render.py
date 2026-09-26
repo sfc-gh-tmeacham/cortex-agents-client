@@ -19,6 +19,7 @@ from streamlit_cortex_agents.client.models.events import (
     TextAnnotationEvent,
     TextDeltaEvent,
     TextEvent,
+    ThinkingDeltaEvent,
     ThinkingEvent,
     ToolResultEvent,
     ToolUseEvent,
@@ -50,6 +51,9 @@ def make_container():
     status_ctx.__enter__ = MagicMock(return_value=status_ctx)
     status_ctx.__exit__ = MagicMock(return_value=False)
     container.status.return_value = status_ctx
+    # Steps are nested statuses inside the outer timeline status.
+    step_ctx = MagicMock()
+    status_ctx.status.return_value = step_ctx
     return container
 
 
@@ -110,7 +114,7 @@ class TestRenderStreamingResponse:
         assert stored.thinking == "Let me think."
 
     def test_thinking_event_rendered_when_show_thinking_true(self):
-        """ThinkingEvent renders expander when show_thinking=True."""
+        """ThinkingEvent renders a thinking step in the Reasoning timeline when show_thinking=True."""
         container = make_container()
         thinking = ThinkingEvent._from_payload(
             {"content_index": 1, "text": "Reasoning...", "signature": ""}
@@ -119,16 +123,20 @@ class TestRenderStreamingResponse:
         render_streaming_response(
             event_stream(thinking), container, show_thinking=True
         )
-        container.expander.assert_called_once()
+        container.status.assert_called_once()
+        assert container.status.call_args.args[0] == "Reasoning"
+        container.status.return_value.status.assert_called_once()
+        container.expander.assert_not_called()
 
     def test_streaming_default_show_thinking_false_suppresses_expander(self):
-        """render_streaming_response default show_thinking=False suppresses thinking expander."""
+        """render_streaming_response default show_thinking=False renders no timeline."""
         container = make_container()
         thinking = ThinkingEvent._from_payload(
             {"content_index": 1, "text": "Hidden...", "signature": ""}
         )
         render_streaming_response(event_stream(thinking), container)  # default show_thinking=False
         container.expander.assert_not_called()
+        container.status.assert_not_called()
 
     def test_warning_event_stored_and_rendered(self):
         """WarningEvent → stored in warnings and rendered via container.warning."""
@@ -329,8 +337,8 @@ class TestRenderStreamingResponse:
 
         render_streaming_response(event_stream(use, delta, result), container)
 
-        status_ctx = container.status.return_value
-        final_call = status_ctx.update.call_args_list[-1]
+        step_ctx = container.status.return_value.status.return_value
+        final_call = step_ctx.update.call_args_list[-1]
         label = final_call.kwargs.get("label") or final_call.args[0]
         assert ":material/verified:" in label
         assert ":material/check_circle:" not in label
@@ -356,8 +364,8 @@ class TestRenderStreamingResponse:
 
         render_streaming_response(event_stream(use, result), container)
 
-        status_ctx = container.status.return_value
-        final_call = status_ctx.update.call_args_list[-1]
+        step_ctx = container.status.return_value.status.return_value
+        final_call = step_ctx.update.call_args_list[-1]
         label = final_call.kwargs.get("label") or final_call.args[0]
         assert ":material/check_circle:" in label
         assert ":material/verified:" not in label
@@ -396,20 +404,25 @@ class TestRenderStoredMessage:
         container.vega_lite_chart.assert_called_once()
 
     def test_renders_thinking_expander(self):
-        """StoredMessage with thinking → expander created when show_thinking=True."""
+        """StoredMessage with thinking → collapsed Reasoning timeline when show_thinking=True."""
         container = make_container()
         msg = StoredMessage(role="assistant", text="", thinking="Let me think.")
 
         render_stored_message(msg, container, show_thinking=True)
-        container.expander.assert_called_once()
+        container.status.assert_called_once()
+        assert container.status.call_args.kwargs["expanded"] is False
+        step = container.status.return_value.status.return_value
+        step.markdown.assert_called_once_with("Let me think.")
+        container.expander.assert_not_called()
 
     def test_does_not_render_thinking_when_show_thinking_false(self):
-        """StoredMessage with thinking → no expander when show_thinking=False (default)."""
+        """StoredMessage with thinking → no timeline when show_thinking=False (default)."""
         container = make_container()
         msg = StoredMessage(role="assistant", text="", thinking="Hidden reasoning.")
 
         render_stored_message(msg, container, show_thinking=False)
         container.expander.assert_not_called()
+        container.status.assert_not_called()
 
     def test_default_show_thinking_is_false(self):
         """render_stored_message default show_thinking=False matches render_streaming_response default."""
@@ -624,3 +637,183 @@ class TestAuditRegressions:
         stored = render_streaming_response(event_stream(t1, t2), container)
 
         assert stored.text == "Before. After."
+
+
+def _think_delta(text: str) -> ThinkingDeltaEvent:
+    return ThinkingDeltaEvent(event_type="response.thinking.delta", text=text)
+
+
+def _step_labels(container) -> list[str]:
+    """Returns the labels of steps nested in the outer timeline status."""
+    return [c.args[0] for c in container.status.return_value.status.call_args_list]
+
+
+class TestReasoningTimeline:
+    """Reasoning and tool steps share one collapsible st.status timeline."""
+
+    def _stream(self):
+        return [
+            _think_delta("First "),
+            _think_delta("thought."),
+            ToolUseEvent._from_payload(TOOL_USE_PAYLOAD),
+            ToolResultEvent._from_payload(TOOL_RESULT_PAYLOAD),
+            _think_delta("Second thought."),
+            TextDeltaEvent._from_payload({"content_index": 3, "text": "Answer"}),
+        ]
+
+    def test_thinking_split_into_segments_around_tool_calls(self):
+        """Thinking before and after a tool call is stored as two ordered segments."""
+        stored = render_streaming_response(
+            event_stream(*self._stream()), make_container(), show_thinking=True
+        )
+        assert stored.thinking_segments == ["First thought.", "Second thought."]
+        assert stored.timeline == [("thinking", 0), ("tool", "toolu_01"), ("thinking", 1)]
+        assert stored.thinking == "First thought.\n\nSecond thought."
+
+    def test_segments_stored_when_show_flags_off(self):
+        """Segments and timeline are recorded even when nothing is rendered."""
+        container = make_container()
+        stored = render_streaming_response(
+            event_stream(*self._stream()), container,
+            show_thinking=False, show_tool_status=False,
+        )
+        assert len(stored.thinking_segments) == 2
+        assert len(stored.timeline) == 3
+        container.status.assert_not_called()
+
+    def test_all_steps_nest_in_one_outer_status(self):
+        """One outer status holds thinking, tool, thinking steps in order."""
+        container = make_container()
+        render_streaming_response(
+            event_stream(*self._stream()), container, show_thinking=True
+        )
+        container.status.assert_called_once()
+        labels = _step_labels(container)
+        assert len(labels) == 3
+        assert "Thinking" in labels[0]
+        assert "Using Analyst1" in labels[1]
+        assert "Thinking" in labels[2]
+        for c in container.status.return_value.status.call_args_list:
+            assert c.kwargs["type"] == "step"
+
+    def test_outer_starts_expanded_and_collapses_when_answer_starts(self):
+        """Outer status opens expanded, then completes collapsed on the first answer text."""
+        container = make_container()
+        events = [_think_delta("Hmm."), TextDeltaEvent._from_payload({"content_index": 1, "text": "Hi"})]
+        render_streaming_response(event_stream(*events), container, show_thinking=True)
+
+        assert container.status.call_args.kwargs["expanded"] is True
+        outer = container.status.return_value
+        final = outer.update.call_args_list[-1].kwargs
+        assert final["state"] == "complete"
+        assert final["expanded"] is False
+
+    def test_collapse_happens_before_answer_text_renders(self):
+        """The timeline collapses before the answer placeholder is written."""
+        container = make_container()
+        order: list[str] = []
+        outer = container.status.return_value
+        outer.update.side_effect = lambda **kw: order.append(f"update:{kw.get('state')}")
+        container.empty.return_value.markdown.side_effect = lambda *a, **k: order.append("text")
+        events = [_think_delta("Hmm."), TextDeltaEvent._from_payload({"content_index": 1, "text": "Hi"})]
+        render_streaming_response(event_stream(*events), container, show_thinking=True)
+        assert order.index("update:complete") < order.index("text")
+
+    def test_tool_only_timeline_uses_neutral_label(self):
+        """With no thinking, the outer status is labelled Working."""
+        container = make_container()
+        render_streaming_response(
+            event_stream(
+                ToolUseEvent._from_payload(TOOL_USE_PAYLOAD),
+                ToolResultEvent._from_payload(TOOL_RESULT_PAYLOAD),
+            ),
+            container,
+        )
+        assert container.status.call_args.args[0] == "Working"
+
+    def test_failed_tool_leaves_outer_open_in_error_state(self):
+        """A failed tool ends the outer status in the error state, expanded."""
+        container = make_container()
+        render_streaming_response(
+            event_stream(
+                ToolUseEvent._from_payload(TOOL_USE_PAYLOAD),
+                ToolResultEvent._from_payload({**TOOL_RESULT_PAYLOAD, "status": "error"}),
+            ),
+            container,
+        )
+        final = container.status.return_value.update.call_args_list[-1].kwargs
+        assert final["state"] == "error"
+        assert final["expanded"] is True
+
+    def test_key_prefix_wraps_timeline_in_keyed_container(self):
+        """key_prefix keeps the .st-key-{prefix}-thinking CSS class via st.container."""
+        container = make_container()
+        keyed = container.container.return_value
+        render_streaming_response(
+            event_stream(_think_delta("Hmm.")), container,
+            show_thinking=True, key_prefix="p",
+        )
+        container.container.assert_called_once_with(key="p-thinking")
+        keyed.status.assert_called_once()
+
+    def test_interrupted_tool_recorded_and_replayed_as_error(self):
+        """A tool with no result is stored with None and replayed as an error step."""
+        stored = render_streaming_response(
+            event_stream(ToolUseEvent._from_payload(TOOL_USE_PAYLOAD)), make_container()
+        )
+        assert stored.tool_executions[0][1] is None
+
+        replay = make_container()
+        render_stored_message(stored, replay)
+        step_call = replay.status.return_value.status.call_args
+        assert step_call.args[0] == "Tool interrupted"
+        assert step_call.kwargs["state"] == "error"
+
+    def test_replay_matches_live_step_order(self):
+        """Replay builds the same step sequence as the live stream, collapsed."""
+        live = make_container()
+        stored = render_streaming_response(
+            event_stream(*self._stream()), live, show_thinking=True
+        )
+        replay = make_container()
+        render_stored_message(stored, replay, show_thinking=True)
+
+        replay.status.assert_called_once()
+        assert replay.status.call_args.args[0] == "Reasoning"
+        assert replay.status.call_args.kwargs["expanded"] is False
+        labels = _step_labels(replay)
+        assert "Thinking" in labels[0]
+        assert labels[1] == ":material/check_circle: Analyst1 complete"
+        assert "Thinking" in labels[2]
+        steps = replay.status.return_value.status.return_value
+        steps.markdown.assert_any_call("First thought.")
+        steps.markdown.assert_any_call("Second thought.")
+
+    def test_replay_respects_show_tool_status_false(self):
+        """show_tool_status=False omits tool steps from replay."""
+        stored = render_streaming_response(
+            event_stream(*self._stream()), make_container(), show_thinking=True
+        )
+        replay = make_container()
+        render_stored_message(stored, replay, show_thinking=True, show_tool_status=False)
+        labels = _step_labels(replay)
+        assert len(labels) == 2
+        assert all("Thinking" in label for label in labels)
+
+    def test_legacy_message_replays_thinking_then_tools(self):
+        """Messages without a timeline replay one thinking step, then tool steps."""
+        use = ToolUseEvent._from_payload(TOOL_USE_PAYLOAD)
+        result = ToolResultEvent._from_payload(TOOL_RESULT_PAYLOAD)
+        msg = StoredMessage(
+            role="assistant", thinking="Old reasoning.", tool_executions=[(use, result)],
+            analyst_sql={"toolu_01": "SELECT 1"},
+        )
+        replay = make_container()
+        render_stored_message(msg, replay, show_thinking=True)
+        labels = _step_labels(replay)
+        assert len(labels) == 2
+        assert "Thinking" in labels[0]
+        assert "Analyst1 complete" in labels[1]
+        replay.status.return_value.status.return_value.code.assert_called_once_with(
+            "SELECT 1", language="sql"
+        )
