@@ -165,7 +165,7 @@ pip install "/path/to/cortex-agents-client[jwt]"
 
 > **Container runtime is required.** The Cortex Agents API is not supported in warehouse runtime SiS apps.
 
-See also [`src/streamlit_cortex_agents/chat/README.md`](src/streamlit_cortex_agents/chat/README.md) — the self-contained integration guide that travels with the library when you copy the folder into a SiS workspace.
+See also the [Streamlit integration guide](docs/streamlit_guide.md).
 
 ### Prerequisites — External Access Integrations
 
@@ -1200,8 +1200,7 @@ src/streamlit_cortex_agents/
 ├── chat/
 │   ├── chatbot.py            CortexAgentChat (drop-in component)
 │   ├── session.py            init_session(), sis_init_session(), reset_thread(), get_messages()
-│   ├── render.py             render_streaming_response(), render_stored_message(), result_set_to_dataframe(), escape_dollars()
-│   └── README.md             Streamlit integration guide (travels with the folder when copied)
+│   └── render.py             render_streaming_response(), render_stored_message(), result_set_to_dataframe(), escape_dollars()
 └── client/
     ├── core.py               CortexAgentsClient (top-level facade), Thread (stateful)
     ├── auth.py               PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, AuthProvider, account_url_from_env

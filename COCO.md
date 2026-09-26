@@ -242,7 +242,7 @@ via `account_url_from_env()`.
 |---|---|
 | `docs/api_spec.md` | REST API endpoint reference |
 | `docs/event_types.md` | All 17 SSE event types and their fields |
-| `docs/streamlit_guide.md` | Streamlit integration design reference |
+| `docs/streamlit_guide.md` | Streamlit usage guide and design reference |
 | `docs/dev/test_plan.md` | Test coverage plan and strategy |
 | `docs/dev/roadmap.md` | Planned features; file/audio attachment implementation plan |
 
