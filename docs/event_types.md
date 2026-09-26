@@ -1,3 +1,5 @@
+[← Back to README](../README.md) · See also: [Python API](python_api.md) · [REST API Spec](api_spec.md) · [Reference](reference.md)
+
 # Cortex Agents SSE Event Types
 
 All 17 server-sent event types emitted by the `agent:run` endpoint.
@@ -101,6 +103,7 @@ A citation annotation embedded within a text block. Sent alongside `response.tex
 ```json
 {
   "content_index": 0,
+  "annotation_index": 0,
   "annotation": {
     "type": "cortex_search_citation",
     "index": 1,
@@ -111,6 +114,8 @@ A citation annotation embedded within a text block. Sent alongside `response.tex
   }
 }
 ```
+
+`annotation_index` is the ordinal position of this annotation within its text block (defaults to `0`).
 
 Annotation type is always `cortex_search_citation` currently. The `index` corresponds to citation markers like `[^1]` in the text.
 
@@ -156,10 +161,11 @@ The agent has decided to use a tool. If `permission.options` is non-empty, the c
 {
   "content_index": 2,
   "tool_use_id": "toolu_01XyZ",
-  "type": "cortex_analyst_text_to_sql",
+  "type": "system_execute_sql",
   "name": "Analyst1",
   "input": {
-    "query": "Total revenue for 2025"
+    "query": "Total revenue for 2025",
+    "sql": "SELECT SUM(revenue) AS total FROM sales WHERE year = 2025"
   },
   "client_side_execute": false,
   "permission": {
@@ -181,7 +187,7 @@ When permission is required:
 
 `client_side_execute: true` means the client is responsible for executing the tool and sending results back in the next request.
 
-**Tool types:** `system_execute_sql`, `cortex_search`, `web_search`, `generic`, `code_execution`, `data_to_chart`, `agent_skill`, `mcp_connector`.
+**Tool types:** `system_execute_sql`, `system_agentic_semantic_context`, `cortex_search`, `web_search`, `generic`, `code_execution`, `data_to_chart`, `agent_skill`, `mcp_connector`.
 
 > **Note:** Prior to Apr 2026, Cortex Analyst emitted `cortex_analyst_text_to_sql`. This was replaced by `system_execute_sql` — the generated SQL is now in `input["sql"]`.
 
@@ -197,7 +203,7 @@ Tool execution is complete. Sent after all `response.tool_result.status` and `re
 {
   "content_index": 2,
   "tool_use_id": "toolu_01XyZ",
-  "type": "cortex_analyst_text_to_sql",
+  "type": "system_execute_sql",
   "name": "Analyst1",
   "content": [
     {
@@ -226,7 +232,7 @@ In-progress status update for a running tool. Useful for showing progress spinne
 ```json
 {
   "tool_use_id": "toolu_01XyZ",
-  "tool_type": "cortex_analyst_text_to_sql",
+  "tool_type": "system_execute_sql",
   "status": "Executing SQL",
   "message": "Executing query 'SELECT SUM(revenue) FROM sales WHERE year = 2025'",
   "details": {}
@@ -247,7 +253,7 @@ Streaming delta from the Cortex Analyst tool. Contains progressive SQL generatio
 {
   "content_index": 2,
   "tool_use_id": "toolu_01XyZ",
-  "tool_type": "cortex_analyst_text_to_sql",
+  "tool_type": "system_execute_sql",
   "tool_name": "Analyst1",
   "delta": {
     "text": "Based on the data,",
@@ -276,11 +282,15 @@ Streaming delta from the Cortex Analyst tool. Contains progressive SQL generatio
 
 All `delta` fields are optional. When Analyst cannot answer: `result_set` is null and `suggestions` contains alternative questions.
 
-`suggestions` field:
+`suggestions` is a nested object inside `delta`:
 ```json
 {
-  "index": 0,
-  "delta": "What was the total revenue by region?"
+  "delta": {
+    "suggestions": {
+      "index": 0,
+      "delta": "What was the total revenue by region?"
+    }
+  }
 }
 ```
 

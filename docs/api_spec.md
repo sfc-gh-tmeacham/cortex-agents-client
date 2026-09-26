@@ -1,3 +1,5 @@
+[← Back to README](../README.md) · See also: [Python API](python_api.md) · [Event Types](event_types.md) · [Reference](reference.md)
+
 # Cortex Agents REST API Specification
 
 Reference for all endpoints used by the `streamlit_cortex_agents` Python library.
@@ -57,7 +59,7 @@ Request body:
   "tools": [
     {
       "tool_spec": {
-        "type": "cortex_analyst_text_to_sql",
+        "type": "cortex_analyst_text_to_sql",  // agent definition type; runtime events emit system_execute_sql
         "name": "Analyst1",
         "description": "Revenue analytics"
       }
@@ -517,6 +519,7 @@ Response: `{"success": true}`
 | `code_execution` | Python sandbox |
 | `data_to_chart` | Data visualization |
 | `agent_skill` | Packaged skill |
+| `system_agentic_semantic_context` | Cortex Analyst semantic-context tool (emitted alongside `system_execute_sql`) |
 | `mcp_connector` | Remote MCP server tool |
 
 ## ToolResource variants by type
