@@ -135,7 +135,7 @@ Complete agent reasoning/thinking block. Sent after all `response.thinking.delta
 }
 ```
 
-**Streamlit rendering:** `with st.expander("Reasoning", expanded=False): st.markdown(text)` — only when `show_thinking=True`.
+**Streamlit rendering:** a `Thinking` step (`st.status(type="step")`) in the reasoning timeline — only when `show_thinking=True`. Thinking before and after a tool call renders as separate steps.
 
 ---
 
@@ -191,7 +191,7 @@ When permission is required:
 
 > **Note:** Prior to Apr 2026, Cortex Analyst emitted `cortex_analyst_text_to_sql`. This was replaced by `system_execute_sql` — the generated SQL is now in `input["sql"]`.
 
-**Streamlit rendering:** `with st.status(f"Using {name}...", expanded=False):` spinner.
+**Streamlit rendering:** a running `Using {name}...` step (`st.status(type="step")`) in the reasoning timeline, labelled with an icon for the tool type — only when `show_tool_status=True`.
 
 ---
 
@@ -221,7 +221,7 @@ Tool execution is complete. Sent after all `response.tool_result.status` and `re
 
 `content[].type` values: `"json"` | `"text"`
 
-**Streamlit rendering:** Update `st.status()` to complete/error state.
+**Streamlit rendering:** the tool step moves to the complete or error state. A verified-query success is replaced by a step with a green shield marker.
 
 ---
 
@@ -239,7 +239,7 @@ In-progress status update for a running tool. Useful for showing progress spinne
 }
 ```
 
-**Streamlit rendering:** Update text inside `st.status()` container.
+**Streamlit rendering:** Update the running tool step's label.
 
 ---
 

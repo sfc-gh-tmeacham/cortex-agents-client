@@ -46,7 +46,7 @@ CortexAgentChat(
 ).render()
 ```
 
-Features out of the box: streaming text with typewriter effect, tables and charts, tool execution status with SQL display, citation sources, suggested follow-up questions, thinking/reasoning expanders, and full conversation history across reruns. The chat input's Stop button cancels the agent run on the server, not just the display.
+Features out of the box: streaming text with typewriter effect, tables and charts, tool execution status with SQL display, citation sources, suggested follow-up questions, a collapsible reasoning timeline of thinking and tool steps, and full conversation history across reruns. The chat input's Stop button cancels the agent run on the server, not just the display.
 
 **Layout modes:** `"fullpage"` (default — chat input pinned to bottom), `"embedded"` (scrollable container for dashboards, sized in pixels or with a CSS height that can fill the window), or render inside an `st.dialog` for a modal chat overlay.
 

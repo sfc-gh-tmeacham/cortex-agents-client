@@ -385,8 +385,8 @@ Both files use `unittest.mock.MagicMock` and `patch.dict("sys.modules", ...)` to
 | `test_table_event_stored_and_rendered` | `TableEvent` stored in `tables` and rendered |
 | `test_chart_event_stored_and_rendered` | `ChartEvent` stored in `charts` and rendered |
 | `test_thinking_event_stored_regardless_of_show_flag` | Thinking always stored; only rendered when `show_thinking=True` |
-| `test_thinking_event_rendered_when_show_thinking_true` | Expander created when `show_thinking=True` |
-| `test_streaming_default_show_thinking_false_suppresses_expander` | Default `show_thinking=False` suppresses expander |
+| `test_thinking_event_rendered_when_show_thinking_true` | Thinking step in a "Reasoning" timeline when `show_thinking=True`; no expander |
+| `test_streaming_default_show_thinking_false_suppresses_expander` | Default `show_thinking=False` renders no timeline |
 | `test_warning_event_stored_and_rendered` | `WarningEvent` stored + `container.warning()` called |
 | `test_error_event_stored_and_rendered` | `ErrorEvent` stored + `container.error()` called |
 | `test_annotation_event_stored` | `TextAnnotationEvent` stored in `annotations` |
@@ -395,14 +395,16 @@ Both files use `unittest.mock.MagicMock` and `patch.dict("sys.modules", ...)` to
 | `test_tool_result_text_content_stored_and_rendered` | Text-type tool result content stored in `tool_result_text` and rendered |
 | `test_tool_result_json_content_not_rendered_as_markdown` | JSON tool result content not rendered as raw markdown |
 | `test_permission_required_stops_stream_and_sets_pending` | `ToolUseEvent` with permission options halts stream; sets `pending_permission` |
-| `test_permission_required_no_spinner_created` | No `st.status()` spinner for permission-gated tool |
-| `test_tool_use_without_permission_still_creates_spinner` | Normal tool use creates spinner |
+| `test_permission_required_no_spinner_created` | No tool step for a permission-gated tool |
+| `test_tool_use_without_permission_still_creates_spinner` | Normal tool use creates a tool step |
 | `test_analyst_delta_sql_captured` | SQL from `AnalystDeltaEvent` stored in `analyst_sql` |
 | `test_metadata_event_captured_as_message_id` | `MetadataEvent` role=assistant sets `message_id` |
 | `test_text_deltas_without_final_text_event` | Accumulated deltas used when no final `TextEvent` arrives |
 | `test_verified_query_used_sets_flag` | `verified_query_used=True` sets flag in `verified_tool_uses` |
-| `test_verified_query_status_label_uses_verified_icon` | Verified query → verified icon in status label |
-| `test_non_verified_query_status_label_uses_check_circle_icon` | Non-verified → check_circle icon |
+| `test_verified_query_status_label_uses_verified_icon` | Verified query → one expander step with the green shield icon; no icon in the label |
+| `test_verified_query_replay_uses_single_shield_step` | Replay renders the same single-shield step |
+| `test_tool_type_icon_mapping_and_failure_label` | Tool type → label icon; failed and interrupted labels keep the type icon |
+| `test_non_verified_query_status_label_uses_tool_type_icon` | Non-verified SQL → database icon, no check_circle |
 
 #### `TestRenderStoredMessage`
 
@@ -411,8 +413,8 @@ Both files use `unittest.mock.MagicMock` and `patch.dict("sys.modules", ...)` to
 | `test_renders_text` | `StoredMessage.text` rendered via `st.markdown` |
 | `test_renders_table` | `StoredMessage.tables` rendered via `st.dataframe` |
 | `test_renders_chart` | `StoredMessage.charts` rendered via `st.vega_lite_chart` |
-| `test_renders_thinking_expander` | Thinking text in expander (show_thinking=True) |
-| `test_does_not_render_thinking_when_show_thinking_false` | Expander not created when show_thinking=False |
+| `test_renders_thinking_expander` | Thinking step in a collapsed timeline (show_thinking=True) |
+| `test_does_not_render_thinking_when_show_thinking_false` | No timeline when show_thinking=False |
 | `test_default_show_thinking_is_false` | Default show_thinking=False matches render_streaming_response |
 | `test_elicitation_renders_info_not_markdown` | is_elicitation=True uses st.info() not st.markdown() |
 | `test_renders_warning` | `WarningEvent` rendered as `st.warning` |
@@ -423,6 +425,23 @@ Both files use `unittest.mock.MagicMock` and `patch.dict("sys.modules", ...)` to
 | `test_annotations_render_sources_expander_in_stored_message` | Sources expander in stored message |
 | `test_url_doc_id_rendered_with_unsafe_html` | URL `doc_id` renders as HTML anchor |
 | `test_non_url_doc_id_no_html` | Non-URL `doc_id` rendered as plain text |
+
+#### `TestReasoningTimeline`
+
+| Test | What it verifies |
+|---|---|
+| `test_thinking_split_into_segments_around_tool_calls` | Thinking before and after a tool call stored as ordered segments and timeline entries |
+| `test_segments_stored_when_show_flags_off` | Segments and timeline recorded when nothing renders |
+| `test_all_steps_nest_in_one_outer_status` | One outer status holds every step, all `type="step"` |
+| `test_outer_starts_expanded_and_collapses_when_answer_starts` | Timeline opens expanded, completes collapsed |
+| `test_collapse_happens_before_answer_text_renders` | Collapse precedes the first answer text |
+| `test_tool_only_timeline_uses_neutral_label` | No thinking → outer label "Working" |
+| `test_failed_tool_leaves_outer_open_in_error_state` | Failed tool → outer error state, expanded |
+| `test_key_prefix_wraps_timeline_in_keyed_container` | `key_prefix` → `st.container(key="{prefix}-thinking")` |
+| `test_interrupted_tool_recorded_and_replayed_as_error` | Tool with no result stored with `None`, replayed as an error step |
+| `test_replay_matches_live_step_order` | Replay step sequence matches live, collapsed |
+| `test_replay_respects_show_tool_status_false` | `show_tool_status=False` omits tool steps from replay |
+| `test_legacy_message_replays_thinking_then_tools` | Messages without `timeline` replay thinking, then tools |
 
 ---
 

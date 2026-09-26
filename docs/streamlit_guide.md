@@ -111,7 +111,7 @@ for msg in get_messages():
         if msg.role == "user":
             st.markdown(escape_dollars(msg.text))
         else:
-            render_stored_message(msg, st, show_thinking=False)
+            render_stored_message(msg, st, show_thinking=False, show_tool_status=True)
 
 if prompt := st.chat_input("Ask about revenue..."):
     with st.chat_message("user"):
@@ -127,6 +127,8 @@ if prompt := st.chat_input("Ask about revenue..."):
         )
     append_message(stored)
 ```
+
+Pass the same `show_thinking` and `show_tool_status` values to `render_stored_message` and `render_streaming_response`, so the replayed reasoning timeline matches what the user saw while the answer streamed.
 
 > **Note on `reset_thread`:** In manual integrations, `origin_application` defaults to `None` in `reset_thread()`. Pass `origin_application="my_app"` matching `init_session` to preserve thread tagging across resets.
 
@@ -327,7 +329,8 @@ Key pattern: `{css_prefix}-{msg_index}-{widget_type}` where `css_prefix` is deri
 
 | Widget | Key format | CSS class |
 |---|---|---|
-| Thinking expander | `{css_prefix}-{i}-thinking` | `.st-key-ca-{i}-thinking` |
+| Reasoning timeline (thinking and tool steps) | `{css_prefix}-{i}-thinking` | `.st-key-ca-{i}-thinking` |
+| Verified-query step | `{css_prefix}-{i}-verified-step-{tool_use_id}` | `.st-key-ca-{i}-verified-step-toolu_01` |
 | Table dataframe | `{css_prefix}-{i}-table-{n}` | `.st-key-ca-{i}-table-0` |
 | Chart container | `{css_prefix}-{i}-chart-{n}` | `.st-key-ca-{i}-chart-0` |
 | Sources expander | `{css_prefix}-{i}-sources` | `.st-key-ca-{i}-sources` |

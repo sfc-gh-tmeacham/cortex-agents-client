@@ -25,8 +25,8 @@
 | `agent_path` | Yes | — | `DB.SCHEMA.AGENT` |
 | `mode` | No | `"fullpage"` | `"fullpage"` or `"embedded"` |
 | `height` | No | `450` | Message area height: px as an `int`, or a CSS height string such as `"calc(100vh - 300px)"` — `embedded` mode only |
-| `show_thinking` | No | `True` | Show agent reasoning in an expander |
-| `show_tool_status` | No | `True` | Show tool execution spinners |
+| `show_thinking` | No | `True` | Show agent reasoning as steps in the reasoning timeline |
+| `show_tool_status` | No | `True` | Show tool calls as steps in the reasoning timeline |
 | `new_conversation_button` | No | `True` | Show "New conversation" button |
 | `origin_application` | No | `None` | Thread label for monitoring (max 16 bytes) |
 | `input_placeholder` | No | `"Ask a question..."` | Chat input placeholder |
@@ -49,7 +49,8 @@ Where `prefix` is the `session_key_prefix` with the leading underscore stripped 
 
 | Element | CSS class pattern | Example |
 |---------|-------------------|---------|
-| Thinking expander | `.st-key-ca-{msg}-thinking` | `.st-key-ca-1-thinking` |
+| Reasoning timeline (thinking and tool steps) | `.st-key-ca-{msg}-thinking` | `.st-key-ca-1-thinking` |
+| Verified-query step | `.st-key-ca-{msg}-verified-step-{tool_use_id}` | `.st-key-ca-2-verified-step-toolu_01` |
 | Sources expander | `.st-key-ca-{msg}-sources` | `.st-key-ca-3-sources` |
 | Table (dataframe) | `.st-key-ca-{msg}-table-{i}` | `.st-key-ca-3-table-0` |
 | Chart (vega-lite) | `.st-key-ca-{msg}-chart-{i}` | `.st-key-ca-3-chart-0` |
@@ -67,7 +68,7 @@ st.html("""
 """)
 ```
 
-**Note:** `st.status`, `st.markdown`, `st.warning`, `st.caption`, and `st.info` do not accept `key` parameters in Streamlit — those elements cannot be targeted via this mechanism.
+**Note:** `st.status`, `st.markdown`, `st.warning`, `st.caption`, and `st.info` do not accept `key` parameters in Streamlit — those elements cannot be targeted via this mechanism. The reasoning timeline is an `st.status`, so its key is set on an `st.container` that wraps it.
 
 ## Secrets and environment variables
 
