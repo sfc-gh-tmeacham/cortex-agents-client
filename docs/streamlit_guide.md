@@ -161,6 +161,7 @@ The Quickstart uses a PAT for your own user. Use that setup for local developmen
 
 **When to use which identity:**
 - **Shared service user.** Use this when all viewers can see the same data, for example an internal app for one team.
+- **Shared service user with `variables`.** Use this when viewers must see different data but you cannot use per-viewer OAuth. See [Isolate viewers with `variables`](#isolate-viewers-with-variables).
 - **Per-viewer OAuth.** Use this when viewers must see different data, or when audit logs must show each viewer.
 
 #### Use a dedicated service user
@@ -182,6 +183,15 @@ Grant that role only the privileges that the agent and its tools need:
 - Tool-level privileges: `SELECT` on tables for Cortex Analyst, `USAGE` on search services for Cortex Search, and a warehouse for SQL tools.
 
 Do not grant `ACCOUNTADMIN`, `SYSADMIN`, or another broad role to the service user. Every viewer receives that user's agent access.
+
+#### Isolate viewers with `variables`
+
+A service user cannot tell viewers apart. `CURRENT_USER()` and `CURRENT_ROLE()` always return the service user and its role. To isolate data per viewer:
+1. Sign the viewer in to your app, for example with `st.login()`.
+2. Pass the viewer's identity to the agent in `variables` (session attributes).
+3. Filter on that attribute in a row access policy on the tables that the agent's tools query.
+
+The row access policy enforces the boundary, not the API. Your app sets the identity, so the isolation is only as trusted as your app's sign-in. Viewers must not be able to change the value that the app sends. See [Multi-tenancy](#multi-tenancy).
 
 #### Choose a credential for the service user
 
@@ -210,8 +220,6 @@ See [Programmatic access tokens](https://docs.snowflake.com/en/user-guide/progra
 A shared service user cannot tell viewers apart. `CURRENT_USER()` is always the service user. For per-viewer access, sign each viewer in with OAuth (Snowflake OAuth or External OAuth). Then pass that viewer's access token to `OAuthAuth`. The agent then runs with the viewer's own role, and row access policies apply to each viewer.
 
 The library does not get or refresh OAuth tokens. Your app must do the OAuth flow, keep the token in `st.session_state`, and refresh it before it expires.
-
-If you must use a shared service user and still isolate data, pass the viewer's identity in `variables` and filter on it in a row access policy. See [Multi-tenancy](#multi-tenancy). The app sets the identity, so this is only as trusted as your app's sign-in.
 
 ---
 

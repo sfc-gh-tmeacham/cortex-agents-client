@@ -164,6 +164,7 @@ See [Python client](docs/python_api.md) for multi-turn conversations, all event 
   - To isolate data per viewer, pass the viewer's identity in `variables` (session attributes) and filter on it in a row access policy. The policy enforces the boundary, not the API. See [Multi-tenancy](docs/python_api.md#multi-tenancy-session-attributes).
 - **External apps run with the rights of the credential in `auth`.** If all viewers share one PAT or key pair, every viewer gets that user's agent access. See [Choosing an identity](docs/streamlit_guide.md#choosing-an-identity).
   - For a shared app, use a dedicated `TYPE = SERVICE` user with a least-privilege role. Do not use the credential of a human user.
+    - To isolate data per viewer, pass the viewer's identity in `variables` and filter on it in a row access policy.
   - For per-viewer access, sign each viewer in with OAuth and pass the viewer's token to `OAuthAuth`.
 - **Streamlit-in-Snowflake requires the container runtime.** Warehouse runtime apps cannot call the Cortex Agents API.
 - **Not on PyPI.** Install from a clone of the GitHub repository. See [Installation](#installation).
