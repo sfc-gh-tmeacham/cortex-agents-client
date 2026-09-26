@@ -2,7 +2,7 @@
 
 # Cortex Agents SSE Event Types
 
-All 17 server-sent event types emitted by the `agent:run` endpoint.
+This page lists all 17 server-sent event types that the `agent:run` endpoint emits.
 
 The streaming protocol is standard SSE (`text/event-stream`):
 
@@ -12,7 +12,7 @@ data: <json_payload>
 
 ```
 
-Unknown event types are passed through as `UnknownEvent` and never raise an error. This ensures forward-compatibility as Snowflake adds new tools and event types.
+The library passes unknown event types through as `UnknownEvent` and never raises an error. This keeps the library forward-compatible when Snowflake adds new tools and event types.
 
 ## Fields present on every event
 
@@ -31,7 +31,7 @@ server omits it. Without it, `starting_after` cannot be used with a known positi
 
 ## Terminal marker (`event: done`)
 
-Every stream — from both `agent:run` and `GET agent/runs/{run_id}` — ends with a marker whose
+Every stream from `agent:run` and from `GET agent/runs/{run_id}` ends with a marker whose
 data is **not JSON**:
 
 ```
@@ -40,9 +40,9 @@ data: [DONE]
 
 ```
 
-This is not documented in the public API reference; it was found by live testing. A parser
+The public API reference does not document this marker. Live testing found it. A parser
 that assumes every `data:` line is JSON reports it as a malformed event. `parse_sse_stream`
-treats it as end-of-stream, so it never reaches the caller and is not counted among the 17
+treats it as end-of-stream, so it never reaches the caller. It is not one of the 17
 event types below.
 
 ---
@@ -71,12 +71,12 @@ Complete text block after all deltas have been sent. Always follows a series of 
 
 > **`annotations`**: present when the text carries `[^N]` citation markers, and parsed into
 > `TextEvent.annotations` (defaults to `[]` when absent). The same citations also arrive as
-> separate `response.text.annotation` events — see below — so a renderer should pick one
-> source rather than showing both.
+> separate `response.text.annotation` events (see below). A renderer should pick one
+> source and not show both.
 
-> **`is_elicitation`**: `true` when the agent is asking the user a clarifying question rather than delivering an answer. Render with `st.info()` instead of `st.markdown()` to visually distinguish the prompt.
+> **`is_elicitation`**: `true` when the agent asks the user a clarifying question instead of giving an answer. Render with `st.info()` instead of `st.markdown()` to show the question differently.
 
-**Streamlit rendering:** `st.markdown(text)` — supports inline citation markers like `[^1]`.
+**Streamlit rendering:** `st.markdown(text)`. It supports inline citation markers like `[^1]`.
 
 ---
 
@@ -98,7 +98,7 @@ Token-by-token text streaming. Accumulate deltas in order of `content_index` to 
 
 ## 3. `response.text.annotation`
 
-A citation annotation embedded within a text block. Sent alongside `response.text` events for the same `content_index`.
+A citation annotation inside a text block. The server sends it with the `response.text` events for the same `content_index`.
 
 ```json
 {
@@ -117,9 +117,9 @@ A citation annotation embedded within a text block. Sent alongside `response.tex
 
 `annotation_index` is the ordinal position of this annotation within its text block (defaults to `0`).
 
-Annotation type is always `cortex_search_citation` currently. The `index` corresponds to citation markers like `[^1]` in the text.
+Currently, the annotation type is always `cortex_search_citation`. The `index` corresponds to citation markers like `[^1]` in the text.
 
-**Streamlit rendering:** Collect into a list; render as expandable citations section below the text.
+**Streamlit rendering:** Collect the annotations into a list. Render them as an expandable citations section below the text.
 
 ---
 
@@ -135,7 +135,7 @@ Complete agent reasoning/thinking block. Sent after all `response.thinking.delta
 }
 ```
 
-**Streamlit rendering:** a `Thinking` step (`st.status(type="step")`) in the reasoning timeline — only when `show_thinking=True`. Thinking before and after a tool call renders as separate steps.
+**Streamlit rendering:** a `Thinking` step (`st.status(type="step")`) in the reasoning timeline, only when `show_thinking=True`. Thinking before and after a tool call renders as separate steps.
 
 ---
 
@@ -155,7 +155,7 @@ Streaming thinking token. Accumulate for the same `content_index` to build `resp
 
 ## 6. `response.tool_use`
 
-The agent has decided to use a tool. If `permission.options` is non-empty, the client must send a `permission_decision` message before the tool executes.
+The agent decided to use a tool. If `permission.options` is non-empty, the client must send a `permission_decision` message before the tool executes.
 
 ```json
 {
@@ -185,13 +185,13 @@ When permission is required:
 }
 ```
 
-`client_side_execute: true` means the client is responsible for executing the tool and sending results back in the next request.
+`client_side_execute: true` means the client must execute the tool and send the results in the next request.
 
 **Tool types:** `system_execute_sql`, `system_agentic_semantic_context`, `cortex_search`, `web_search`, `generic`, `code_execution`, `data_to_chart`, `agent_skill`, `mcp_connector`.
 
-> **Note:** Prior to Apr 2026, Cortex Analyst emitted `cortex_analyst_text_to_sql`. This was replaced by `system_execute_sql` — the generated SQL is now in `input["sql"]`.
+> **Note:** Prior to Apr 2026, Cortex Analyst emitted `cortex_analyst_text_to_sql`. `system_execute_sql` replaced it. The generated SQL is now in `input["sql"]`.
 
-**Streamlit rendering:** a running `Using {name}...` step (`st.status(type="step")`) in the reasoning timeline, labelled with an icon for the tool type — only when `show_tool_status=True`.
+**Streamlit rendering:** a running `Using {name}...` step (`st.status(type="step")`) in the reasoning timeline, labelled with an icon for the tool type, only when `show_tool_status=True`.
 
 ---
 
@@ -221,13 +221,13 @@ Tool execution is complete. Sent after all `response.tool_result.status` and `re
 
 `content[].type` values: `"json"` | `"text"`
 
-**Streamlit rendering:** the tool step moves to the complete or error state. A verified-query success is replaced by a step with a green shield marker.
+**Streamlit rendering:** the tool step moves to the complete or error state. For a verified-query success, a step with a green shield marker replaces the tool step.
 
 ---
 
 ## 8. `response.tool_result.status`
 
-In-progress status update for a running tool. Useful for showing progress spinners.
+In-progress status update for a running tool. It is useful for showing progress spinners.
 
 ```json
 {
@@ -247,7 +247,7 @@ In-progress status update for a running tool. Useful for showing progress spinne
 
 > **Deprecated (Apr 2026):** Cortex Analyst no longer emits this event type. SQL is now delivered in `ToolUseEvent.input["sql"]` for events with `type="system_execute_sql"`. This event type is still parsed for backward compatibility with older API versions.
 
-Streaming delta from the Cortex Analyst tool. Contains progressive SQL generation, execution, and result output.
+Streaming delta from the Cortex Analyst tool. It contains progressive SQL generation, execution, and result output.
 
 ```json
 {
@@ -326,7 +326,7 @@ A SQL result set rendered as a table. Typically emitted after Cortex Analyst or 
 }
 ```
 
-`data` values are all strings in `jsonv2` format; use `rowType` for type casting.
+All `data` values are strings in `jsonv2` format. Use `rowType` to cast types.
 
 **Streamlit rendering:**
 ```python
@@ -349,7 +349,7 @@ A Vega-Lite chart specification. Emitted by the "Data to Chart" tool after Analy
 }
 ```
 
-`chart_spec` is a JSON string (not a dict) — parse with `json.loads()`.
+`chart_spec` is a JSON string (not a dict). Parse it with `json.loads()`.
 
 **Streamlit rendering:** `container.vega_lite_chart(json.loads(chart_spec), width="stretch")`
 
@@ -368,7 +368,7 @@ High-level execution status update. Not tied to a specific tool.
 
 Common status values: `"executing_tool"`, `"generating_response"`, `"complete"`.
 
-**Streamlit rendering:** Transient update only; not stored in `StoredMessage`.
+**Streamlit rendering:** Transient update only. It is not stored in `StoredMessage`.
 
 ---
 
@@ -383,9 +383,9 @@ A non-fatal warning. The stream continues after this event.
 }
 ```
 
-`code` is optional structured code for client-side handling.
+`code` is an optional structured code for client-side handling.
 
-**Streamlit rendering:** `container.warning(message)` — persisted in `StoredMessage.warnings`.
+**Streamlit rendering:** `container.warning(message)`. The warning persists in `StoredMessage.warnings`.
 
 ---
 
@@ -404,13 +404,13 @@ A fatal error. The stream ends after this event. The library raises `RunError`.
 
 `error_code` is a deprecated alias for `code` kept for backward compatibility.
 
-**Streamlit rendering:** `container.error(f"Error {code}: {message}")` — persisted in `StoredMessage.error`.
+**Streamlit rendering:** `container.error(f"Error {code}: {message}")`. The error persists in `StoredMessage.error`.
 
 ---
 
 ## 15. `metadata`
 
-Thread persistence confirmation. Sent **twice** per run: once when the user message is saved, once when the assistant message is saved. Contains the `message_id` values needed for multi-turn conversation.
+Thread persistence confirmation. The server sends it **twice** per run: once when it saves the user message, and once when it saves the assistant message. It contains the `message_id` values that multi-turn conversation needs.
 
 ```json
 {"metadata": {"role": "user", "message_id": 123, "run_id": "4264-83472"}}
@@ -428,7 +428,7 @@ Thread persistence confirmation. Sent **twice** per run: once when the user mess
 
 ## 16. `response`
 
-Final aggregated response. **Always the last event in the stream.** Emitted once, after all other events. For streaming clients most content has already arrived via individual events, but this is the only source of per-model token counts and the cancellation status.
+Final aggregated response. **Always the last event in the stream.** Emitted once, after all other events. For streaming clients, most content already arrived in individual events. But this event is the only source of per-model token counts and the cancellation status.
 
 ```json
 {
@@ -463,7 +463,7 @@ Final aggregated response. **Always the last event in the stream.** Emitted once
 
 ## 17. `response.suggested_queries`
 
-Suggested follow-up questions the agent recommends based on the conversation context. Not always emitted — depends on the agent configuration and whether the model generates suggestions.
+Suggested follow-up questions the agent recommends based on the conversation context. The server does not always emit it. This depends on the agent configuration and on whether the model generates suggestions.
 
 ```json
 {
@@ -525,6 +525,6 @@ event: done
 data: [DONE]
 ```
 
-The trailing `done` / `[DONE]` frame terminates every stream. It is consumed by
-`parse_sse_stream` and never reaches the caller, so `ResponseEvent` is the last event a
+The trailing `done` / `[DONE]` frame ends every stream. `parse_sse_stream` consumes it,
+and it never reaches the caller, so `ResponseEvent` is the last event a
 consumer observes.

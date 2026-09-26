@@ -25,7 +25,7 @@ JWT claims: `iss = ACCOUNT.USER.SHA256:<fingerprint>`, `sub = ACCOUNT.USER`, `ia
 
 ### Running under a non-default role
 
-A request can run under a role other than the user's default by sending `X-Snowflake-Role: <role>`. Note that Cortex Agents derives tool permissions from the querying user's **default** role, not the role in this header or the session role.
+A request can run under a role other than the user's default by sending `X-Snowflake-Role: <role>`. Cortex Agents derives tool permissions from the querying user's **default** role, not the role in this header or the session role.
 
 Library support: `CortexAgentsClient(..., role="MY_ROLE")`, or per-call via `HttpClient.request(..., headers={...})`.
 
@@ -209,7 +209,7 @@ POST /api/v2/cortex/agent:run
 
 ### SSE stream framing (verified live, not in the public docs)
 
-Every stream — from both run endpoints and from Stream Agent Run — ends with a terminal
+Every stream from both run endpoints and from Stream Agent Run ends with a terminal
 marker that is **not JSON**:
 
 ```
@@ -246,7 +246,7 @@ is the cursor value for `starting_after`.
 
 `tool_choice.type` values: `"auto"` (default) | `"required"` | `"none"`
 
-`variables` (optional): immutable session attributes for multi-tenancy. Snowflake sets each one on the session before running any SQL the agent generates, so a row access policy can read it with `SYS_CONTEXT('SNOWFLAKE$SESSION_ATTRIBUTES', '<name>')`:
+`variables` (optional): immutable session attributes for multi-tenancy. Snowflake sets each one on the session before it runs any SQL that the agent generates. A row access policy can then read each attribute with `SYS_CONTEXT('SNOWFLAKE$SESSION_ATTRIBUTES', '<name>')`:
 
 ```json
 {
@@ -263,11 +263,11 @@ is the cursor value for `starting_after`.
 Verified live (2026-09-25), beyond what the [public doc](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-multi-tenancy) states:
 
 - **Works on agent-object runs**, not only the lite endpoint. The public doc shows the plain `/api/v2/cortex/agent:run` path, but the same block is accepted on `.../agents/{name}:run`. Unlike `models` / `instructions` / `orchestration`, `variables` is not rejected on an agent-object run.
-- **Attributes persist for the whole interaction.** A background run started with `variables` and resumed later via [Stream Agent Run](#stream-agent-run) was still scoped, so resume and cancel need no `variables` of their own (they send no body).
+- **Attributes persist for the whole interaction.** A background run started with `variables` and resumed later via [Stream Agent Run](#stream-agent-run) was still scoped. Resume and cancel therefore need no `variables` of their own (they send no body).
 - **`type` is not limited to `"string"`.** A `"number"` attribute was accepted alongside a string one and scoping still applied. The public doc only shows `"string"`.
-- **A missing attribute fails closed**, given a policy of the usual shape: `SYS_CONTEXT` returns NULL, `col = NULL` is never true, and no rows come back. Worth keeping in mind when writing the policy — it is the policy, not the API, that decides this.
+- **A missing attribute fails closed**, given a policy of the usual shape: `SYS_CONTEXT` returns NULL, `col = NULL` is never true, and no rows come back. Keep this in mind when you write the policy. The policy decides this, not the API.
 
-`background` (optional, default `false`): run asynchronously with a 6-hour timeout instead of 15 minutes. The run survives a client disconnect. **Only available when using threads.** With `stream: false`, the call returns immediately with `status: "in_progress"` and a `metadata.run_id`; collect the output later via [Stream Agent Run](#stream-agent-run).
+`background` (optional, default `false`): run asynchronously with a 6-hour timeout instead of 15 minutes. The run survives a client disconnect. **Only available when using threads.** With `stream: false`, the call returns immediately with `status: "in_progress"` and a `metadata.run_id`. Collect the output later via [Stream Agent Run](#stream-agent-run).
 
 For permission decisions (response to `tool_use` with non-empty `permission.options`):
 ```json
@@ -303,9 +303,9 @@ Inline (lite agent) request adds config fields:
 }
 ```
 
-`models` is a `ModelConfig` **object**, not a string. A bare top-level `"model": "claude-4-sonnet"` is the pre-September-2025 legacy schema and should not be used for new work; the library still accepts a `model=` argument but maps it into `models` and emits a `DeprecationWarning`.
+`models` is a `ModelConfig` **object**, not a string. A bare top-level `"model": "claude-4-sonnet"` is the pre-September-2025 legacy schema. It should not be used for new work. The library still accepts a `model=` argument, but it maps the argument into `models` and emits a `DeprecationWarning`.
 
-These config fields apply to the lite endpoint only. `models`, `instructions`, and `orchestration` cannot be set or overwritten through an agent-object run — use [Update Agent](#update-agent) instead.
+These config fields apply to the lite endpoint only. `models`, `instructions`, and `orchestration` cannot be set or overwritten through an agent-object run. Use [Update Agent](#update-agent) instead.
 
 ### Non-streaming response (`stream: false`)
 
@@ -341,11 +341,11 @@ These config fields apply to the lite endpoint only. `models`, `instructions`, a
 }
 ```
 
-The Python client captures `status` as `RunResult.status` — `"completed"` for a normal run,
+The Python client captures `status` as `RunResult.status`. The values are `"completed"` for a normal run,
 `"cancelled"` if stopped early via CancelAgentRun, `"timed_out"` if the run exceeded its maximum
 length, and `"in_progress"` for a background run that has not finished.
 
-The response `metadata` block is parsed into `RunResult.metadata` (a `RunMetadata`), carrying
+The library parses the response `metadata` block into `RunResult.metadata` (a `RunMetadata`). It carries
 `run_id`, `thread_id`, `user_message_id`, `assistant_message_id`, and token `usage`.
 `RunResult.run_id` is a shortcut to `metadata.run_id`.
 
@@ -357,8 +357,8 @@ The response `metadata` block is parsed into `RunResult.metadata` (a `RunMetadat
 GET /api/v2/cortex/agent/runs/{run_id}
 ```
 
-Reconnects to an agent run and streams its output. The events are byte-for-byte the same as those
-returned by streaming `agent:run`.
+Reconnects to an agent run and streams its output. The events are byte-for-byte the same as the events
+that streaming `agent:run` returns.
 
 | Parameter | Location | Description |
 |---|---|---|
@@ -369,12 +369,12 @@ The cursor value is the `sequence_number` field carried on each streamed event. 
 exposes it as `SSEEvent.sequence_number` on every event type.
 
 A run's events are accessible while it is active and for up to **5 minutes** after it completes.
-Connecting after that returns `409 Conflict`; retrieve the full response from the thread instead.
+A connection after that returns `409 Conflict`. Retrieve the full response from the thread instead.
 
 > Observed on a test account in August 2026: a completed run was still streamable 5.5 minutes after
 > finishing, so this window was not enforced. Treat the 5 minutes as a lower bound on
 > availability, not as a guarantee that the run has expired. Do not rely on a 409 to detect
-> that a run is finished — check the run's terminal `response` event or read the thread.
+> that a run is finished. Check the run's terminal `response` event or read the thread.
 
 Library: `client.stream_run(run_id, starting_after=None)` or `client.runs.stream_run(...)`.
 A 409 raises `RunNotActiveError`.
@@ -403,7 +403,7 @@ Response:
 }
 ```
 
-`metadata.assistant_message_id` is present only when partial output was saved; use it as the
+`metadata.assistant_message_id` is present only when partial output was saved. Use it as the
 `parent_message_id` for the next turn. A run that has already completed or been cancelled returns
 `409 Conflict`.
 
@@ -475,7 +475,7 @@ Response:
 }
 ```
 
-Messages are returned in **descending** order (newest first). Paginate by passing the smallest `message_id` from the page as `last_message_id`.
+The API returns messages in **descending** order (newest first). To paginate, pass the smallest `message_id` from the page as `last_message_id`.
 
 ### Update Thread
 
@@ -526,7 +526,7 @@ Response: `{"success": true}`
 
 **`cortex_analyst_text_to_sql`**: `semantic_model_file` XOR `semantic_view`, plus optional `execution_environment: {type, warehouse, query_timeout?}`.
 
-**`cortex_search`**: `search_service` (fully-qualified name), `title_column`, `id_column`, optional `filter`, optional `max_results` (integer), optional `columns_and_descriptions` (map of column name → `{description, type, searchable, filterable}` — recommended for filterable/searchable columns to improve result quality).
+**`cortex_search`**: `search_service` (fully-qualified name), `title_column`, `id_column`, optional `filter`, optional `max_results` (integer), optional `columns_and_descriptions` (map of column name → `{description, type, searchable, filterable}`, recommended for filterable/searchable columns to improve result quality).
 
 **`generic`**: `type` (`function` | `procedure`), `execution_environment`, `identifier`.
 
@@ -534,4 +534,4 @@ Response: `{"success": true}`
 
 **`code_execution`**, **`data_to_chart`**: No `tool_resources` entry required.
 
-**`agent_skill`**, **`mcp_connector`**: Resource schemas not yet publicly documented; pass tool-specific resource objects as needed.
+**`agent_skill`**, **`mcp_connector`**: Resource schemas are not yet publicly documented. Pass tool-specific resource objects as needed.

@@ -4,10 +4,10 @@
 [![Snowflake](https://img.shields.io/badge/Snowflake-Cortex%20Agents-29B5E8?logo=snowflake&logoColor=white)](https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents)
 [![Streamlit](https://img.shields.io/badge/Streamlit-%E2%89%A5%201.64-FF4B4B?logo=streamlit&logoColor=white)](https://streamlit.io)
 
-Drop-in Cortex Agent chatbot for Streamlit. Add a fully functional, streaming AI chat interface to any Streamlit app in a few lines of code:
+This library is a drop-in Cortex Agent chatbot for Streamlit. It adds a complete, streaming AI chat interface to any Streamlit app in a few lines of code:
 
 > [!NOTE]
-> **Unofficial community project** — not an official Snowflake offering and not supported by Snowflake. See [Disclaimer](#disclaimer).
+> **Unofficial community project.** It is not an official Snowflake offering, and Snowflake does not support it. See [Disclaimer](#disclaimer).
 
 > [!IMPORTANT]
 > **Requires Streamlit 1.64 or later** (`streamlit>=1.64`). The chat UI uses `st.chat_input(submit_mode="stop")`, `st.status(type="step")` and `st.pills`, which older versions do not have. In Streamlit in Snowflake, pin `streamlit[snowflake]>=1.64` in `pyproject.toml`.
@@ -48,7 +48,7 @@ CortexAgentChat(
 
 ![Chat UI example](img/ui-example.png)
 
-Also includes the complete Python client for the Cortex Agents REST API (`streamlit_cortex_agents.client`), usable on its own in scripts, notebooks, or custom integrations.
+The library also includes the complete Python client for the Cortex Agents REST API (`streamlit_cortex_agents.client`). You can use the client on its own in scripts, notebooks, or custom integrations.
 
 > **Want a no-code experience?** Consider [Snowflake CoWork](https://docs.snowflake.com/en/user-guide/snowflake-cortex/snowflake-cowork) for delivering agents to users without building a custom app.
 

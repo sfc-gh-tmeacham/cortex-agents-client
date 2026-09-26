@@ -8,15 +8,15 @@
 |---|---|---|---|
 | `account_url` | Yes | — | `https://myorg-myaccount.snowflakecomputing.com` |
 | `auth` | Yes | — | `AuthProvider` instance or PAT string (auto-wrapped as `PATAuth`) |
-| `timeout` | No | `120.0` | Read timeout in seconds — max silence between SSE events. Increase for slow agents. |
-| `default_database` | No | `None` | Default database — avoids repeating it in every `thread.chat()` call |
+| `timeout` | No | `120.0` | Read timeout in seconds. This is the max silence between SSE events. Increase it for slow agents. |
+| `default_database` | No | `None` | Default database. You then do not repeat it in every `thread.chat()` call |
 | `default_schema` | No | `None` | Default schema |
 | `origin_application` | No | `None` | Label attached to threads for monitoring (max 16 bytes) |
-| `role` | No | `None` | Snowflake role sent as `X-Snowflake-Role`. Note that Cortex Agents derives tool permissions from the user's **default** role regardless of this header. |
+| `role` | No | `None` | Snowflake role sent as `X-Snowflake-Role`. Cortex Agents derives tool permissions from the user's **default** role, regardless of this header. |
 
 ## `CortexAgentChat` parameters
 
-`account_url`, `auth`, and `agent_path` are always required. `agent_path` is not sensitive — hardcode it directly.
+`account_url`, `auth`, and `agent_path` are always required. `agent_path` is not sensitive. Hardcode it directly.
 
 | Parameter | Required | Default | Description |
 |---|---|---|---|
@@ -24,24 +24,24 @@
 | `auth` | Yes | — | Auth provider or PAT string |
 | `agent_path` | Yes | — | `DB.SCHEMA.AGENT` |
 | `mode` | No | `"fullpage"` | `"fullpage"` or `"embedded"` |
-| `height` | No | `450` | Message area height: px as an `int`, or a CSS height string such as `"calc(100vh - 300px)"` — `embedded` mode only |
+| `height` | No | `450` | Message area height: px as an `int`, or a CSS height string such as `"calc(100vh - 300px)"`. Applies to `embedded` mode only |
 | `show_thinking` | No | `True` | Show agent reasoning as steps in the reasoning timeline |
 | `show_tool_status` | No | `True` | Show tool calls as steps in the reasoning timeline |
 | `new_conversation_button` | No | `True` | Show "New conversation" button |
 | `origin_application` | No | `None` | Thread label for monitoring (max 16 bytes) |
 | `input_placeholder` | No | `"Ask a question..."` | Chat input placeholder |
-| `session_key_prefix` | No | `"_ca"` | `st.session_state` key prefix — change when running multiple bots on one page |
+| `session_key_prefix` | No | `"_ca"` | `st.session_state` key prefix. Change it when you run multiple bots on one page |
 | `default_database` | No | `None` | Default database |
 | `default_schema` | No | `None` | Default schema |
 | `accept_file` | No | `False` | `True`, `"multiple"`, `"directory"`, or `False`. Attachments are displayed and replayed but **not forwarded to the agent** |
 | `accept_audio` | No | `False` | Enable microphone input. Recordings are displayed and replayed but **not forwarded to the agent** |
-| `file_type` | No | `None` | Allowed extensions, e.g. `["pdf","csv"]` — only applies when `accept_file` is set; `None` = all types |
+| `file_type` | No | `None` | Allowed extensions, e.g. `["pdf","csv"]`. Applies only when `accept_file` is set. `None` = all types |
 | `tool_executor` | No | `None` | Callable for client-side tool execution |
 | `variables` | No | `None` | Session attributes for multi-tenancy: a mapping, or a callable returning one, called once per prompt |
 
 ## CSS targeting via widget keys
 
-Widgets rendered by the chatbot are assigned stable keys that generate `.st-key-*` CSS classes. Use these to style specific elements without relying on Streamlit's internal DOM structure.
+The chatbot assigns stable keys to the widgets it renders. These keys generate `.st-key-*` CSS classes. Use these classes to style specific elements without relying on Streamlit's internal DOM structure.
 
 **Key format:** `.st-key-{prefix}-{msg_index}-{element}[-{item_index}]`
 
@@ -68,7 +68,7 @@ st.html("""
 """)
 ```
 
-**Note:** `st.status`, `st.markdown`, `st.warning`, `st.caption`, and `st.info` do not accept `key` parameters in Streamlit — those elements cannot be targeted via this mechanism. The reasoning timeline is an `st.status`, so its key is set on an `st.container` that wraps it.
+**Note:** `st.status`, `st.markdown`, `st.warning`, `st.caption`, and `st.info` do not accept `key` parameters in Streamlit. You cannot target those elements with this mechanism. The reasoning timeline is an `st.status`, so its key is set on an `st.container` that wraps it.
 
 ## Secrets and environment variables
 
@@ -78,7 +78,7 @@ st.html("""
 |---|---|---|
 | PAT *(recommended)* | `SNOWFLAKE_ACCOUNT_URL` | `https://myorg-myaccount.snowflakecomputing.com` |
 | PAT | `SNOWFLAKE_PAT` | Programmatic Access Token (`v2:...`) |
-| JWT | `SNOWFLAKE_ACCOUNT_URL` | Account URL — the key file path is passed in code, not stored in secrets |
+| JWT | `SNOWFLAKE_ACCOUNT_URL` | Account URL. You pass the key file path in code, not in secrets |
 | OAuth | `SNOWFLAKE_ACCOUNT_URL` | Account URL |
 | OAuth | `SNOWFLAKE_OAUTH_TOKEN` | OAuth bearer token |
 
@@ -97,7 +97,7 @@ No `.streamlit/secrets.toml` needed. Snowflake injects credentials automatically
 |---|---|---|
 | `SNOWFLAKE_ACCOUNT_URL` | All | Account URL with `https://` scheme |
 | `SNOWFLAKE_PAT` | PAT | Programmatic Access Token |
-| `SNOWFLAKE_AGENT_PATH` | All | `DB.SCHEMA.AGENT` — not sensitive; used as a convenience variable in examples and live tests |
+| `SNOWFLAKE_AGENT_PATH` | All | `DB.SCHEMA.AGENT`. Not sensitive. Examples and live tests use it as a convenience variable |
 
 ## Running tests
 
@@ -130,7 +130,7 @@ For live test details (agent seed scripts, environment variables, markers, teard
 
 ## Demo app
 
-A fully interactive demo app is included at `examples/demo/`. It exercises all event types and layout modes without a Snowflake account — responses come from pre-canned event streams in `examples/demo/mock_thread.py`.
+A fully interactive demo app is included at `examples/demo/`. It exercises all event types and layout modes without a Snowflake account. Responses come from pre-canned event streams in `examples/demo/mock_thread.py`.
 
 ```bash
 # No credentials needed. The env vars avoid a PyArrow crash on macOS ARM64.
@@ -201,11 +201,11 @@ src/streamlit_cortex_agents/
 **Design principles**
 
 - **Layered**: HTTP → resources → client facade → optional Streamlit layer
-- **Typed events**: 17 event dataclasses; `UnknownEvent` catches future API additions without breaking callers
-- **Stateful threads**: `Thread` tracks `parent_message_id` so callers never manage it manually; `fork()` enables branching
-- **Auth pluggability**: `AuthProvider` ABC with four concrete implementations; plain strings auto-wrap as `PATAuth`
+- **Typed events**: 17 event dataclasses. `UnknownEvent` catches future API additions without breaking callers
+- **Stateful threads**: `Thread` tracks `parent_message_id` so callers never manage it manually. `fork()` enables branching
+- **Auth pluggability**: `AuthProvider` ABC with four concrete implementations. Plain strings auto-wrap as `PATAuth`
 - **Two-path rendering**: live streaming path (`render_streaming_response`) and history replay path (`render_stored_message`) produce equivalent output
-- **No external dependencies for core**: only `httpx`; `cryptography`+`PyJWT` are optional for JWT auth; `streamlit`+`pandas` are optional for the UI layer
+- **No external dependencies for core**: only `httpx`. `cryptography`+`PyJWT` are optional for JWT auth. `streamlit`+`pandas` are optional for the UI layer
 
 **SSE event pipeline (streaming path)**
 
@@ -221,6 +221,6 @@ HTTP response body
 
 ## Notes
 
-- **Timeout**: Default read timeout is 120 seconds (2 minutes). This controls the maximum silence between SSE data chunks — not the total request duration. Connection pooling is disabled to prevent stale connections from hanging in long-lived sessions. Increase the timeout for agents with very long processing times.
-- **Unknown event types**: Yielded as `UnknownEvent` (never raise) for forward-compatibility with new Snowflake tools.
+- **Timeout**: Default read timeout is 120 seconds (2 minutes). This controls the maximum silence between SSE data chunks, not the total request duration. The client disables connection pooling so that stale connections do not hang in long-lived sessions. Increase the timeout for agents with very long processing times.
+- **Unknown event types**: The client yields these as `UnknownEvent` and never raises. This keeps forward-compatibility with new Snowflake tools.
 - **Thread compaction**: Use `client.threads.latest_context(thread_id)` to get the most recent summary + subsequent messages when resuming long conversations.
