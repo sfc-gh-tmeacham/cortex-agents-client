@@ -449,7 +449,7 @@ Marked `@pytest.mark.live`. Deselected by default via `addopts = "--tb=short -m 
 in `pyproject.toml`, regardless of whether the env vars are set, so a bare `pytest` never
 reaches the network. Run them with `-m live`, which overrides the default; individual tests
 still skip if their required env vars are absent.
-See [`tests/live/README.md`](../tests/live/README.md) for setup instructions.
+See [`tests/live/README.md`](../../tests/live/README.md) for setup instructions.
 
 ### Environment variables
 

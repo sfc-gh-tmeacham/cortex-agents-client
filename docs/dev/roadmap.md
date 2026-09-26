@@ -298,7 +298,7 @@ follow-ups, and `CortexAgentChat` takes a mapping or a per-prompt callable.
 Verified live against a row access policy: two tenants saw disjoint rows, a second turn on
 one thread stayed scoped, a resumed background run stayed scoped, and a request with no
 attribute returned nothing rather than everything. See
-[api_spec.md](api_spec.md#request-body) for the findings that are not in the public doc.
+[api_spec.md](../api_spec.md#request-body) for the findings that are not in the public doc.
 
 ### API-consistency improvements
 
