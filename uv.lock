@@ -1594,31 +1594,27 @@ wheels = [
 
 [[package]]
 name = "streamlit-cortex-agents"
-version = "0.3.0"
+version = "1.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
+    { name = "pandas" },
+    { name = "streamlit" },
 ]
 
 [package.optional-dependencies]
 dev = [
     { name = "cryptography" },
     { name = "mypy" },
-    { name = "pandas" },
     { name = "pyjwt" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-httpx" },
     { name = "ruff" },
-    { name = "streamlit" },
 ]
 jwt = [
     { name = "cryptography" },
     { name = "pyjwt" },
-]
-streamlit = [
-    { name = "pandas" },
-    { name = "streamlit" },
 ]
 
 [package.metadata]
@@ -1627,18 +1623,16 @@ requires-dist = [
     { name = "cryptography", marker = "extra == 'jwt'", specifier = ">=42" },
     { name = "httpx", specifier = ">=0.27,<1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.10" },
-    { name = "pandas", marker = "extra == 'dev'", specifier = ">=2.0" },
-    { name = "pandas", marker = "extra == 'streamlit'", specifier = ">=2.0" },
+    { name = "pandas", specifier = ">=2.0" },
     { name = "pyjwt", marker = "extra == 'dev'", specifier = ">=2.8" },
     { name = "pyjwt", marker = "extra == 'jwt'", specifier = ">=2.8" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "pytest-httpx", marker = "extra == 'dev'", specifier = ">=0.30,<1" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6" },
-    { name = "streamlit", marker = "extra == 'dev'", specifier = ">=1.64" },
-    { name = "streamlit", marker = "extra == 'streamlit'", specifier = ">=1.64" },
+    { name = "streamlit", specifier = ">=1.64" },
 ]
-provides-extras = ["jwt", "streamlit", "dev"]
+provides-extras = ["jwt", "dev"]
 
 [[package]]
 name = "toml"

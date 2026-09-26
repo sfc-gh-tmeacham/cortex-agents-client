@@ -435,7 +435,7 @@ Items not yet implemented — candidates for future test sprints:
 | `Thread.chat()` tool_choice body | Verify `tool_choice` dict is sent correctly in the run request body. |
 | `Thread.chat()` permission_decisions body | Verify `permission_decisions` content items are sent in the user message. |
 | Thread `update` 404 | `threads.update()` on a non-existent thread raises `ThreadNotFoundError`. |
-| Mock-based AppTest for CI | `tests/live/test_streamlit_live.py` covers the render pipeline but needs live credentials. A mock-driven AppTest over `streamlit_demo/mock_thread.py` would give the same structural coverage in CI. |
+| Mock-based AppTest for CI | `tests/live/test_streamlit_live.py` covers the render pipeline but needs live credentials. A mock-driven AppTest over `examples/demo/mock_thread.py` would give the same structural coverage in CI. |
 
 > `CortexAgentChat` AppTest integration was previously listed here. It is now implemented in
 > `tests/live/test_streamlit_live.py`. It was worth the complexity: the first run surfaced a

@@ -19,7 +19,7 @@ To create the SiS app, run in Snowflake:
       QUERY_WAREHOUSE              = 'MY_WH'
       EXTERNAL_ACCESS_INTEGRATIONS = (cortex_agents_api_eai, pypi_eai);
 
-Upload this file and your streamlit_cortex_agents/ directory to the stage path above.
+Upload this file and your streamlit_cortex_agents/ directory (from src/ in the repo) to the stage path above.
 """
 
 import os

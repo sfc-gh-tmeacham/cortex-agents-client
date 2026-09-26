@@ -52,7 +52,7 @@ Features out of the box: streaming text with typewriter effect, tables and chart
 
 ![Embedded mode example](img/embed_example.png)
 
-Also includes the complete Python client library for the Cortex Agents REST API — use it standalone for scripts, notebooks, or custom integrations without Streamlit.
+Also includes the complete Python client for the Cortex Agents REST API (`streamlit_cortex_agents.client`), usable on its own in scripts, notebooks, or custom integrations.
 
 > **Want a no-code experience?** Consider [Snowflake CoWork](https://docs.snowflake.com/en/user-guide/snowflake-cortex/snowflake-cowork) for delivering agents to users without building a custom app.
 
@@ -61,20 +61,6 @@ Also includes the complete Python client library for the Cortex Agents REST API 
 - [Installation](#installation)
   - [uv (recommended)](#uv-recommended)
   - [pip](#pip)
-- [Core Python API](#core-python-api)
-  - [Authentication](#authentication)
-  - [Quick start](#quick-start)
-  - [Multi-turn conversations](#multi-turn-conversations)
-  - [Handling all event types](#handling-all-event-types)
-  - [Non-streaming run](#non-streaming-run)
-  - [Background (asynchronous) runs](#background-asynchronous-runs)
-  - [Cancelling a run](#cancelling-a-run)
-  - [Runs without an agent object (lite runs)](#runs-without-an-agent-object-lite-runs)
-  - [Agent management (CRUD)](#agent-management-crud)
-  - [Thread management](#thread-management)
-  - [Forking conversations](#forking-conversations)
-  - [Multi-tenancy (session attributes)](#multi-tenancy-session-attributes)
-  - [Exception handling](#exception-handling)
 - [Streamlit-in-Snowflake (container runtime)](#streamlit-in-snowflake-container-runtime)
   - [Prerequisites — External Access Integrations](#prerequisites--external-access-integrations)
   - [Authentication](#sis-authentication)
@@ -93,6 +79,20 @@ Also includes the complete Python client library for the Cortex Agents REST API 
   - [Working with table results](#working-with-table-results)
   - [Multi-tenancy](#multi-tenancy)
   - [Elicitation](#elicitation)
+- [Core Python API](#core-python-api)
+  - [Authentication](#authentication)
+  - [Quick start](#quick-start)
+  - [Multi-turn conversations](#multi-turn-conversations)
+  - [Handling all event types](#handling-all-event-types)
+  - [Non-streaming run](#non-streaming-run)
+  - [Background (asynchronous) runs](#background-asynchronous-runs)
+  - [Cancelling a run](#cancelling-a-run)
+  - [Runs without an agent object (lite runs)](#runs-without-an-agent-object-lite-runs)
+  - [Agent management (CRUD)](#agent-management-crud)
+  - [Thread management](#thread-management)
+  - [Forking conversations](#forking-conversations)
+  - [Multi-tenancy (session attributes)](#multi-tenancy-session-attributes)
+  - [Exception handling](#exception-handling)
 - [Reference](#reference)
   - [`CortexAgentsClient` parameters](#cortexagentsclient-parameters)
   - [`CortexAgentChat` parameters](#cortexagentchat-parameters)
@@ -107,11 +107,11 @@ Also includes the complete Python client library for the Cortex Agents REST API 
 ## Installation
 
 > [!IMPORTANT]
-> The `[streamlit]` extra requires **Streamlit 1.64 or later**. The core client has no Streamlit dependency.
+> Requires **Streamlit 1.64 or later**. Streamlit and pandas are installed as core dependencies.
 
 This library is not currently published to PyPI or a public Git repository. Install it directly from a local clone of the project directory.
 
-> **Streamlit-in-Snowflake (container runtime)**: copy the `streamlit_cortex_agents/` folder directly into your workspace and update your `pyproject.toml` as shown below. See [Streamlit-in-Snowflake](#streamlit-in-snowflake-container-runtime).
+> **Streamlit-in-Snowflake (container runtime)**: copy the `src/streamlit_cortex_agents/` folder directly into your workspace and update your `pyproject.toml` as shown below. See [Streamlit-in-Snowflake](#streamlit-in-snowflake-container-runtime).
 >
 > ```toml
 > [project]
@@ -142,40 +142,501 @@ This library is not currently published to PyPI or a public Git repository. Inst
 [uv](https://docs.astral.sh/uv/) is required for Streamlit in Snowflake Workspaces and is the recommended tool for any project that may be deployed there.
 
 ```bash
-# Core library
+# Library (includes Streamlit)
 uv add /path/to/cortex-agents-client
-
-# With Streamlit rendering support
-uv add "/path/to/cortex-agents-client[streamlit]"
 
 # With JWT key-pair authentication
 uv add "/path/to/cortex-agents-client[jwt]"
-
-# Everything
-uv add "/path/to/cortex-agents-client[streamlit,jwt]"
 ```
 
 ### pip
 
 ```bash
-# Core library
+# Library (includes Streamlit)
 pip install /path/to/cortex-agents-client
-
-# With Streamlit rendering support
-pip install "/path/to/cortex-agents-client[streamlit]"
 
 # With JWT key-pair authentication
 pip install "/path/to/cortex-agents-client[jwt]"
-
-# Everything
-pip install "/path/to/cortex-agents-client[streamlit,jwt]"
 ```
+
+---
+
+## Streamlit-in-Snowflake (container runtime)
+
+> **Container runtime is required.** The Cortex Agents API is not supported in warehouse runtime SiS apps.
+
+See also [`src/streamlit_cortex_agents/chat/README.md`](src/streamlit_cortex_agents/chat/README.md) — the self-contained integration guide that travels with the library when you copy the folder into a SiS workspace.
+
+### Prerequisites — External Access Integrations
+
+Container runtime apps cannot make outbound network calls without an EAI. You need **two**:
+
+#### Cortex Agents API EAI
+
+Allows the app to call the Agents REST API. Requires ACCOUNTADMIN (or a role with `CREATE INTEGRATION` privilege).
+
+Network rules are schema-level objects — store them in a dedicated schema. The example below uses `common_db.security`; substitute your own database and schema.
+
+First, get your account's correct hostnames (handles underscores → hyphens automatically):
+
+```sql
+SELECT LISTAGG('''' || REPLACE(host, '_', '-') || '''', ', ') AS allowlist
+FROM (
+    SELECT VALUE:host::VARCHAR AS host
+    FROM TABLE(FLATTEN(INPUT => PARSE_JSON(SYSTEM$ALLOWLIST())))
+    WHERE VALUE:type::VARCHAR IN ('SNOWFLAKE_DEPLOYMENT','SNOWFLAKE_DEPLOYMENT_REGIONLESS')
+    UNION ALL
+    SELECT VALUE:host::VARCHAR AS host
+    FROM TABLE(FLATTEN(INPUT => PARSE_JSON(SYSTEM$ALLOWLIST_PRIVATELINK())))
+    WHERE VALUE:type::VARCHAR IN ('SNOWFLAKE_DEPLOYMENT','SNOWFLAKE_DEPLOYMENT_REGIONLESS')
+);
+```
+
+Then create the network rule using the hostnames from the query above:
+
+```sql
+USE ROLE ACCOUNTADMIN;
+
+CREATE OR REPLACE NETWORK RULE common_db.security.cortex_agents_api_rule
+  TYPE       = HOST_PORT
+  MODE       = EGRESS
+  VALUE_LIST = ('xy12345.us-east-1.snowflakecomputing.com',
+                'myorg-myaccount.snowflakecomputing.com',
+                'xy12345.us-east-1.privatelink.snowflakecomputing.com',
+                'myorg-myaccount.privatelink.snowflakecomputing.com');  -- ← paste your allowlist result
+
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION cortex_agents_api_eai
+  ALLOWED_NETWORK_RULES = (common_db.security.cortex_agents_api_rule)
+  ENABLED = TRUE;
+
+GRANT USAGE ON INTEGRATION cortex_agents_api_eai TO ROLE app_owner_role;
+```
+
+> **Note:** If your account name contains underscores (e.g. `my_account01`), always use
+> the hyphenated form in `VALUE_LIST` (e.g. `my-account01`). The `SYSTEM$ALLOWLIST()`
+> query handles this automatically via the `REPLACE` call.
+
+> **Multi-account setup**: if your app and agent live in different accounts, add both hosts to
+> `VALUE_LIST`:
+>
+> ```sql
+> VALUE_LIST = (
+>   'myorg-appaccount.snowflakecomputing.com',
+>   'myorg-agentaccount.snowflakecomputing.com'
+> );
+> ```
+
+#### PyPI EAI
+
+Allows uv to install packages from PyPI at deploy time. Snowflake provides a managed network rule. Requires ACCOUNTADMIN:
+
+```sql
+USE ROLE ACCOUNTADMIN;
+
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION pypi_eai
+  ALLOWED_NETWORK_RULES = (snowflake.external_access.pypi_rule)
+  ENABLED = TRUE;
+
+GRANT USAGE ON INTEGRATION pypi_eai TO ROLE app_owner_role;
+```
+
+### Authentication <a name="sis-authentication"></a>
+
+Snowflake automatically injects two things into every container runtime app:
+
+| What | How to use it |
+|---|---|
+| `SNOWFLAKE_HOST` env var | `account_url_from_env()` wraps it with `https://` |
+| `/snowflake/session/token` file | `SiSContainerAuth()` re-reads it on every request |
+
+No `.streamlit/secrets.toml` needed. Use `SiSContainerAuth` — it re-reads the token file on every request so auto-refreshed tokens are picked up without restarting the app.
+
+```python
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
+
+account_url = account_url_from_env()   # https://<your-account>.snowflakecomputing.com
+auth        = SiSContainerAuth()       # reads /snowflake/session/token on every request
+```
+
+### Drop-in chatbot
+
+```python
+# streamlit-app.py
+from streamlit_cortex_agents.chat import CortexAgentChat
+from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
+
+CortexAgentChat(
+    account_url=account_url_from_env(),
+    auth=SiSContainerAuth(),
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+).render()
+```
+
+### Manual integration
+
+Use `sis_init_session()` in place of `init_session()` — it calls `SiSContainerAuth()` and `account_url_from_env()` internally:
+
+```python
+import streamlit as st
+from streamlit_cortex_agents.chat.session import sis_init_session, get_messages, append_message, reset_thread
+from streamlit_cortex_agents.chat.render import render_stored_message, render_streaming_response, escape_dollars
+from streamlit_cortex_agents.client.models.thread import StoredMessage
+
+client, thread = sis_init_session(origin_application="my_sis_app")
+
+if st.sidebar.button("New conversation", type="primary"):
+    reset_thread()
+    st.rerun()
+
+for msg in get_messages():
+    with st.chat_message(msg.role):
+        if msg.role == "user":
+            st.markdown(escape_dollars(msg.text))
+        else:
+            render_stored_message(msg, st, show_thinking=False)
+
+if prompt := st.chat_input("Ask a question..."):
+    with st.chat_message("user"):
+        st.markdown(escape_dollars(prompt))
+    append_message(StoredMessage(role="user", text=prompt))
+
+    with st.chat_message("assistant"):
+        stored = render_streaming_response(
+            thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt),
+            container=st,
+        )
+    append_message(stored)
+```
+
+### Deploying the app
+
+#### Workspaces (recommended)
+
+Workspaces is a file-based IDE in Snowsight — you work in files and click Deploy, no DDL required.
+
+1. In Snowsight, go to **Workspaces → + Add new → Streamlit app**. Snowflake creates a project folder with starter files.
+
+2. Copy the `src/streamlit_cortex_agents/` directory into the workspace root alongside your app file:
+
+   ```
+   your_workspace/
+   ├── streamlit-app.py
+   ├── streamlit_cortex_agents/    ← copy this folder from the repo
+   │   ├── __init__.py
+   │   ├── chat/
+   │   ├── client/
+   │   └── ...
+   └── pyproject.toml
+   ```
+
+   Because the app root is on `sys.path`, `import streamlit_cortex_agents` works with no installation step.
+
+3. Edit `pyproject.toml` to declare third-party dependencies:
+
+   ```toml
+   [project]
+   name = "my-sis-app"
+   requires-python = "~=3.11.0"
+   version = "0.1.0"
+   dependencies = [
+       "streamlit[snowflake]>=1.64",
+       "pandas",
+       "requests",
+       "httpx",
+   ]
+
+   [tool.setuptools.packages.find]
+   include = ["streamlit_cortex_agents*"]
+
+   [tool.uv]
+   constraint-dependencies = ["numba>=0.56.0"]
+   exclude-newer = "7 days"
+
+   [tool.uv.exclude-newer-package]
+   streamlit = false
+   ```
+
+4. Click **Deploy**. In the deploy dialog, open the **Network** tab and attach both `cortex_agents_api_eai` and `pypi_eai`.
+
+#### SQL / Snowflake CLI
+
+Upload your files to a stage, then create the Streamlit object. Use the `FROM` parameter — `ROOT_LOCATION` is a legacy parameter that only works with warehouse runtime.
+
+```sql
+CREATE OR REPLACE STREAMLIT my_db.my_schema.my_app
+  FROM '@my_db.my_schema.my_stage/app'
+  MAIN_FILE                    = 'streamlit-app.py'
+  RUNTIME_NAME                 = 'SYSTEM$ST_CONTAINER_RUNTIME_PY3_11'
+  COMPUTE_POOL                 = my_compute_pool
+  QUERY_WAREHOUSE              = 'MY_WH'
+  EXTERNAL_ACCESS_INTEGRATIONS = (cortex_agents_api_eai, pypi_eai);
+```
+
+To add EAIs to an existing app:
+
+```sql
+ALTER STREAMLIT my_db.my_schema.my_app
+  SET EXTERNAL_ACCESS_INTEGRATIONS = (cortex_agents_api_eai, pypi_eai);
+```
+
+### RBAC and role considerations
+
+#### How RBAC is enforced
+
+By default, SiS container runtime apps run with **owner's rights** — the same model as stored procedures. The OAuth token at `/snowflake/session/token` (what `SiSContainerAuth()` reads) is scoped to the **app owner's role**, not the role of the user who opened the app. Snowflake enforces all access control server-side.
+
+This means:
+- `CURRENT_USER()` and `CURRENT_ROLE()` inside Cortex Agents API calls return the **app owner's** identity and role.
+- Every viewer of the app shares the same token and the same effective privileges.
+- Thread visibility: each user sees only threads belonging to the calling identity — which in owner's rights mode is the app owner, so all viewers share the same thread namespace.
+
+**Agent access requires (granted to the app owner's role):**
+- `USAGE ON AGENT` granted to the app owner's role
+- `SNOWFLAKE.CORTEX_AGENT_USER` (or `SNOWFLAKE.CORTEX_USER`) database role granted to the app owner's role
+- Tool-level privileges: `SELECT` on tables for Cortex Analyst, `USAGE` on search services for Cortex Search
+
+#### Restricted Caller's Rights
+
+As of June 1, 2026 (GA), container runtime apps support **Restricted Caller's Rights**, which runs connections with the viewer's privileges instead of the owner's. This requires Streamlit ≥ 1.53.1.
+
+With restricted caller's rights, `st.connection("snowflake-callers-rights")` gives a Snowflake SQL connection scoped to the viewer's role — useful for data queries that should respect per-user row access policies.
+
+**However, Restricted Caller's Rights does not extend to the Cortex Agents REST API.** The caller's rights token (`Sf-Context-Current-User-Token` request header) is:
+- Designed for Snowflake SQL connections via the connector, not for raw REST API Bearer tokens
+- Only valid for **2 minutes** (created at session start, not refreshed)
+- Not accessible via any documented mechanism for use as a Bearer token in external REST API calls
+
+`SiSContainerAuth()` reads `/snowflake/session/token`, which is always the **owner's** token. There is no supported way to inject the viewer's caller's rights token into Cortex Agents REST API calls.
+
+#### Role switching
+
+Roles cannot be changed through the Cortex Agents REST API. The token is fixed — there is no `USE ROLE` equivalent for REST API calls.
+
+#### Options for per-viewer data isolation
+
+Since the REST API always runs as the app owner, per-viewer data isolation must be achieved through other means:
+
+- **Row access policies on agent tools**: Configure row access policies on the tables used by Cortex Analyst. The policy can use the `CURRENT_USER()` context (which returns the owner in owner's rights mode) — this won't filter per-viewer. For true per-viewer filtering, pass the viewer's identity through the prompt and rely on the agent's response logic, or enforce it at the semantic model/tool level.
+- **Separate app deployments**: Deploy separate Streamlit objects owned by roles with different data access. Direct users to the appropriate app based on their role.
+- **Snowpark session for non-agent SQL**: A SiS container app can open a parallel `st.connection("snowflake-callers-rights")` for regular SQL queries that should respect the viewer's privileges. This does not affect Cortex Agents REST API calls.
+
+The cleanest governance pattern is to grant the app owner's role exactly the data access it should have on behalf of all viewers, and use the agent's tool configuration to control what data is returned.
+
+#### Thread isolation between viewers
+
+Since all API calls run as the app owner, threads are owned by the app owner's identity — not by individual viewers. `GET /api/v2/cortex/threads` returns all threads belonging to the app owner, meaning every viewer's threads are in the same namespace.
+
+**Ephemeral (single session)** — already isolated. `sis_init_session()` stores the thread in `st.session_state`, which Streamlit scopes to each individual browser session. Alice and Bob each get their own in-memory thread with no extra work. When the browser tab closes, the thread is gone.
+
+**Persistent (resume across sessions)** — requires application-level keying. The viewer's identity is available via `st.context.user.login_name` (Streamlit provides this from the HTTP session, independent of the Snowflake token). You can store `thread_id` keyed by viewer in a Snowflake metadata table (using the owner's rights connection for that SQL), then look it up on the next session.
+
+`origin_application` can be used as a soft namespace (e.g. `f"app_{viewer_login}"`), which filters thread listings by that tag — but it does not prevent the owner from seeing all threads if `origin_application` is omitted from the list call.
+
+A first-class `sis_init_session_per_viewer()` helper that handles this automatically is [on the roadmap](docs/dev/roadmap.md).
+
+---
+
+## External Streamlit
+
+For Streamlit apps running locally or on an external host (not inside Snowflake).
+
+### Dependencies
+
+Add to `requirements.txt`:
+
+```
+streamlit>=1.64
+pandas
+requests
+```
+
+Or with uv/pip, install the package, which brings Streamlit and pandas with it — see [Installation](#installation).
+
+### Secrets configuration
+
+Create `.streamlit/secrets.toml` in your project root:
+
+```toml
+SNOWFLAKE_ACCOUNT_URL = "https://myorg-myaccount.snowflakecomputing.com"
+SNOWFLAKE_PAT         = "v2:..."
+```
+
+`SNOWFLAKE_PAT` is a Programmatic Access Token. Generate one in Snowsight under
+**Governance & security → Users & roles → your user → Programmatic access tokens**.
+
+The agent path is not sensitive — hardcode it directly in your app code.
+
+### Drop-in chatbot
+
+```python
+# app.py
+import streamlit as st
+from streamlit_cortex_agents.chat import CortexAgentChat
+
+st.title("Revenue Assistant")
+
+CortexAgentChat(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    show_thinking=True,
+    origin_application="revenue_app",
+).render()
+```
+
+Run with:
+
+```bash
+streamlit run app.py
+```
+
+### Manual integration
+
+```python
+import streamlit as st
+from streamlit_cortex_agents.chat.session import init_session, get_messages, append_message, reset_thread
+from streamlit_cortex_agents.chat.render import render_stored_message, render_streaming_response, escape_dollars
+from streamlit_cortex_agents.client.models.thread import StoredMessage
+
+client, thread = init_session(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+)
+
+if st.sidebar.button("New conversation", type="primary"):
+    reset_thread()
+    st.rerun()
+
+for msg in get_messages():
+    with st.chat_message(msg.role):
+        if msg.role == "user":
+            st.markdown(escape_dollars(msg.text))
+        else:
+            render_stored_message(msg, st, show_thinking=False)
+
+if prompt := st.chat_input("Ask a question..."):
+    with st.chat_message("user"):
+        st.markdown(escape_dollars(prompt))
+    append_message(StoredMessage(role="user", text=prompt))
+
+    with st.chat_message("assistant"):
+        stored = render_streaming_response(
+            thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt),
+            container=st,
+            show_thinking=False,
+            show_tool_status=True,
+        )
+    append_message(stored)
+```
+
+### Embedded mode
+
+Renders the chat inside a scrollable container — useful for dashboards where the chat sits alongside other components.
+
+```python
+CortexAgentChat(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    mode="embedded",
+    height=600,
+).render()
+```
+
+`height` also accepts a CSS height string. Inside an `st.dialog`, which has no height option of its own, this lets the chat fill the window. Subtract enough to cover everything else in the dialog (title, buttons, chat input):
+
+```python
+@st.dialog("Ask the agent", width="large")
+def chat_dialog():
+    CortexAgentChat(
+        account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+        auth=st.secrets["SNOWFLAKE_PAT"],
+        agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+        mode="embedded",
+        height="calc(100vh - 300px)",
+        session_key_prefix="_dlg",
+    ).render()
+```
+
+A string height is applied with CSS that targets Streamlit's internal DOM (verified on 1.64), so it may need adjusting after a Streamlit upgrade.
+
+### File and audio attachments
+
+Files and audio are displayed in the user's chat bubble and stored for replay across reruns, but are **not forwarded to the agent** — only the text prompt is sent.
+
+```python
+CortexAgentChat(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    accept_file="multiple",           # True, "multiple", "directory", or False
+    file_type=["pdf", "csv", "txt"],  # None = all types
+    accept_audio=True,
+).render()
+```
+
+### Client-side tool execution
+
+Pass a `tool_executor` callable to handle tools the agent marks with `client_side_execute=True`:
+
+```python
+from streamlit_cortex_agents.client.models.events import ToolUseEvent
+
+def my_tool_executor(event: ToolUseEvent) -> list[dict]:
+    if event.name == "get_current_user":
+        return [{"type": "json", "json": {"user": st.context.user.email}}]
+    return [{"type": "text", "text": "unknown tool"}]
+
+CortexAgentChat(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    tool_executor=my_tool_executor,
+).render()
+```
+
+Tools that require user consent (`ToolUseEvent.permission_options` is non-empty) automatically show a permission approval UI before executing.
+
+### Working with table results
+
+`result_set_to_dataframe` converts a `TableEvent` result set to a pandas DataFrame with correct column types:
+
+```python
+from streamlit_cortex_agents.chat.render import render_streaming_response, result_set_to_dataframe
+from streamlit_cortex_agents.client.models.events import TableEvent
+
+for event in thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt):
+    if isinstance(event, TableEvent):
+        df = result_set_to_dataframe(event)
+        st.dataframe(df.style.highlight_max(axis=0))
+```
+
+### Multi-tenancy
+
+Pass `variables` to scope every run to a tenant. Give a mapping for a fixed tenant, or a zero-argument callable to work out the tenant per viewer. The callable runs once per prompt:
+
+```python
+TENANT_BY_EMAIL = {"ana@example.com": "NORTH", "raj@example.com": "SOUTH"}
+
+CortexAgentChat(
+    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
+    auth=st.secrets["SNOWFLAKE_PAT"],
+    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
+    variables=lambda: {"region": TENANT_BY_EMAIL[st.context.user.email]},
+).render()
+```
+
+See [Multi-tenancy (session attributes)](#multi-tenancy-session-attributes) for the row access policy side.
+
+### Elicitation
+
+When the agent needs clarification it emits a `TextEvent` with `is_elicitation=True`. Both `render_streaming_response` and `render_stored_message` handle this automatically — the message is rendered with `st.info()` instead of plain markdown. In manual integration, check `msg.is_elicitation` on a `StoredMessage` to apply custom styling.
 
 ---
 
 ## Core Python API
 
-The sections below apply to all environments — scripts, notebooks, external Streamlit, and SiS.
+The chat component is built on this REST client (`streamlit_cortex_agents.client`), which you can also use directly. The sections below apply to all environments — scripts, notebooks, external Streamlit, and SiS.
 
 ### Authentication
 
@@ -597,478 +1058,6 @@ except RunNotActiveError:
 
 ---
 
-## Streamlit-in-Snowflake (container runtime)
-
-> **Container runtime is required.** The Cortex Agents API is not supported in warehouse runtime SiS apps.
-
-See also [`streamlit_cortex_agents/st/README.md`](streamlit_cortex_agents/st/README.md) — the self-contained integration guide that travels with the library when you copy the folder into a SiS workspace.
-
-### Prerequisites — External Access Integrations
-
-Container runtime apps cannot make outbound network calls without an EAI. You need **two**:
-
-#### Cortex Agents API EAI
-
-Allows the app to call the Agents REST API. Requires ACCOUNTADMIN (or a role with `CREATE INTEGRATION` privilege).
-
-Network rules are schema-level objects — store them in a dedicated schema. The example below uses `common_db.security`; substitute your own database and schema.
-
-First, get your account's correct hostnames (handles underscores → hyphens automatically):
-
-```sql
-SELECT LISTAGG('''' || REPLACE(host, '_', '-') || '''', ', ') AS allowlist
-FROM (
-    SELECT VALUE:host::VARCHAR AS host
-    FROM TABLE(FLATTEN(INPUT => PARSE_JSON(SYSTEM$ALLOWLIST())))
-    WHERE VALUE:type::VARCHAR IN ('SNOWFLAKE_DEPLOYMENT','SNOWFLAKE_DEPLOYMENT_REGIONLESS')
-    UNION ALL
-    SELECT VALUE:host::VARCHAR AS host
-    FROM TABLE(FLATTEN(INPUT => PARSE_JSON(SYSTEM$ALLOWLIST_PRIVATELINK())))
-    WHERE VALUE:type::VARCHAR IN ('SNOWFLAKE_DEPLOYMENT','SNOWFLAKE_DEPLOYMENT_REGIONLESS')
-);
-```
-
-Then create the network rule using the hostnames from the query above:
-
-```sql
-USE ROLE ACCOUNTADMIN;
-
-CREATE OR REPLACE NETWORK RULE common_db.security.cortex_agents_api_rule
-  TYPE       = HOST_PORT
-  MODE       = EGRESS
-  VALUE_LIST = ('xy12345.us-east-1.snowflakecomputing.com',
-                'myorg-myaccount.snowflakecomputing.com',
-                'xy12345.us-east-1.privatelink.snowflakecomputing.com',
-                'myorg-myaccount.privatelink.snowflakecomputing.com');  -- ← paste your allowlist result
-
-CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION cortex_agents_api_eai
-  ALLOWED_NETWORK_RULES = (common_db.security.cortex_agents_api_rule)
-  ENABLED = TRUE;
-
-GRANT USAGE ON INTEGRATION cortex_agents_api_eai TO ROLE app_owner_role;
-```
-
-> **Note:** If your account name contains underscores (e.g. `my_account01`), always use
-> the hyphenated form in `VALUE_LIST` (e.g. `my-account01`). The `SYSTEM$ALLOWLIST()`
-> query handles this automatically via the `REPLACE` call.
-
-> **Multi-account setup**: if your app and agent live in different accounts, add both hosts to
-> `VALUE_LIST`:
->
-> ```sql
-> VALUE_LIST = (
->   'myorg-appaccount.snowflakecomputing.com',
->   'myorg-agentaccount.snowflakecomputing.com'
-> );
-> ```
-
-#### PyPI EAI
-
-Allows uv to install packages from PyPI at deploy time. Snowflake provides a managed network rule. Requires ACCOUNTADMIN:
-
-```sql
-USE ROLE ACCOUNTADMIN;
-
-CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION pypi_eai
-  ALLOWED_NETWORK_RULES = (snowflake.external_access.pypi_rule)
-  ENABLED = TRUE;
-
-GRANT USAGE ON INTEGRATION pypi_eai TO ROLE app_owner_role;
-```
-
-### Authentication <a name="sis-authentication"></a>
-
-Snowflake automatically injects two things into every container runtime app:
-
-| What | How to use it |
-|---|---|
-| `SNOWFLAKE_HOST` env var | `account_url_from_env()` wraps it with `https://` |
-| `/snowflake/session/token` file | `SiSContainerAuth()` re-reads it on every request |
-
-No `.streamlit/secrets.toml` needed. Use `SiSContainerAuth` — it re-reads the token file on every request so auto-refreshed tokens are picked up without restarting the app.
-
-```python
-from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
-
-account_url = account_url_from_env()   # https://<your-account>.snowflakecomputing.com
-auth        = SiSContainerAuth()       # reads /snowflake/session/token on every request
-```
-
-### Drop-in chatbot
-
-```python
-# streamlit-app.py
-from streamlit_cortex_agents.chat import CortexAgentChat
-from streamlit_cortex_agents.client.auth import SiSContainerAuth, account_url_from_env
-
-CortexAgentChat(
-    account_url=account_url_from_env(),
-    auth=SiSContainerAuth(),
-    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
-).render()
-```
-
-### Manual integration
-
-Use `sis_init_session()` in place of `init_session()` — it calls `SiSContainerAuth()` and `account_url_from_env()` internally:
-
-```python
-import streamlit as st
-from streamlit_cortex_agents.chat.session import sis_init_session, get_messages, append_message, reset_thread
-from streamlit_cortex_agents.chat.render import render_stored_message, render_streaming_response, escape_dollars
-from streamlit_cortex_agents.client.models.thread import StoredMessage
-
-client, thread = sis_init_session(origin_application="my_sis_app")
-
-if st.sidebar.button("New conversation", type="primary"):
-    reset_thread()
-    st.rerun()
-
-for msg in get_messages():
-    with st.chat_message(msg.role):
-        if msg.role == "user":
-            st.markdown(escape_dollars(msg.text))
-        else:
-            render_stored_message(msg, st, show_thinking=False)
-
-if prompt := st.chat_input("Ask a question..."):
-    with st.chat_message("user"):
-        st.markdown(escape_dollars(prompt))
-    append_message(StoredMessage(role="user", text=prompt))
-
-    with st.chat_message("assistant"):
-        stored = render_streaming_response(
-            thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt),
-            container=st,
-        )
-    append_message(stored)
-```
-
-### Deploying the app
-
-#### Workspaces (recommended)
-
-Workspaces is a file-based IDE in Snowsight — you work in files and click Deploy, no DDL required.
-
-1. In Snowsight, go to **Workspaces → + Add new → Streamlit app**. Snowflake creates a project folder with starter files.
-
-2. Copy the `streamlit_cortex_agents/` directory into the workspace root alongside your app file:
-
-   ```
-   your_workspace/
-   ├── streamlit-app.py
-   ├── streamlit_cortex_agents/    ← copy this folder from the repo
-   │   ├── __init__.py
-   │   ├── client.py
-   │   └── ...
-   └── pyproject.toml
-   ```
-
-   Because the app root is on `sys.path`, `import streamlit_cortex_agents` works with no installation step.
-
-3. Edit `pyproject.toml` to declare third-party dependencies:
-
-   ```toml
-   [project]
-   name = "my-sis-app"
-   requires-python = "~=3.11.0"
-   version = "0.1.0"
-   dependencies = [
-       "streamlit[snowflake]>=1.64",
-       "pandas",
-       "requests",
-       "httpx",
-   ]
-
-   [tool.setuptools.packages.find]
-   include = ["streamlit_cortex_agents*"]
-
-   [tool.uv]
-   constraint-dependencies = ["numba>=0.56.0"]
-   exclude-newer = "7 days"
-
-   [tool.uv.exclude-newer-package]
-   streamlit = false
-   ```
-
-4. Click **Deploy**. In the deploy dialog, open the **Network** tab and attach both `cortex_agents_api_eai` and `pypi_eai`.
-
-#### SQL / Snowflake CLI
-
-Upload your files to a stage, then create the Streamlit object. Use the `FROM` parameter — `ROOT_LOCATION` is a legacy parameter that only works with warehouse runtime.
-
-```sql
-CREATE OR REPLACE STREAMLIT my_db.my_schema.my_app
-  FROM '@my_db.my_schema.my_stage/app'
-  MAIN_FILE                    = 'streamlit-app.py'
-  RUNTIME_NAME                 = 'SYSTEM$ST_CONTAINER_RUNTIME_PY3_11'
-  COMPUTE_POOL                 = my_compute_pool
-  QUERY_WAREHOUSE              = 'MY_WH'
-  EXTERNAL_ACCESS_INTEGRATIONS = (cortex_agents_api_eai, pypi_eai);
-```
-
-To add EAIs to an existing app:
-
-```sql
-ALTER STREAMLIT my_db.my_schema.my_app
-  SET EXTERNAL_ACCESS_INTEGRATIONS = (cortex_agents_api_eai, pypi_eai);
-```
-
-### RBAC and role considerations
-
-#### How RBAC is enforced
-
-By default, SiS container runtime apps run with **owner's rights** — the same model as stored procedures. The OAuth token at `/snowflake/session/token` (what `SiSContainerAuth()` reads) is scoped to the **app owner's role**, not the role of the user who opened the app. Snowflake enforces all access control server-side.
-
-This means:
-- `CURRENT_USER()` and `CURRENT_ROLE()` inside Cortex Agents API calls return the **app owner's** identity and role.
-- Every viewer of the app shares the same token and the same effective privileges.
-- Thread visibility: each user sees only threads belonging to the calling identity — which in owner's rights mode is the app owner, so all viewers share the same thread namespace.
-
-**Agent access requires (granted to the app owner's role):**
-- `USAGE ON AGENT` granted to the app owner's role
-- `SNOWFLAKE.CORTEX_AGENT_USER` (or `SNOWFLAKE.CORTEX_USER`) database role granted to the app owner's role
-- Tool-level privileges: `SELECT` on tables for Cortex Analyst, `USAGE` on search services for Cortex Search
-
-#### Restricted Caller's Rights
-
-As of June 1, 2026 (GA), container runtime apps support **Restricted Caller's Rights**, which runs connections with the viewer's privileges instead of the owner's. This requires Streamlit ≥ 1.53.1.
-
-With restricted caller's rights, `st.connection("snowflake-callers-rights")` gives a Snowflake SQL connection scoped to the viewer's role — useful for data queries that should respect per-user row access policies.
-
-**However, Restricted Caller's Rights does not extend to the Cortex Agents REST API.** The caller's rights token (`Sf-Context-Current-User-Token` request header) is:
-- Designed for Snowflake SQL connections via the connector, not for raw REST API Bearer tokens
-- Only valid for **2 minutes** (created at session start, not refreshed)
-- Not accessible via any documented mechanism for use as a Bearer token in external REST API calls
-
-`SiSContainerAuth()` reads `/snowflake/session/token`, which is always the **owner's** token. There is no supported way to inject the viewer's caller's rights token into Cortex Agents REST API calls.
-
-#### Role switching
-
-Roles cannot be changed through the Cortex Agents REST API. The token is fixed — there is no `USE ROLE` equivalent for REST API calls.
-
-#### Options for per-viewer data isolation
-
-Since the REST API always runs as the app owner, per-viewer data isolation must be achieved through other means:
-
-- **Row access policies on agent tools**: Configure row access policies on the tables used by Cortex Analyst. The policy can use the `CURRENT_USER()` context (which returns the owner in owner's rights mode) — this won't filter per-viewer. For true per-viewer filtering, pass the viewer's identity through the prompt and rely on the agent's response logic, or enforce it at the semantic model/tool level.
-- **Separate app deployments**: Deploy separate Streamlit objects owned by roles with different data access. Direct users to the appropriate app based on their role.
-- **Snowpark session for non-agent SQL**: A SiS container app can open a parallel `st.connection("snowflake-callers-rights")` for regular SQL queries that should respect the viewer's privileges. This does not affect Cortex Agents REST API calls.
-
-The cleanest governance pattern is to grant the app owner's role exactly the data access it should have on behalf of all viewers, and use the agent's tool configuration to control what data is returned.
-
-#### Thread isolation between viewers
-
-Since all API calls run as the app owner, threads are owned by the app owner's identity — not by individual viewers. `GET /api/v2/cortex/threads` returns all threads belonging to the app owner, meaning every viewer's threads are in the same namespace.
-
-**Ephemeral (single session)** — already isolated. `sis_init_session()` stores the thread in `st.session_state`, which Streamlit scopes to each individual browser session. Alice and Bob each get their own in-memory thread with no extra work. When the browser tab closes, the thread is gone.
-
-**Persistent (resume across sessions)** — requires application-level keying. The viewer's identity is available via `st.context.user.login_name` (Streamlit provides this from the HTTP session, independent of the Snowflake token). You can store `thread_id` keyed by viewer in a Snowflake metadata table (using the owner's rights connection for that SQL), then look it up on the next session.
-
-`origin_application` can be used as a soft namespace (e.g. `f"app_{viewer_login}"`), which filters thread listings by that tag — but it does not prevent the owner from seeing all threads if `origin_application` is omitted from the list call.
-
-A first-class `sis_init_session_per_viewer()` helper that handles this automatically is [on the roadmap](docs/roadmap.md).
-
----
-
-## External Streamlit
-
-For Streamlit apps running locally or on an external host (not inside Snowflake).
-
-### Dependencies
-
-Add to `requirements.txt`:
-
-```
-streamlit>=1.64
-pandas
-requests
-```
-
-Or with uv/pip, install the `[streamlit]` extra — see [Installation](#installation).
-
-### Secrets configuration
-
-Create `.streamlit/secrets.toml` in your project root:
-
-```toml
-SNOWFLAKE_ACCOUNT_URL = "https://myorg-myaccount.snowflakecomputing.com"
-SNOWFLAKE_PAT         = "v2:..."
-```
-
-`SNOWFLAKE_PAT` is a Programmatic Access Token. Generate one in Snowsight under
-**Governance & security → Users & roles → your user → Programmatic access tokens**.
-
-The agent path is not sensitive — hardcode it directly in your app code.
-
-### Drop-in chatbot
-
-```python
-# app.py
-import streamlit as st
-from streamlit_cortex_agents.chat import CortexAgentChat
-
-st.title("Revenue Assistant")
-
-CortexAgentChat(
-    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
-    auth=st.secrets["SNOWFLAKE_PAT"],
-    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
-    show_thinking=True,
-    origin_application="revenue_app",
-).render()
-```
-
-Run with:
-
-```bash
-streamlit run app.py
-```
-
-### Manual integration
-
-```python
-import streamlit as st
-from streamlit_cortex_agents.chat.session import init_session, get_messages, append_message, reset_thread
-from streamlit_cortex_agents.chat.render import render_stored_message, render_streaming_response, escape_dollars
-from streamlit_cortex_agents.client.models.thread import StoredMessage
-
-client, thread = init_session(
-    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
-    auth=st.secrets["SNOWFLAKE_PAT"],
-)
-
-if st.sidebar.button("New conversation", type="primary"):
-    reset_thread()
-    st.rerun()
-
-for msg in get_messages():
-    with st.chat_message(msg.role):
-        if msg.role == "user":
-            st.markdown(escape_dollars(msg.text))
-        else:
-            render_stored_message(msg, st, show_thinking=False)
-
-if prompt := st.chat_input("Ask a question..."):
-    with st.chat_message("user"):
-        st.markdown(escape_dollars(prompt))
-    append_message(StoredMessage(role="user", text=prompt))
-
-    with st.chat_message("assistant"):
-        stored = render_streaming_response(
-            thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt),
-            container=st,
-            show_thinking=False,
-            show_tool_status=True,
-        )
-    append_message(stored)
-```
-
-### Embedded mode
-
-Renders the chat inside a scrollable container — useful for dashboards where the chat sits alongside other components.
-
-```python
-CortexAgentChat(
-    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
-    auth=st.secrets["SNOWFLAKE_PAT"],
-    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
-    mode="embedded",
-    height=600,
-).render()
-```
-
-`height` also accepts a CSS height string. Inside an `st.dialog`, which has no height option of its own, this lets the chat fill the window. Subtract enough to cover everything else in the dialog (title, buttons, chat input):
-
-```python
-@st.dialog("Ask the agent", width="large")
-def chat_dialog():
-    CortexAgentChat(
-        account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
-        auth=st.secrets["SNOWFLAKE_PAT"],
-        agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
-        mode="embedded",
-        height="calc(100vh - 300px)",
-        session_key_prefix="_dlg",
-    ).render()
-```
-
-A string height is applied with CSS that targets Streamlit's internal DOM (verified on 1.64), so it may need adjusting after a Streamlit upgrade.
-
-### File and audio attachments
-
-Files and audio are displayed in the user's chat bubble and stored for replay across reruns, but are **not forwarded to the agent** — only the text prompt is sent.
-
-```python
-CortexAgentChat(
-    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
-    auth=st.secrets["SNOWFLAKE_PAT"],
-    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
-    accept_file="multiple",           # True, "multiple", "directory", or False
-    file_type=["pdf", "csv", "txt"],  # None = all types
-    accept_audio=True,
-).render()
-```
-
-### Client-side tool execution
-
-Pass a `tool_executor` callable to handle tools the agent marks with `client_side_execute=True`:
-
-```python
-from streamlit_cortex_agents.client.models.events import ToolUseEvent
-
-def my_tool_executor(event: ToolUseEvent) -> list[dict]:
-    if event.name == "get_current_user":
-        return [{"type": "json", "json": {"user": st.context.user.email}}]
-    return [{"type": "text", "text": "unknown tool"}]
-
-CortexAgentChat(
-    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
-    auth=st.secrets["SNOWFLAKE_PAT"],
-    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
-    tool_executor=my_tool_executor,
-).render()
-```
-
-Tools that require user consent (`ToolUseEvent.permission_options` is non-empty) automatically show a permission approval UI before executing.
-
-### Working with table results
-
-`result_set_to_dataframe` converts a `TableEvent` result set to a pandas DataFrame with correct column types:
-
-```python
-from streamlit_cortex_agents.chat.render import render_streaming_response, result_set_to_dataframe
-from streamlit_cortex_agents.client.models.events import TableEvent
-
-for event in thread.chat("MY_DB.MY_SCHEMA.MY_AGENT", prompt):
-    if isinstance(event, TableEvent):
-        df = result_set_to_dataframe(event)
-        st.dataframe(df.style.highlight_max(axis=0))
-```
-
-### Multi-tenancy
-
-Pass `variables` to scope every run to a tenant. Give a mapping for a fixed tenant, or a zero-argument callable to work out the tenant per viewer. The callable runs once per prompt:
-
-```python
-TENANT_BY_EMAIL = {"ana@example.com": "NORTH", "raj@example.com": "SOUTH"}
-
-CortexAgentChat(
-    account_url=st.secrets["SNOWFLAKE_ACCOUNT_URL"],
-    auth=st.secrets["SNOWFLAKE_PAT"],
-    agent_path="MY_DB.MY_SCHEMA.MY_AGENT",
-    variables=lambda: {"region": TENANT_BY_EMAIL[st.context.user.email]},
-).render()
-```
-
-See [Multi-tenancy (session attributes)](#multi-tenancy-session-attributes) for the row access policy side.
-
-### Elicitation
-
-When the agent needs clarification it emits a `TextEvent` with `is_elicitation=True`. Both `render_streaming_response` and `render_stored_message` handle this automatically — the message is rendered with `st.info()` instead of plain markdown. In manual integration, check `msg.is_elicitation` on a `StoredMessage` to apply custom styling.
-
----
-
 ## Reference
 
 ### `CortexAgentsClient` parameters
@@ -1171,7 +1160,7 @@ No `.streamlit/secrets.toml` needed. Snowflake injects credentials automatically
 
 ```bash
 # Install with dev dependencies
-uv sync --extra dev --extra streamlit --extra jwt
+uv sync --extra dev --extra jwt
 
 # Unit tests
 uv run pytest tests/unit/ -v
@@ -1196,35 +1185,37 @@ SNOWFLAKE_ACCOUNT_URL="https://..." SNOWFLAKE_PAT="v2:..." SNOWFLAKE_AGENT_PATH=
 
 ### Demo app
 
-A fully interactive demo app is included at `streamlit_demo/`. It exercises all event types and layout modes without a Snowflake account — responses come from pre-canned event streams in `streamlit_demo/mock_thread.py`.
+A fully interactive demo app is included at `examples/demo/`. It exercises all event types and layout modes without a Snowflake account — responses come from pre-canned event streams in `examples/demo/mock_thread.py`.
 
 ```bash
 # No credentials needed. The env vars avoid a PyArrow crash on macOS ARM64.
-ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run streamlit_demo/app.py
+ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run examples/demo/app.py
 ```
 
 ### Architecture
 
 ```
-streamlit_cortex_agents/
-├── client.py         CortexAgentsClient (top-level facade), Thread (stateful)
-├── auth.py           PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, AuthProvider, account_url_from_env
-├── http.py           HttpClient (httpx wrapper, error mapping)
-├── sse.py            SSE parser + event factory (17 API types + UnknownEvent)
-├── exceptions.py     Typed exceptions
-├── models/
-│   ├── agent.py      Agent, Tool, ToolSpec, etc.
-│   ├── thread.py     ThreadMetadata, ThreadDetail, ThreadMessage, StoredMessage
-│   └── events.py     All 18 SSE event dataclasses (17 API types + UnknownEvent)
-├── resources/
-│   ├── agents.py     AgentsResource (CRUD + feedback)
-│   ├── threads.py    ThreadsResource (CRUD + pagination + compaction)
-│   └── runs.py       RunsResource (stream, run, stream_run, cancel_run, stream_and_collect)
-└── st/
-    ├── session.py    init_session(), sis_init_session(), reset_thread(), get_messages()
-    ├── render.py     render_streaming_response(), render_stored_message(), result_set_to_dataframe(), escape_dollars()
-    ├── chatbot.py    CortexAgentChat (drop-in component)
-    └── README.md     Streamlit integration guide (travels with the folder when copied)
+src/streamlit_cortex_agents/
+├── __init__.py               Re-exports every public name from chat/ and client/
+├── chat/
+│   ├── chatbot.py            CortexAgentChat (drop-in component)
+│   ├── session.py            init_session(), sis_init_session(), reset_thread(), get_messages()
+│   ├── render.py             render_streaming_response(), render_stored_message(), result_set_to_dataframe(), escape_dollars()
+│   └── README.md             Streamlit integration guide (travels with the folder when copied)
+└── client/
+    ├── core.py               CortexAgentsClient (top-level facade), Thread (stateful)
+    ├── auth.py               PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, AuthProvider, account_url_from_env
+    ├── http.py               HttpClient (httpx wrapper, error mapping)
+    ├── sse.py                SSE parser + event factory (17 API types + UnknownEvent)
+    ├── exceptions.py         Typed exceptions
+    ├── models/
+    │   ├── agent.py          Agent, Tool, ToolSpec, etc.
+    │   ├── thread.py         ThreadMetadata, ThreadDetail, ThreadMessage, StoredMessage
+    │   └── events.py         All 18 SSE event dataclasses (17 API types + UnknownEvent)
+    └── resources/
+        ├── agents.py         AgentsResource (CRUD + feedback)
+        ├── threads.py        ThreadsResource (CRUD + pagination + compaction)
+        └── runs.py           RunsResource (stream, run, stream_run, cancel_run, stream_and_collect)
 ```
 
 **Component diagram**

@@ -11,7 +11,7 @@ Each *scenario* is a generator function that yields
 Usage::
 
     import streamlit as st
-    from streamlit_demo.mock_thread import MockClient, MockThread, SCENARIO_NAMES
+    from mock_thread import MockClient, MockThread, SCENARIO_NAMES
 
     # Pre-seed session state before the chatbot reads it.
     PREFIX = "_demo"

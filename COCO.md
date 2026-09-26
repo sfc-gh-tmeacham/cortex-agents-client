@@ -1,34 +1,37 @@
 # streamlit-cortex-agents — Project Context
 
-Python client library for the Snowflake Cortex Agents REST API, plus a
-high-level Streamlit chatbot component (`streamlit_cortex_agents.chat`).
+Drop-in Streamlit chat component for Snowflake Cortex Agents
+(`streamlit_cortex_agents.chat`), built on a Python client for the Cortex
+Agents REST API (`streamlit_cortex_agents.client`).
 
 ---
 
 ## Package structure
 
 ```
-streamlit_cortex_agents/
-├── auth.py            # PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, AuthProvider, account_url_from_env
-├── client.py          # CortexAgentsClient, Thread (primary entry points)
-├── exceptions.py      # CortexAgentError, AuthError, CortexPermissionError, CortexTimeoutError,
-│                      # CortexConnectionError, NotFoundError, AgentNotFoundError, ThreadNotFoundError,
-│                      # ConflictError, RunNotActiveError, RateLimitError, ServerError, RunError;
-│                      # deprecated aliases: PermissionError, TimeoutError
-├── http.py            # HttpClient (httpx-based, auth header injection, optional X-Snowflake-Role)
-├── sse.py             # SSE stream parser, event_from_sse() factory
-├── models/
-│   ├── agent.py      # Agent, Tool, ToolSpec, AgentProfile, AgentInstructions, BudgetConfig
-│   ├── events.py      # 18 typed SSE event dataclasses (17 API types + UnknownEvent), RunMetadata
-│   └── thread.py      # StoredMessage, ThreadDetail, ThreadMessage, ThreadMetadata
-├── resources/
-│   ├── agents.py      # AgentsResource (CRUD for agent objects)
-│   ├── runs.py        # RunsResource — agent:run, plus run stream (GET) and cancel (POST) endpoints
-│   └── threads.py     # ThreadsResource (thread CRUD)
-└── st/
-    ├── chatbot.py     # CortexAgentChat — drop-in full-page or embedded chat component
-    ├── render.py      # render_streaming_response(), render_stored_message(), helpers
-    └── session.py     # st.session_state helpers: init_session, sis_init_session, get_messages, append_message
+src/streamlit_cortex_agents/
+├── __init__.py        # re-exports every public name from chat/ and client/
+├── chat/
+│   ├── chatbot.py     # CortexAgentChat — drop-in full-page or embedded chat component
+│   ├── render.py      # render_streaming_response(), render_stored_message(), helpers
+│   └── session.py     # st.session_state helpers: init_session, sis_init_session, get_messages, append_message
+└── client/
+    ├── core.py        # CortexAgentsClient, Thread (primary entry points)
+    ├── auth.py        # PATAuth, JWTAuth, OAuthAuth, SiSContainerAuth, AuthProvider, account_url_from_env
+    ├── exceptions.py  # CortexAgentError, AuthError, CortexPermissionError, CortexTimeoutError,
+    │                  # CortexConnectionError, NotFoundError, AgentNotFoundError, ThreadNotFoundError,
+    │                  # ConflictError, RunNotActiveError, RateLimitError, ServerError, RunError;
+    │                  # deprecated aliases: PermissionError, TimeoutError
+    ├── http.py        # HttpClient (httpx-based, auth header injection, optional X-Snowflake-Role)
+    ├── sse.py         # SSE stream parser, event_from_sse() factory
+    ├── models/
+    │   ├── agent.py   # Agent, Tool, ToolSpec, AgentProfile, AgentInstructions, BudgetConfig
+    │   ├── events.py  # 18 typed SSE event dataclasses (17 API types + UnknownEvent), RunMetadata
+    │   └── thread.py  # StoredMessage, ThreadDetail, ThreadMessage, ThreadMetadata
+    └── resources/
+        ├── agents.py  # AgentsResource (CRUD for agent objects)
+        ├── runs.py    # RunsResource — agent:run, plus run stream (GET) and cancel (POST) endpoints
+        └── threads.py # ThreadsResource (thread CRUD)
 ```
 
 ---
@@ -76,7 +79,7 @@ converts a result set via Arrow.
 
 **Fix:** Set two env vars **inline in the shell command** before Python loads:
 ```bash
-ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run streamlit_demo/app.py
+ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run examples/demo/app.py
 ```
 
 > **Important:** Streamlit 1.59 removed support for the `[env]` section in
@@ -175,7 +178,7 @@ the file on the user's personal Snowflake stage, then referencing it — this
 staging step is internal to CoWork and not exposed in the public REST API.
 
 The `extra_content` parameter on `Thread.chat()` is the intended extension point
-for when the API publishes a file/document content type. See `docs/roadmap.md`
+for when the API publishes a file/document content type. See `docs/dev/roadmap.md`
 for the full implementation plan.
 
 ---
@@ -184,14 +187,14 @@ for the full implementation plan.
 
 ```bash
 # Install all dev dependencies
-uv sync --extra dev --extra streamlit --extra jwt
+uv sync --extra dev --extra jwt
 
 # Run all non-live tests
 uv run pytest tests/ -m "not live" -v
 
 # Run the interactive demo (no Snowflake account needed)
 # Note: env vars required on macOS ARM64 — see Platform notes above
-ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run streamlit_demo/app.py
+ARROW_DEFAULT_MEMORY_POOL=system MALLOC_NANO_ZONE=0 uv run streamlit run examples/demo/app.py
 ```
 
 Tests: 339 passing, 1 skipped, excluding the credentialed `live` suite (`tests/` tree below):
@@ -203,10 +206,10 @@ tests/
 └── fixtures/      # shared SSE event payloads
 ```
 
-`streamlit_demo/` at the project root contains the interactive demo app
+`examples/demo/` contains the interactive demo app
 (not part of the pytest suite):
 ```
-streamlit_demo/
+examples/demo/
 ├── app.py         # interactive Streamlit demo (no credentials needed)
 └── mock_thread.py # pre-canned SSE streams for all scenarios
 ```
@@ -240,8 +243,8 @@ via `account_url_from_env()`.
 | `docs/api_spec.md` | REST API endpoint reference |
 | `docs/event_types.md` | All 17 SSE event types and their fields |
 | `docs/streamlit_guide.md` | Streamlit integration design reference |
-| `docs/test_plan.md` | Test coverage plan and strategy |
-| `docs/roadmap.md` | Planned features; file/audio attachment implementation plan |
+| `docs/dev/test_plan.md` | Test coverage plan and strategy |
+| `docs/dev/roadmap.md` | Planned features; file/audio attachment implementation plan |
 
 ---
 

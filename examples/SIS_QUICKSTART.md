@@ -15,13 +15,13 @@ and dialog — and applies to both new apps and existing ones.
    Access Integration. See the [README](../README.md#streamlit-in-snowflake-container-runtime)
    for the `CREATE NETWORK RULE` / `CREATE EXTERNAL ACCESS INTEGRATION` SQL.
 
-2. **Library** — Copy `streamlit_cortex_agents/` into your workspace root (the directory
+2. **Library** — Copy `src/streamlit_cortex_agents/` into your workspace root (the directory
    Snowflake puts on `sys.path`), or declare it as a dependency in `pyproject.toml`
    (replace the path with wherever you have the library on disk):
 
    ```toml
    dependencies = [
-       "streamlit-cortex-agents[streamlit] @ file:///path/to/cortex-agents-client",
+       "streamlit-cortex-agents @ file:///path/to/cortex-agents-client",
    ]
    ```
 
@@ -184,7 +184,7 @@ if st.button("Ask the agent", icon=":material/chat:", type="primary"):
 
 If you already have a deployed SiS container runtime app, the only changes are:
 
-1. Copy `streamlit_cortex_agents/` into the workspace root (or add to `pyproject.toml`).
+1. Copy `src/streamlit_cortex_agents/` into the workspace root (or add to `pyproject.toml`).
 2. Ensure the EAI is attached to the Streamlit object.
 3. Add the import and a single `.render()` call where you want the chat to appear:
 

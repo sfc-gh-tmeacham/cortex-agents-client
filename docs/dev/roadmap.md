@@ -32,7 +32,7 @@ token). This can be used as a stable key to store and look up per-viewer thread 
 
 #### Proposed implementation: `sis_init_session_per_viewer()`
 
-A new `sis_init_session_per_viewer()` session helper in `streamlit_cortex_agents/st/session.py`
+A new `sis_init_session_per_viewer()` session helper in `src/streamlit_cortex_agents/chat/session.py`
 that wraps `sis_init_session()` and adds automatic per-viewer thread persistence:
 
 1. On first call for a given viewer + `session_key_prefix`:
@@ -82,8 +82,8 @@ for most use cases.
 
 #### Files to create / modify
 
-- `streamlit_cortex_agents/st/session.py` — add `sis_init_session_per_viewer()`
-- `streamlit_cortex_agents/st/__init__.py` — export new function
+- `src/streamlit_cortex_agents/chat/session.py` — add `sis_init_session_per_viewer()`
+- `src/streamlit_cortex_agents/chat/__init__.py` — export new function
 - `tests/streamlit/test_session.py` — add tests covering first-visit, resume, and rerun paths
 
 ---
@@ -267,7 +267,7 @@ independently while the background thread drains the HTTP connection.
 
 #### Files to modify
 
-`streamlit_cortex_agents/st/render.py`, `streamlit_cortex_agents/st/chatbot.py`
+`src/streamlit_cortex_agents/chat/render.py`, `src/streamlit_cortex_agents/chat/chatbot.py`
 
 ---
 

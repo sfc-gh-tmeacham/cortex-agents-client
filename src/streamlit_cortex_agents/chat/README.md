@@ -12,7 +12,7 @@ Drop-in Streamlit components for Snowflake Cortex Agents. Copy the parent
 
 ### Installation
 
-Copy the `streamlit_cortex_agents/` folder into your Streamlit app directory in Workspaces so it sits alongside your `app.py`:
+Copy the `src/streamlit_cortex_agents/` folder into your Streamlit app directory in Workspaces so it sits alongside your `app.py`:
 
 ```
 my_streamlit_app/

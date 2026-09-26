@@ -5,13 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] — 2026-09-25
+
+### Changed
+
+The package is renamed and restructured around the Streamlit chat component. These changes break every existing import; no compatibility shim is provided.
+
+- Distribution renamed from `cortex-agents-client` to `streamlit-cortex-agents`; import package renamed from `cortex_agents_client` to `streamlit_cortex_agents`.
+- `StreamlitChatbot` is renamed `CortexAgentChat`.
+- Streamlit (`>=1.64`) and pandas are now core dependencies. The `streamlit` extra is removed; the `jwt` extra is unchanged.
+- The package uses a `src/` layout. For Streamlit in Snowflake, copy `src/streamlit_cortex_agents/` into the workspace.
+- Every public name is re-exported from the top level, so `from streamlit_cortex_agents import CortexAgentChat, CortexAgentsClient` works.
+- The demo app moved from `streamlit_demo/` to `examples/demo/`.
+
+| 0.3.0 import | 1.0.0 import |
+|---|---|
+| `from cortex_agents_client import X` | `from streamlit_cortex_agents import X` |
+| `from cortex_agents_client.st import StreamlitChatbot` | `from streamlit_cortex_agents.chat import CortexAgentChat` |
+| `cortex_agents_client.st.<module>` | `streamlit_cortex_agents.chat.<module>` |
+| `cortex_agents_client.client` | `streamlit_cortex_agents.client.core` |
+| `cortex_agents_client.{auth,exceptions,http,sse}` | `streamlit_cortex_agents.client.{auth,exceptions,http,sse}` |
+| `cortex_agents_client.models.<module>` | `streamlit_cortex_agents.client.models.<module>` |
+| `cortex_agents_client.resources.<module>` | `streamlit_cortex_agents.client.resources.<module>` |
 
 ### Added
 
-- Multi-tenancy session attributes: optional `variables` on `thread.chat`, `client.stream`/`run` and `runs.stream`/`run`/`stream_and_collect`, sent as the `agent:run` `variables` block. Accepts shorthand scalars or the REST shape, defaults to immutable, and is sent on tool-loop follow-ups. `StreamlitChatbot(variables=...)` takes a mapping or a per-prompt callable.
+- Multi-tenancy session attributes: optional `variables` on `thread.chat`, `client.stream`/`run` and `runs.stream`/`run`/`stream_and_collect`, sent as the `agent:run` `variables` block. Accepts shorthand scalars or the REST shape, defaults to immutable, and is sent on tool-loop follow-ups. `CortexAgentChat(variables=...)` takes a mapping or a per-prompt callable.
 - `client.stream(thread=...)` now forwards `variables` to `thread.chat`.
-- `StreamlitChatbot(height=...)` accepts a CSS height string, so an embedded chat can fill the viewport, for example inside `st.dialog`.
+- `CortexAgentChat(height=...)` accepts a CSS height string, so an embedded chat can fill the viewport, for example inside `st.dialog`.
 
 ## [0.3.0] — 2026-09-24
 
